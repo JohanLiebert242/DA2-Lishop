@@ -1,0 +1,31 @@
+{
+  "name": "@lishop/mfe-profile",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3006",
+    "build": "next build",
+    "start": "next start -p 3006",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lishop/ui": "workspace:*",
+    "@lishop/shared": "workspace:*",
+    "@lishop/event-bus": "workspace:*",
+    "@lishop/contracts": "workspace:*",
+    "@module-federation/nextjs-mf": "^8.8.0",
+    "@tanstack/react-query": "^5.50.0",
+    "next": "^15.0.0",
+    "next-intl": "^3.17.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@lishop/config": "workspace:*",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.5.0"
+  }
+}
