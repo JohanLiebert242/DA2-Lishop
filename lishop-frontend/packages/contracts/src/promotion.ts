@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const CouponSchema = z.object({
   id: z.string().uuid(),
-  code: z.string().toUpperCase(),
+  code: z.string().transform(v => v.toUpperCase()),
   type: z.enum(['PERCENT', 'FIXED', 'FREE_SHIPPING']),
   value: z.number().int().nonnegative(),
   minOrderVnd: z.number().int().nonnegative(),
