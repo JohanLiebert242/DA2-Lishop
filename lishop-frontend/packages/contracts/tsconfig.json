@@ -1,0 +1,4 @@
+{
+  "extends": "@lishop/config/tsconfig",
+  "compilerOptions": { "noEmit": true }
+}
