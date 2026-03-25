@@ -1,0 +1,18 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["NODE_ENV", "NEXT_PUBLIC_*"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "dist/**"]
+    },
+    "dev": {
+      "persistent": true,
+      "cache": false
+    },
+    "lint": { "outputs": [] },
+    "test": { "outputs": ["coverage/**"], "cache": false },
+    "type-check": { "dependsOn": ["^build"], "outputs": [] },
+    "clean": { "cache": false }
+  }
+}

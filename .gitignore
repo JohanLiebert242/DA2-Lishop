@@ -1,0 +1,13 @@
+node_modules
+dist
+.next
+.turbo
+coverage
+*.env
+.env
+.env.local
+.env.*.local
+pnpm-lock.yaml
+*.log
+.DS_Store
+Thumbs.db

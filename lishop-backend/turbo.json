@@ -1,0 +1,13 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    "dev": { "persistent": true, "cache": false },
+    "lint": { "outputs": [] },
+    "test": { "outputs": ["coverage/**"], "cache": false },
+    "type-check": { "dependsOn": ["^build"], "outputs": [] },
+    "db:generate": { "cache": false },
+    "db:migrate": { "cache": false },
+    "db:seed": { "cache": false }
+  }
+}
