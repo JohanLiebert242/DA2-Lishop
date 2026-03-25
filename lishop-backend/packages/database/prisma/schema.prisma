@@ -1,0 +1,356 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  STRIPE
+  PAYPAL
+  VNPAY
+  MOMO
+  COD
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+  FREE_SHIPPING
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String?
+  firstName      String
+  lastName       String
+  avatarUrl      String?
+  role           UserRole  @default(CUSTOMER)
+  loyaltyPoints  Int       @default(0)
+  emailVerified  Boolean   @default(false)
+  googleId       String?   @unique
+  facebookId     String?   @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  addresses           Address[]
+  orders              Order[]
+  reviews             Review[]
+  cartItems           CartItem[]
+  loyaltyTransactions LoyaltyPoint[]
+  deviceTokens        DeviceToken[]
+  notificationPrefs   NotificationPreference[]
+  couponUsages        CouponUsage[]
+
+  @@index([email])
+}
+
+model Address {
+  id        String   @id @default(uuid())
+  userId    String
+  fullName  String
+  phone     String
+  street    String
+  district  String
+  city      String
+  country   String   @default("VN")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([userId])
+}
+
+model Category {
+  id        String     @id @default(uuid())
+  name      String
+  slug      String     @unique
+  imageUrl  String?
+  parentId  String?
+  createdAt DateTime   @default(now())
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@index([slug])
+  @@index([parentId])
+}
+
+model Product {
+  id            String    @id @default(uuid())
+  name          String
+  slug          String    @unique
+  description   String
+  priceVnd      Int
+  priceUsd      Int
+  stock         Int       @default(0)
+  categoryId    String
+  averageRating Float     @default(0)
+  reviewCount   Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  category       Category       @relation(fields: [categoryId], references: [id])
+  images         ProductImage[]
+  tags           ProductTag[]
+  reviews        Review[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  flashSaleItems FlashSaleItem[]
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([priceVnd])
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  productId String
+  url       String
+  alt       String?
+  isPrimary Boolean @default(false)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model Tag {
+  id   String @id @default(uuid())
+  name String @unique
+
+  productTags ProductTag[]
+}
+
+model ProductTag {
+  productId String
+  tagId     String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  orderNumber    String      @unique
+  userId         String
+  addressId      String
+  status         OrderStatus @default(PENDING)
+  subtotalVnd    Int
+  shippingFeeVnd Int         @default(0)
+  discountVnd    Int         @default(0)
+  totalVnd       Int
+  notes          String?
+  trackingNumber String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  user     User        @relation(fields: [userId], references: [id])
+  address  Address     @relation(fields: [addressId], references: [id])
+  items    OrderItem[]
+  payment  Payment?
+  shipment Shipment?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id            String  @id @default(uuid())
+  orderId       String
+  productId     String
+  productName   String
+  quantity      Int
+  unitPriceVnd  Int
+  totalPriceVnd Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  orderId     String        @unique
+  method      PaymentMethod
+  amountVnd   Int
+  status      PaymentStatus @default(PENDING)
+  providerRef String?
+  invoiceUrl  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Shipment {
+  id             String    @id @default(uuid())
+  orderId        String    @unique
+  provider       String
+  trackingNumber String?
+  estimatedAt    DateTime?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Review {
+  id               String       @id @default(uuid())
+  productId        String
+  userId           String
+  rating           Int
+  content          String
+  status           ReviewStatus @default(PENDING)
+  verifiedPurchase Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([productId, userId])
+  @@index([productId])
+  @@index([status])
+}
+
+model Coupon {
+  id          String     @id @default(uuid())
+  code        String     @unique
+  type        CouponType
+  value       Int
+  minOrderVnd Int        @default(0)
+  maxUses     Int?
+  usedCount   Int        @default(0)
+  expiresAt   DateTime?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+
+  usages CouponUsage[]
+
+  @@index([code])
+}
+
+model CouponUsage {
+  id       String   @id @default(uuid())
+  couponId String
+  userId   String
+  usedAt   DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([couponId, userId])
+}
+
+model FlashSale {
+  id        String    @id @default(uuid())
+  startAt   DateTime
+  endAt     DateTime
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  items FlashSaleItem[]
+}
+
+model FlashSaleItem {
+  id              String @id @default(uuid())
+  flashSaleId     String
+  productId       String
+  discountPercent Int
+
+  flashSale FlashSale @relation(fields: [flashSaleId], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@unique([flashSaleId, productId])
+}
+
+model LoyaltyPoint {
+  id          String   @id @default(uuid())
+  userId      String
+  points      Int
+  description String
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id           String  @id @default(uuid())
+  userId       String
+  eventType    String
+  emailEnabled Boolean @default(true)
+  pushEnabled  Boolean @default(true)
+  inAppEnabled Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, eventType])
+  @@index([userId])
+}
