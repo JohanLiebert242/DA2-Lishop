@@ -1,0 +1,12 @@
+{
+  "name": "@lishop/shared",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "test": "vitest run", "type-check": "tsc --noEmit" },
+  "peerDependencies": { "react": "^18 || ^19" },
+  "dependencies": { "clsx": "^2.1.0", "tailwind-merge": "^2.3.0" },
+  "devDependencies": { "@lishop/config": "workspace:*", "@types/react": "^19.0.0", "vitest": "^1.0.0" }
+}
