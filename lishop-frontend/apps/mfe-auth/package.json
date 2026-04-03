@@ -10,16 +10,19 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@lishop/ui": "workspace:*",
-    "@lishop/shared": "workspace:*",
-    "@lishop/event-bus": "workspace:*",
+    "@hookform/resolvers": "^5.2.2",
     "@lishop/contracts": "workspace:*",
+    "@lishop/event-bus": "workspace:*",
+    "@lishop/shared": "workspace:*",
+    "@lishop/ui": "workspace:*",
     "@module-federation/nextjs-mf": "^8.8.0",
     "@tanstack/react-query": "^5.50.0",
     "next": "^15.0.0",
     "next-intl": "^3.17.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-hook-form": "^7.72.1",
+    "zod": "^3.23.0",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
