@@ -28,7 +28,7 @@
     "helmet": "^7.1.0",
     "ioredis": "^5.10.1",
     "joi": "^17.13.0",
-    "jose": "^6.2.2",
+    "jose": "^4.15.9",
     "nodemailer": "^8.0.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
