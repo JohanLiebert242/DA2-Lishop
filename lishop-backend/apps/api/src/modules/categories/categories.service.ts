@@ -38,6 +38,12 @@ export class CategoriesService {
     return cat as CategoryTree;
   }
 
+  async delete(id: string): Promise<void> {
+    const existing = await this.repo.findById(id);
+    if (!existing) throw new NotFoundException(`Category not found: ${id}`);
+    await this.repo.delete(id);
+  }
+
   private buildTree(items: CategoryTree[], parentId: string | null = null): CategoryTree[] {
     return items
       .filter((item) => item.parentId === parentId)

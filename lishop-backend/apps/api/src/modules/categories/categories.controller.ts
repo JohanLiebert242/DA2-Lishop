@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -39,8 +39,9 @@ export class CategoriesController {
   @Delete(':id')
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete category (admin)' })
   async remove(@Param('id') id: string) {
-    return this.categoriesService.findBySlug(id);
+    await this.categoriesService.delete(id);
   }
 }
