@@ -1,0 +1,113 @@
+import { Injectable } from '@nestjs/common';
+import { prisma, Product, Prisma } from '@lishop/database';
+import { ProductListQueryDto, ProductSortOption } from './dto/product-list-query.dto';
+
+export interface ProductWithDetails extends Product {
+  images: { id: string; url: string; alt: string | null; isPrimary: boolean }[];
+  tags: { tag: { name: string } }[];
+  category: { id: string; name: string; slug: string };
+}
+
+@Injectable()
+export class ProductsRepository {
+  async findMany(query: ProductListQueryDto): Promise<{ items: ProductWithDetails[]; nextCursor: string | null }> {
+    const { limit, cursor, categoryId, minPriceVnd, maxPriceVnd, q, sort } = query;
+
+    const where: Prisma.ProductWhereInput = {
+      ...(categoryId && { categoryId }),
+      ...(minPriceVnd !== undefined && { priceVnd: { gte: minPriceVnd } }),
+      ...(maxPriceVnd !== undefined && { priceVnd: { ...((minPriceVnd !== undefined ? { gte: minPriceVnd } : {})), lte: maxPriceVnd } }),
+      ...(q && {
+        OR: [
+          { name: { contains: q, mode: Prisma.QueryMode.insensitive } },
+          { description: { contains: q, mode: Prisma.QueryMode.insensitive } },
+        ],
+      }),
+    };
+
+    const orderBy: Prisma.ProductOrderByWithRelationInput[] = this.getOrderBy(sort);
+
+    const items = await prisma.product.findMany({
+      where,
+      orderBy,
+      take: limit + 1,
+      ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      include: {
+        images: true,
+        tags: { include: { tag: true } },
+        category: { select: { id: true, name: true, slug: true } },
+      },
+    });
+
+    const hasMore = items.length > limit;
+    const result = hasMore ? items.slice(0, limit) : items;
+    const lastItem = result[result.length - 1];
+    const nextCursor = hasMore && lastItem ? lastItem.id : null;
+
+    return { items: result as ProductWithDetails[], nextCursor };
+  }
+
+  async findBySlug(slug: string): Promise<ProductWithDetails | null> {
+    return prisma.product.findUnique({
+      where: { slug },
+      include: {
+        images: true,
+        tags: { include: { tag: true } },
+        category: { select: { id: true, name: true, slug: true } },
+      },
+    }) as Promise<ProductWithDetails | null>;
+  }
+
+  async findById(id: string): Promise<Product | null> {
+    return prisma.product.findUnique({ where: { id } });
+  }
+
+  async create(data: Prisma.ProductCreateInput): Promise<ProductWithDetails> {
+    return prisma.product.create({
+      data,
+      include: {
+        images: true,
+        tags: { include: { tag: true } },
+        category: { select: { id: true, name: true, slug: true } },
+      },
+    }) as Promise<ProductWithDetails>;
+  }
+
+  async update(id: string, data: Prisma.ProductUpdateInput): Promise<ProductWithDetails> {
+    return prisma.product.update({
+      where: { id },
+      data,
+      include: {
+        images: true,
+        tags: { include: { tag: true } },
+        category: { select: { id: true, name: true, slug: true } },
+      },
+    }) as Promise<ProductWithDetails>;
+  }
+
+  async delete(id: string): Promise<Product> {
+    return prisma.product.delete({ where: { id } });
+  }
+
+  async findFeatured(limit: number = 8): Promise<ProductWithDetails[]> {
+    return prisma.product.findMany({
+      where: { stock: { gt: 0 } },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        images: true,
+        tags: { include: { tag: true } },
+        category: { select: { id: true, name: true, slug: true } },
+      },
+    }) as Promise<ProductWithDetails[]>;
+  }
+
+  private getOrderBy(sort?: ProductSortOption): Prisma.ProductOrderByWithRelationInput[] {
+    switch (sort) {
+      case ProductSortOption.PRICE_ASC: return [{ priceVnd: 'asc' }, { id: 'asc' }];
+      case ProductSortOption.PRICE_DESC: return [{ priceVnd: 'desc' }, { id: 'asc' }];
+      case ProductSortOption.RATING_DESC: return [{ averageRating: 'desc' }, { id: 'asc' }];
+      default: return [{ createdAt: 'desc' }, { id: 'asc' }];
+    }
+  }
+}
