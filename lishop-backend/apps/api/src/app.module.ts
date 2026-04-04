@@ -9,6 +9,8 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { validationPipe } from './common/pipes/validation.pipe';
 import { RedisModule } from './modules/redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { ProductsModule } from './modules/products/products.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { AuthModule } from './modules/auth/auth.module';
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     RedisModule,
     AuthModule,
+    CategoriesModule,
+    ProductsModule,
   ],
   controllers: [HealthController],
   providers: [
