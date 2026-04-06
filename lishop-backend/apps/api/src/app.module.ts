@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ProductsModule } from './modules/products/products.module';
 import { PromotionsModule } from './modules/promotions/promotions.module';
+import { CartModule } from './modules/cart/cart.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { PromotionsModule } from './modules/promotions/promotions.module';
     CategoriesModule,
     ProductsModule,
     PromotionsModule,
+    CartModule,
   ],
   controllers: [HealthController],
   providers: [
