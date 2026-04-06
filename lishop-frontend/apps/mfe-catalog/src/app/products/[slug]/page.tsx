@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { formatVND } from '@lishop/shared';
 import { catalogApi } from '../../../lib/catalog-api';
+import { addToCart } from '../../../lib/cart-helper';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -15,6 +16,8 @@ interface Props {
 export default function ProductDetailPage({ params }: Props) {
   const { slug } = use(params);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [cartMessage, setCartMessage] = useState('');
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ['product', slug],
@@ -38,6 +41,21 @@ export default function ProductDetailPage({ params }: Props) {
         </Link>
       </div>
     );
+  }
+
+  async function handleAddToCart() {
+    if (!product) return;
+    setAddingToCart(true);
+    setCartMessage('');
+    try {
+      await addToCart(product.id, 1);
+      setCartMessage('Đã thêm vào giỏ hàng!');
+      setTimeout(() => setCartMessage(''), 3000);
+    } catch (err: unknown) {
+      setCartMessage(err instanceof Error ? err.message : 'Có lỗi xảy ra');
+    } finally {
+      setAddingToCart(false);
+    }
   }
 
   const images = product.images.length > 0
@@ -137,11 +155,17 @@ export default function ProductDetailPage({ params }: Props) {
 
           <div className="mt-6">
             <button
-              disabled={product.stock === 0}
+              disabled={product.stock === 0 || addingToCart}
+              onClick={handleAddToCart}
               className="w-full rounded-md bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {product.stock > 0 ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
+              {addingToCart ? 'Đang thêm...' : product.stock > 0 ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
             </button>
+            {cartMessage && (
+              <p className={`mt-2 text-sm text-center ${cartMessage.includes('Đã') ? 'text-green-600' : 'text-red-600'}`}>
+                {cartMessage}
+              </p>
+            )}
           </div>
 
           <div className="mt-6 border-t pt-6">
