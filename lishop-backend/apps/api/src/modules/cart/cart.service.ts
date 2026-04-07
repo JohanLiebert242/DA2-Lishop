@@ -77,6 +77,11 @@ export class CartService {
     return this.buildCart(userId);
   }
 
+  async clearCart(userId: string): Promise<void> {
+    await this.repo.clear(userId);
+    await this.redis.del(`cart:coupon:${userId}`);
+  }
+
   private async buildCart(userId: string, couponOverride?: string): Promise<CartDto> {
     const rows = await this.repo.findByUserId(userId);
 
