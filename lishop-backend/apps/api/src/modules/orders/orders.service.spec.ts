@@ -1,0 +1,119 @@
+import { Test } from '@nestjs/testing';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { OrdersService } from './orders.service';
+import { OrdersRepository } from './orders.repository';
+import { AddressesRepository } from '../addresses/addresses.repository';
+import { CartService } from '../cart/cart.service';
+import { PaymentMethod, OrderStatus } from '@lishop/database';
+
+const mockCart = {
+  items: [
+    { productId: 'p1', productName: 'iPhone 15', quantity: 2, priceVnd: 20000000, priceUsd: 800, stock: 5, productSlug: 'iphone-15', id: 'ci1', imageUrl: null },
+  ],
+  subtotalVnd: 40000000,
+  subtotalUsd: 1600,
+  couponCode: null,
+  discountVnd: 0,
+  totalVnd: 40000000,
+};
+
+const mockAddress = {
+  id: 'addr1',
+  userId: 'u1',
+  fullName: 'Nguyen Van A',
+  phone: '0901234567',
+  street: '123 Main',
+  district: 'Q1',
+  city: 'HCM',
+  country: 'VN',
+  isDefault: true,
+  createdAt: new Date(),
+};
+
+const mockOrder = {
+  id: 'order1',
+  orderNumber: 'LS-123456',
+  status: OrderStatus.PENDING,
+  subtotalVnd: 40000000,
+  shippingFeeVnd: 30000,
+  discountVnd: 0,
+  totalVnd: 40030000,
+  notes: null,
+  trackingNumber: null,
+  createdAt: new Date(),
+  items: [],
+  address: { fullName: 'A', phone: '09', street: 'B', district: 'C', city: 'D', country: 'VN' },
+  payment: { id: 'pay1', method: 'COD', amountVnd: 40030000, status: 'PENDING' },
+};
+
+describe('OrdersService', () => {
+  let service: OrdersService;
+  const repo = {
+    create: jest.fn(),
+    findByUserId: jest.fn(),
+    findByIdAndUserId: jest.fn(),
+  };
+  const addressRepo = { findById: jest.fn() };
+  const cartService = { getCart: jest.fn(), clearCart: jest.fn() };
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        OrdersService,
+        { provide: OrdersRepository, useValue: repo },
+        { provide: AddressesRepository, useValue: addressRepo },
+        { provide: CartService, useValue: cartService },
+      ],
+    }).compile();
+    service = module.get(OrdersService);
+  });
+
+  afterEach(() => jest.resetAllMocks());
+
+  it('placeOrder throws BadRequestException when cart is empty', async () => {
+    cartService.getCart.mockResolvedValue({ ...mockCart, items: [], subtotalVnd: 0, totalVnd: 0 });
+    await expect(service.placeOrder('u1', { addressId: 'addr1', paymentMethod: PaymentMethod.COD })).rejects.toThrow(BadRequestException);
+  });
+
+  it('placeOrder throws NotFoundException when address not found', async () => {
+    cartService.getCart.mockResolvedValue(mockCart);
+    addressRepo.findById.mockResolvedValue(null);
+    await expect(service.placeOrder('u1', { addressId: 'addr99', paymentMethod: PaymentMethod.COD })).rejects.toThrow(NotFoundException);
+  });
+
+  it('placeOrder throws NotFoundException when address belongs to another user', async () => {
+    cartService.getCart.mockResolvedValue(mockCart);
+    addressRepo.findById.mockResolvedValue({ ...mockAddress, userId: 'u2' });
+    await expect(service.placeOrder('u1', { addressId: 'addr1', paymentMethod: PaymentMethod.COD })).rejects.toThrow(NotFoundException);
+  });
+
+  it('placeOrder creates order and clears cart', async () => {
+    cartService.getCart.mockResolvedValue(mockCart);
+    addressRepo.findById.mockResolvedValue(mockAddress);
+    repo.create.mockResolvedValue(mockOrder);
+    cartService.clearCart.mockResolvedValue(undefined);
+
+    const result = await service.placeOrder('u1', { addressId: 'addr1', paymentMethod: PaymentMethod.COD });
+
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'u1',
+      addressId: 'addr1',
+      subtotalVnd: 40000000,
+      shippingFeeVnd: 30000,
+      discountVnd: 0,
+    }));
+    expect(cartService.clearCart).toHaveBeenCalledWith('u1');
+    expect(result.orderNumber).toBe('LS-123456');
+  });
+
+  it('findMyOrders returns orders for user', async () => {
+    repo.findByUserId.mockResolvedValue([mockOrder]);
+    const result = await service.findMyOrders('u1');
+    expect(result).toHaveLength(1);
+  });
+
+  it('findMyOrder throws NotFoundException when order not found', async () => {
+    repo.findByIdAndUserId.mockResolvedValue(null);
+    await expect(service.findMyOrder('u1', 'order99')).rejects.toThrow(NotFoundException);
+  });
+});
