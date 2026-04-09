@@ -15,14 +15,14 @@ export interface AdminOrderItem {
   totalVnd: number;
   createdAt: Date;
   itemCount: number;
-  user: { email: string; firstName: string | null; lastName: string | null };
+  user: { email: string; firstName: string; lastName: string };
 }
 
 export interface AdminUserItem {
   id: string;
   email: string;
-  firstName: string | null;
-  lastName: string | null;
+  firstName: string;
+  lastName: string;
   role: string;
   loyaltyPoints: number;
   createdAt: Date;
