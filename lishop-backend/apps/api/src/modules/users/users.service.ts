@@ -29,4 +29,12 @@ export class UsersService {
   updateById(id: string, data: Prisma.UserUpdateInput): Promise<User> {
     return this.repo.updateById(id, data);
   }
+
+  getProfile(userId: string) {
+    return this.repo.getProfile(userId);
+  }
+
+  updateProfile(userId: string, dto: { firstName?: string; lastName?: string; avatarUrl?: string }) {
+    return this.repo.updateProfile(userId, dto);
+  }
 }

@@ -26,4 +26,37 @@ export class UsersRepository {
   async updateById(id: string, data: Prisma.UserUpdateInput): Promise<User> {
     return prisma.user.update({ where: { id }, data });
   }
+
+  async getProfile(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        loyaltyPoints: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async updateProfile(id: string, data: { firstName?: string; lastName?: string; avatarUrl?: string }) {
+    return prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        loyaltyPoints: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+  }
 }
