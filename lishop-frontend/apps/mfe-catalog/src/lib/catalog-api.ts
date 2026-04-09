@@ -1,9 +1,19 @@
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem('lishop_at');
+}
+
+async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = getToken();
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init.headers as Record<string, string> | undefined),
+    },
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.message ?? 'Request failed');
@@ -64,6 +74,16 @@ export interface ProductListParams {
   sort?: 'price_asc' | 'price_desc' | 'rating_desc' | 'newest';
 }
 
+export interface ReviewInfo {
+  id: string;
+  userId: string;
+  userName: string;
+  rating: number;
+  content: string;
+  verifiedPurchase: boolean;
+  createdAt: string;
+}
+
 export const catalogApi = {
   getCategories: () =>
     apiFetch<CategoryItem[]>('/categories'),
@@ -85,4 +105,13 @@ export const catalogApi = {
 
   getFeatured: (limit = 8) =>
     apiFetch<ProductSummary[]>(`/products/featured?limit=${limit}`),
+
+  getProductReviews: (productId: string) =>
+    apiFetch<ReviewInfo[]>(`/reviews/product/${productId}`),
+
+  createReview: (productId: string, rating: number, content?: string) =>
+    apiFetch<ReviewInfo>(`/reviews/product/${productId}`, {
+      method: 'POST',
+      body: JSON.stringify({ rating, content }),
+    }),
 };

@@ -1,13 +1,148 @@
 'use client';
 
 import { use } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { formatVND } from '@lishop/shared';
-import { catalogApi } from '../../../lib/catalog-api';
+import { catalogApi, ReviewInfo } from '../../../lib/catalog-api';
 import { addToCart } from '../../../lib/cart-helper';
+
+function Stars({ rating, interactive = false, onSelect }: { rating: number; interactive?: boolean; onSelect?: (r: number) => void }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <span
+          key={s}
+          onClick={() => interactive && onSelect?.(s)}
+          className={`${s <= rating ? 'text-yellow-400' : 'text-gray-300'} ${interactive ? 'cursor-pointer text-2xl' : 'text-base'}`}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ReviewsSection({ productId }: { productId: string }) {
+  const queryClient = useQueryClient();
+  const [rating, setRating] = useState(5);
+  const [content, setContent] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('lishop_at') : null;
+
+  const { data: reviews = [] } = useQuery({
+    queryKey: ['reviews', productId],
+    queryFn: () => catalogApi.getProductReviews(productId),
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: () => catalogApi.createReview(productId, rating, content || undefined),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
+      setShowForm(false);
+      setContent('');
+      setRating(5);
+    },
+  });
+
+  const avgRating =
+    reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+
+  return (
+    <div className="mt-8 border-t pt-8">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Đánh giá khách hàng</h2>
+          {reviews.length > 0 && (
+            <div className="mt-1 flex items-center gap-2">
+              <Stars rating={Math.round(avgRating)} />
+              <span className="text-sm text-gray-500">
+                {avgRating.toFixed(1)} ({reviews.length} đánh giá)
+              </span>
+            </div>
+          )}
+        </div>
+        {token && !showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            Viết đánh giá
+          </button>
+        )}
+        {!token && (
+          <a href="http://localhost:3001/login" className="text-sm text-indigo-600 hover:underline">
+            Đăng nhập để đánh giá
+          </a>
+        )}
+      </div>
+
+      {showForm && (
+        <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <p className="mb-2 text-sm font-medium text-gray-700">Đánh giá của bạn</p>
+          <Stars rating={rating} interactive onSelect={setRating} />
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Nhận xét của bạn (tùy chọn)..."
+            rows={3}
+            className="mt-3 w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          />
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => submitMutation.mutate()}
+              disabled={submitMutation.isPending}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {submitMutation.isPending ? 'Đang gửi...' : 'Gửi đánh giá'}
+            </button>
+            <button
+              onClick={() => setShowForm(false)}
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Hủy
+            </button>
+          </div>
+          {submitMutation.isError && (
+            <p className="mt-2 text-xs text-red-600">
+              {(submitMutation.error as Error).message}
+            </p>
+          )}
+        </div>
+      )}
+
+      {reviews.length === 0 ? (
+        <p className="text-sm text-gray-400">Chưa có đánh giá nào.</p>
+      ) : (
+        <div className="space-y-4">
+          {reviews.map((review: ReviewInfo) => (
+            <div key={review.id} className="rounded-xl border border-gray-100 bg-white p-4">
+              <div className="mb-1 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-900">{review.userName}</span>
+                  {review.verifiedPurchase && (
+                    <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700">
+                      Đã mua
+                    </span>
+                  )}
+                </div>
+                <Stars rating={review.rating} />
+              </div>
+              {review.content && (
+                <p className="text-sm text-gray-600">{review.content}</p>
+              )}
+              <p className="mt-2 text-xs text-gray-400">
+                {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -176,6 +311,7 @@ export default function ProductDetailPage({ params }: Props) {
           </div>
         </div>
       </div>
+      <ReviewsSection productId={product.id} />
     </div>
   );
 }
