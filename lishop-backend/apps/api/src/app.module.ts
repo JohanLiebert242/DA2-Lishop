@@ -15,6 +15,7 @@ import { PromotionsModule } from './modules/promotions/promotions.module';
 import { CartModule } from './modules/cart/cart.module';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     CartModule,
     AddressesModule,
     OrdersModule,
+    ReviewsModule,
   ],
   controllers: [HealthController],
   providers: [
