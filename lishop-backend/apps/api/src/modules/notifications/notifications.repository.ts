@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { prisma } from '@lishop/database';
 
 export const EVENT_TYPES = ['ORDER_STATUS', 'PROMOTIONS', 'NEW_PRODUCTS', 'REVIEWS'] as const;
@@ -38,11 +38,11 @@ export class NotificationsRepository {
       inAppEnabled: true,
     }));
 
-    return [...existing, ...defaults].sort(
-      (a, b) =>
-        EVENT_TYPES.indexOf(a.eventType as EventType) -
-        EVENT_TYPES.indexOf(b.eventType as EventType),
-    );
+    return [...existing, ...defaults].sort((a, b) => {
+      const ia = EVENT_TYPES.indexOf(a.eventType as EventType);
+      const ib = EVENT_TYPES.indexOf(b.eventType as EventType);
+      return (ia === -1 ? Infinity : ia) - (ib === -1 ? Infinity : ib);
+    });
   }
 
   async upsertPreference(
@@ -50,6 +50,10 @@ export class NotificationsRepository {
     eventType: string,
     data: { emailEnabled?: boolean; pushEnabled?: boolean; inAppEnabled?: boolean },
   ): Promise<NotificationPreferenceItem> {
+    if (!EVENT_TYPES.includes(eventType as EventType)) {
+      throw new BadRequestException(`eventType invalide : ${eventType}`);
+    }
+
     return prisma.notificationPreference.upsert({
       where: { userId_eventType: { userId, eventType } },
       create: {
