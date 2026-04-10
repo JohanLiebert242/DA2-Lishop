@@ -36,6 +36,13 @@ export interface UpdateProfileInput {
   avatarUrl?: string;
 }
 
+export interface LoyaltyPointItem {
+  id: string;
+  points: number;
+  description: string;
+  createdAt: string;
+}
+
 export const profileApi = {
   getProfile: () => apiFetch<UserProfile>('/users/profile'),
   updateProfile: (data: UpdateProfileInput) =>
@@ -43,4 +50,5 @@ export const profileApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  getLoyaltyHistory: () => apiFetch<LoyaltyPointItem[]>('/users/loyalty-history'),
 };

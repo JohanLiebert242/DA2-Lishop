@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { profileApi, UpdateProfileInput } from '../../lib/profile-api';
+import { profileApi, UpdateProfileInput, LoyaltyPointItem } from '../../lib/profile-api';
 
 export default function ProfilePage() {
   const queryClient = useQueryClient();
@@ -24,6 +24,12 @@ export default function ProfilePage() {
       setMessage('Cập nhật thành công!');
       setTimeout(() => setMessage(''), 3000);
     },
+  });
+
+  const { data: loyaltyHistory = [] } = useQuery({
+    queryKey: ['loyalty-history'],
+    queryFn: () => profileApi.getLoyaltyHistory(),
+    enabled: !!profile,
   });
 
   if (isLoading) {
@@ -160,6 +166,34 @@ export default function ProfilePage() {
           <p className="mt-1 text-sm font-medium text-gray-700">Giỏ hàng</p>
         </a>
       </div>
+
+      {/* Loyalty point history */}
+      {loyaltyHistory.length > 0 && (
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b px-4 py-3">
+            <h2 className="text-sm font-semibold text-gray-900">Lịch sử điểm tích lũy</h2>
+          </div>
+          <ul className="divide-y">
+            {loyaltyHistory.map((item: LoyaltyPointItem) => (
+              <li key={item.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-sm text-gray-800">{item.description}</p>
+                  <p className="text-xs text-gray-400">
+                    {new Date(item.createdAt).toLocaleDateString('vi-VN')}
+                  </p>
+                </div>
+                <span
+                  className={`text-sm font-semibold ${
+                    item.points >= 0 ? 'text-green-600' : 'text-red-500'
+                  }`}
+                >
+                  {item.points >= 0 ? '+' : ''}{item.points}đ
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
