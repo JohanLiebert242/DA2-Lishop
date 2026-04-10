@@ -70,6 +70,7 @@ model User {
   loyaltyTransactions LoyaltyPoint[]
   deviceTokens        DeviceToken[]
   notificationPrefs   NotificationPreference[]
+  notifications       Notification[]
   couponUsages        CouponUsage[]
 
   @@index([email])
@@ -353,4 +354,20 @@ model NotificationPreference {
 
   @@unique([userId, eventType])
   @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  type      String
+  relatedId String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([userId, isRead])
 }
