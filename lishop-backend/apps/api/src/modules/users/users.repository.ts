@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { prisma, User, Prisma } from '@lishop/database';
 
+export interface LoyaltyPointItem {
+  id: string;
+  points: number;
+  description: string;
+  createdAt: Date;
+}
+
 @Injectable()
 export class UsersRepository {
   async findByEmail(email: string): Promise<User | null> {
@@ -58,5 +65,14 @@ export class UsersRepository {
         createdAt: true,
       },
     });
+  }
+
+  getLoyaltyHistory(userId: string): Promise<LoyaltyPointItem[]> {
+    return prisma.loyaltyPoint.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { id: true, points: true, description: true, createdAt: true },
+    }) as Promise<LoyaltyPointItem[]>;
   }
 }

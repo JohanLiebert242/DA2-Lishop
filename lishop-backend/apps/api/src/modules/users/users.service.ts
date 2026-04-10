@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, User } from '@lishop/database';
-import { UsersRepository } from './users.repository';
+import { UsersRepository, LoyaltyPointItem } from './users.repository';
 
 @Injectable()
 export class UsersService {
@@ -36,5 +36,9 @@ export class UsersService {
 
   updateProfile(userId: string, dto: { firstName?: string; lastName?: string; avatarUrl?: string }) {
     return this.repo.updateProfile(userId, dto);
+  }
+
+  getLoyaltyHistory(userId: string): Promise<LoyaltyPointItem[]> {
+    return this.repo.getLoyaltyHistory(userId);
   }
 }

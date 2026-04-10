@@ -23,4 +23,10 @@ export class UsersController {
   updateProfile(@CurrentUser('id') userId: string, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(userId, dto);
   }
+
+  @Get('loyalty-history')
+  @ApiOperation({ summary: 'Get loyalty point history for current user' })
+  getLoyaltyHistory(@CurrentUser('id') userId: string) {
+    return this.usersService.getLoyaltyHistory(userId);
+  }
 }

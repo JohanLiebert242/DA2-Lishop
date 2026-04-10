@@ -27,6 +27,7 @@ describe('UsersService', () => {
     updateById: jest.fn(),
     findByGoogleId: jest.fn(),
     findByFacebookId: jest.fn(),
+    getLoyaltyHistory: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -87,5 +88,17 @@ describe('UsersService', () => {
     const result = await service.updateById('user-1', { firstName: 'Updated' });
     expect(result).toEqual(updated);
     expect(mockRepo.updateById).toHaveBeenCalledWith('user-1', { firstName: 'Updated' });
+  });
+
+  it('getLoyaltyHistory delegates to repository', async () => {
+    const mockHistory = [
+      { id: 'lp1', points: 100, description: 'Đặt hàng LS-001', createdAt: new Date() },
+      { id: 'lp2', points: -50, description: 'Đổi điểm', createdAt: new Date() },
+    ];
+    mockRepo.getLoyaltyHistory.mockResolvedValue(mockHistory);
+    const result = await service.getLoyaltyHistory('u1');
+    expect(mockRepo.getLoyaltyHistory).toHaveBeenCalledWith('u1');
+    expect(result).toHaveLength(2);
+    expect(result[0]!.points).toBe(100);
   });
 });
