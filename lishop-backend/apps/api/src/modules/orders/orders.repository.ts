@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { prisma, Order, OrderStatus, PaymentMethod, PaymentStatus } from '@lishop/database';
+import { prisma, OrderStatus, PaymentMethod, PaymentStatus } from '@lishop/database';
 
 export interface OrderItemInput {
   productId: string;
@@ -129,5 +129,13 @@ export class OrdersRepository {
       where: { id, userId },
       include: ORDER_INCLUDE,
     }) as Promise<OrderWithDetails | null>;
+  }
+
+  cancelOrder(id: string): Promise<OrderWithDetails> {
+    return prisma.order.update({
+      where: { id },
+      data: { status: OrderStatus.CANCELLED },
+      include: ORDER_INCLUDE,
+    }) as Promise<OrderWithDetails>;
   }
 }

@@ -4,6 +4,7 @@ import { OrdersService } from './orders.service';
 import { OrdersRepository } from './orders.repository';
 import { AddressesRepository } from '../addresses/addresses.repository';
 import { CartService } from '../cart/cart.service';
+import { NotificationsRepository } from '../notifications/notifications.repository';
 import { PaymentMethod, OrderStatus } from '@lishop/database';
 
 const mockCart = {
@@ -52,9 +53,11 @@ describe('OrdersService', () => {
     create: jest.fn(),
     findByUserId: jest.fn(),
     findByIdAndUserId: jest.fn(),
+    cancelOrder: jest.fn(),
   };
   const addressRepo = { findById: jest.fn() };
   const cartService = { getCart: jest.fn(), clearCart: jest.fn() };
+  const notifRepo = { createNotification: jest.fn() };
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -63,6 +66,7 @@ describe('OrdersService', () => {
         { provide: OrdersRepository, useValue: repo },
         { provide: AddressesRepository, useValue: addressRepo },
         { provide: CartService, useValue: cartService },
+        { provide: NotificationsRepository, useValue: notifRepo },
       ],
     }).compile();
     service = module.get(OrdersService);
@@ -87,11 +91,12 @@ describe('OrdersService', () => {
     await expect(service.placeOrder('u1', { addressId: 'addr1', paymentMethod: PaymentMethod.COD })).rejects.toThrow(NotFoundException);
   });
 
-  it('placeOrder creates order and clears cart', async () => {
+  it('placeOrder creates order, clears cart, and creates notification', async () => {
     cartService.getCart.mockResolvedValue(mockCart);
     addressRepo.findById.mockResolvedValue(mockAddress);
     repo.create.mockResolvedValue(mockOrder);
     cartService.clearCart.mockResolvedValue(undefined);
+    notifRepo.createNotification.mockResolvedValue({});
 
     const result = await service.placeOrder('u1', { addressId: 'addr1', paymentMethod: PaymentMethod.COD });
 
@@ -103,6 +108,13 @@ describe('OrdersService', () => {
       discountVnd: 0,
     }));
     expect(cartService.clearCart).toHaveBeenCalledWith('u1');
+    expect(notifRepo.createNotification).toHaveBeenCalledWith(
+      'u1',
+      'Đơn hàng đã đặt thành công',
+      `Đơn hàng #LS-123456 đang chờ xác nhận.`,
+      'ORDER_STATUS',
+      'order1',
+    );
     expect(result.orderNumber).toBe('LS-123456');
   });
 
@@ -115,5 +127,35 @@ describe('OrdersService', () => {
   it('findMyOrder throws NotFoundException when order not found', async () => {
     repo.findByIdAndUserId.mockResolvedValue(null);
     await expect(service.findMyOrder('u1', 'order99')).rejects.toThrow(NotFoundException);
+  });
+
+  it('cancelOrder throws NotFoundException when order not found', async () => {
+    repo.findByIdAndUserId.mockResolvedValue(null);
+    await expect(service.cancelOrder('u1', 'order99')).rejects.toThrow(NotFoundException);
+  });
+
+  it('cancelOrder throws BadRequestException when order is not cancellable', async () => {
+    repo.findByIdAndUserId.mockResolvedValue({ ...mockOrder, status: OrderStatus.SHIPPED });
+    await expect(service.cancelOrder('u1', 'order1')).rejects.toThrow(BadRequestException);
+  });
+
+  it('cancelOrder cancels a PENDING order and creates notification', async () => {
+    const pendingOrder = { ...mockOrder, status: OrderStatus.PENDING };
+    const cancelledOrder = { ...mockOrder, status: OrderStatus.CANCELLED };
+    repo.findByIdAndUserId.mockResolvedValue(pendingOrder);
+    repo.cancelOrder.mockResolvedValue(cancelledOrder);
+    notifRepo.createNotification.mockResolvedValue({});
+
+    const result = await service.cancelOrder('u1', 'order1');
+
+    expect(repo.cancelOrder).toHaveBeenCalledWith('order1');
+    expect(notifRepo.createNotification).toHaveBeenCalledWith(
+      'u1',
+      'Đơn hàng đã được hủy',
+      `Đơn hàng #LS-123456 đã được hủy thành công.`,
+      'ORDER_STATUS',
+      'order1',
+    );
+    expect(result.status).toBe(OrderStatus.CANCELLED);
   });
 });

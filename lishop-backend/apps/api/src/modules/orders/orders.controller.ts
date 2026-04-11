@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { PlaceOrderDto } from './dto/place-order.dto';
@@ -32,5 +32,14 @@ export class OrdersController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.ordersService.findMyOrder(userId, id);
+  }
+
+  @Patch(':id/cancel')
+  @ApiOperation({ summary: 'Cancel an order (PENDING or PROCESSING only)' })
+  async cancelOrder(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.ordersService.cancelOrder(userId, id);
   }
 }

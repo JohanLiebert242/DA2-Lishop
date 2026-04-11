@@ -2,9 +2,12 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { OrdersRepository, OrderWithDetails } from './orders.repository';
 import { AddressesRepository } from '../addresses/addresses.repository';
 import { CartService } from '../cart/cart.service';
+import { NotificationsRepository } from '../notifications/notifications.repository';
 import { PlaceOrderDto } from './dto/place-order.dto';
+import { OrderStatus } from '@lishop/database';
 
 const SHIPPING_FEE_VND = 30000;
+const CANCELLABLE_STATUSES: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.PROCESSING];
 
 @Injectable()
 export class OrdersService {
@@ -12,6 +15,7 @@ export class OrdersService {
     private readonly repo: OrdersRepository,
     private readonly addressRepo: AddressesRepository,
     private readonly cartService: CartService,
+    private readonly notifRepo: NotificationsRepository,
   ) {}
 
   async placeOrder(userId: string, dto: PlaceOrderDto): Promise<OrderWithDetails> {
@@ -49,6 +53,14 @@ export class OrdersService {
     });
 
     await this.cartService.clearCart(userId);
+    await this.notifRepo.createNotification(
+      userId,
+      'Đơn hàng đã đặt thành công',
+      `Đơn hàng #${order.orderNumber} đang chờ xác nhận.`,
+      'ORDER_STATUS',
+      order.id,
+    );
+
     return order;
   }
 
@@ -60,5 +72,22 @@ export class OrdersService {
     const order = await this.repo.findByIdAndUserId(orderId, userId);
     if (!order) throw new NotFoundException('Đơn hàng không tồn tại');
     return order;
+  }
+
+  async cancelOrder(userId: string, orderId: string): Promise<OrderWithDetails> {
+    const order = await this.repo.findByIdAndUserId(orderId, userId);
+    if (!order) throw new NotFoundException('Đơn hàng không tồn tại');
+    if (!CANCELLABLE_STATUSES.includes(order.status)) {
+      throw new BadRequestException('Đơn hàng không thể hủy ở trạng thái hiện tại');
+    }
+    const cancelled = await this.repo.cancelOrder(orderId);
+    await this.notifRepo.createNotification(
+      userId,
+      'Đơn hàng đã được hủy',
+      `Đơn hàng #${order.orderNumber} đã được hủy thành công.`,
+      'ORDER_STATUS',
+      orderId,
+    );
+    return cancelled;
   }
 }
