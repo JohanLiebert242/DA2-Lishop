@@ -149,7 +149,7 @@ function PreferenceRow({ pref }: { pref: NotificationPreference }) {
             checked={pref.emailEnabled}
             onChange={(v) => mutation.mutate({ emailEnabled: v })}
             disabled={mutation.isPending}
-            label="Email"
+            label={`${label} - Email`}
           />
         </div>
         <div className="flex flex-col items-center gap-1">
@@ -158,7 +158,7 @@ function PreferenceRow({ pref }: { pref: NotificationPreference }) {
             checked={pref.pushEnabled}
             onChange={(v) => mutation.mutate({ pushEnabled: v })}
             disabled={mutation.isPending}
-            label="Push"
+            label={`${label} - Push`}
           />
         </div>
         <div className="flex flex-col items-center gap-1">
@@ -167,7 +167,7 @@ function PreferenceRow({ pref }: { pref: NotificationPreference }) {
             checked={pref.inAppEnabled}
             onChange={(v) => mutation.mutate({ inAppEnabled: v })}
             disabled={mutation.isPending}
-            label="Trong app"
+            label={`${label} - Trong app`}
           />
         </div>
       </div>
