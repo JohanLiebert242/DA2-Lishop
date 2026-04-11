@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { NotificationsRepository } from './notifications.repository';
 
@@ -7,11 +8,25 @@ const mockPrefs = [
   { id: 'p2', eventType: 'PROMOTIONS', emailEnabled: false, pushEnabled: true, inAppEnabled: true },
 ];
 
+const mockNotif = {
+  id: 'n1',
+  userId: 'u1',
+  title: 'Đơn hàng mới',
+  body: 'Đơn hàng LS-001 đã được đặt.',
+  type: 'ORDER_STATUS',
+  relatedId: 'order1',
+  isRead: false,
+  createdAt: new Date(),
+};
+
 describe('NotificationsService', () => {
   let service: NotificationsService;
   const repo = {
     getPreferences: jest.fn(),
     upsertPreference: jest.fn(),
+    findByUserId: jest.fn(),
+    markAsRead: jest.fn(),
+    createNotification: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -39,5 +54,31 @@ describe('NotificationsService', () => {
     const result = await service.upsertPreference('u1', 'ORDER_STATUS', { emailEnabled: false });
     expect(repo.upsertPreference).toHaveBeenCalledWith('u1', 'ORDER_STATUS', { emailEnabled: false });
     expect(result.emailEnabled).toBe(false);
+  });
+
+  it('listFeed returns paginated notifications', async () => {
+    repo.findByUserId.mockResolvedValue([mockNotif]);
+    const result = await service.listFeed('u1', 1, 20);
+    expect(repo.findByUserId).toHaveBeenCalledWith('u1', 1, 20);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.title).toBe('Đơn hàng mới');
+  });
+
+  it('markAsRead delegates to repository and returns notification', async () => {
+    repo.markAsRead.mockResolvedValue({ ...mockNotif, isRead: true });
+    const result = await service.markAsRead('n1', 'u1');
+    expect(repo.markAsRead).toHaveBeenCalledWith('n1', 'u1');
+    expect(result.isRead).toBe(true);
+  });
+
+  it('markAsRead throws NotFoundException when notification not found', async () => {
+    repo.markAsRead.mockResolvedValue(null);
+    await expect(service.markAsRead('notfound', 'u1')).rejects.toThrow(NotFoundException);
+  });
+
+  it('createNotification delegates to repository', async () => {
+    repo.createNotification.mockResolvedValue(mockNotif);
+    await service.createNotification('u1', 'Đơn hàng mới', 'Đơn hàng LS-001 đã được đặt.', 'ORDER_STATUS', 'order1');
+    expect(repo.createNotification).toHaveBeenCalledWith('u1', 'Đơn hàng mới', 'Đơn hàng LS-001 đã được đặt.', 'ORDER_STATUS', 'order1');
   });
 });

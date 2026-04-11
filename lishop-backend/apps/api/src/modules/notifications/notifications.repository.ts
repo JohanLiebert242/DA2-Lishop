@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { prisma } from '@lishop/database';
 
 export const EVENT_TYPES = ['ORDER_STATUS', 'PROMOTIONS', 'NEW_PRODUCTS', 'REVIEWS'] as const;
@@ -10,6 +10,17 @@ export interface NotificationPreferenceItem {
   emailEnabled: boolean;
   pushEnabled: boolean;
   inAppEnabled: boolean;
+}
+
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  type: string;
+  relatedId: string | null;
+  isRead: boolean;
+  createdAt: Date;
 }
 
 @Injectable()
@@ -26,7 +37,6 @@ export class NotificationsRepository {
       },
     });
 
-    // Fill in defaults for any event types the user hasn't set yet
     const existingTypes = new Set(existing.map((p) => p.eventType));
     const defaults: NotificationPreferenceItem[] = EVENT_TYPES.filter(
       (et) => !existingTypes.has(et),
@@ -51,6 +61,7 @@ export class NotificationsRepository {
     data: { emailEnabled?: boolean; pushEnabled?: boolean; inAppEnabled?: boolean },
   ): Promise<NotificationPreferenceItem> {
     if (!EVENT_TYPES.includes(eventType as EventType)) {
+      const { BadRequestException } = await import('@nestjs/common');
       throw new BadRequestException(`eventType invalide : ${eventType}`);
     }
 
@@ -76,5 +87,72 @@ export class NotificationsRepository {
         inAppEnabled: true,
       },
     });
+  }
+
+  async findByUserId(userId: string, page: number, limit: number): Promise<NotificationItem[]> {
+    const skip = (page - 1) * limit;
+    return prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        userId: true,
+        title: true,
+        body: true,
+        type: true,
+        relatedId: true,
+        isRead: true,
+        createdAt: true,
+      },
+    }) as Promise<NotificationItem[]>;
+  }
+
+  async markAsRead(id: string, userId: string): Promise<NotificationItem | null> {
+    const existing = await prisma.notification.findFirst({ where: { id, userId } });
+    if (!existing) return null;
+    return prisma.notification.update({
+      where: { id },
+      data: { isRead: true },
+      select: {
+        id: true,
+        userId: true,
+        title: true,
+        body: true,
+        type: true,
+        relatedId: true,
+        isRead: true,
+        createdAt: true,
+      },
+    }) as Promise<NotificationItem>;
+  }
+
+  async createNotification(
+    userId: string,
+    title: string,
+    body: string,
+    type: string,
+    relatedId?: string,
+  ): Promise<NotificationItem> {
+    return prisma.notification.create({
+      data: {
+        userId,
+        title,
+        body,
+        type,
+        relatedId: relatedId ?? null,
+      },
+      select: {
+        id: true,
+        userId: true,
+        title: true,
+        body: true,
+        type: true,
+        relatedId: true,
+        isRead: true,
+        createdAt: true,
+      },
+    }) as Promise<NotificationItem>;
   }
 }
