@@ -19,6 +19,17 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (json.data ?? json) as T;
 }
 
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  type: string;
+  relatedId: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface NotificationPreference {
   id: string;
   eventType: string;
@@ -41,6 +52,10 @@ export const EVENT_LABELS: Record<string, string> = {
 };
 
 export const notificationsApi = {
+  listFeed: (page = 1) =>
+    apiFetch<NotificationItem[]>(`/notifications?page=${page}&limit=20`),
+  markAsRead: (id: string) =>
+    apiFetch<NotificationItem>(`/notifications/${id}/read`, { method: 'PATCH' }),
   getPreferences: () =>
     apiFetch<NotificationPreference[]>('/notifications/preferences'),
   upsertPreference: (eventType: string, data: UpsertPreferenceInput) =>
