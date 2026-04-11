@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { prisma } from '@lishop/database';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { prisma, Prisma } from '@lishop/database';
 
 export const EVENT_TYPES = ['ORDER_STATUS', 'PROMOTIONS', 'NEW_PRODUCTS', 'REVIEWS'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -61,7 +61,6 @@ export class NotificationsRepository {
     data: { emailEnabled?: boolean; pushEnabled?: boolean; inAppEnabled?: boolean },
   ): Promise<NotificationPreferenceItem> {
     if (!EVENT_TYPES.includes(eventType as EventType)) {
-      const { BadRequestException } = await import('@nestjs/common');
       throw new BadRequestException(`eventType invalide : ${eventType}`);
     }
 
@@ -90,12 +89,13 @@ export class NotificationsRepository {
   }
 
   async findByUserId(userId: string, page: number, limit: number): Promise<NotificationItem[]> {
-    const skip = (page - 1) * limit;
+    const cappedLimit = Math.min(limit, 100);
+    const skip = (page - 1) * cappedLimit;
     return prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       skip,
-      take: limit,
+      take: cappedLimit,
       select: {
         id: true,
         userId: true,
@@ -112,20 +112,30 @@ export class NotificationsRepository {
   async markAsRead(id: string, userId: string): Promise<NotificationItem | null> {
     const existing = await prisma.notification.findFirst({ where: { id, userId } });
     if (!existing) return null;
-    return prisma.notification.update({
-      where: { id },
-      data: { isRead: true },
-      select: {
-        id: true,
-        userId: true,
-        title: true,
-        body: true,
-        type: true,
-        relatedId: true,
-        isRead: true,
-        createdAt: true,
-      },
-    }) as Promise<NotificationItem>;
+    try {
+      return await prisma.notification.update({
+        where: { id },
+        data: { isRead: true },
+        select: {
+          id: true,
+          userId: true,
+          title: true,
+          body: true,
+          type: true,
+          relatedId: true,
+          isRead: true,
+          createdAt: true,
+        },
+      }) as NotificationItem;
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2025'
+      ) {
+        return null;
+      }
+      throw e;
+    }
   }
 
   async createNotification(
