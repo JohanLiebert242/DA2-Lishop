@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { prisma, Prisma } from '@lishop/database';
+import { prisma } from '@lishop/database';
 
 export const EVENT_TYPES = ['ORDER_STATUS', 'PROMOTIONS', 'NEW_PRODUCTS', 'REVIEWS'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -110,32 +110,24 @@ export class NotificationsRepository {
   }
 
   async markAsRead(id: string, userId: string): Promise<NotificationItem | null> {
-    const existing = await prisma.notification.findFirst({ where: { id, userId } });
-    if (!existing) return null;
-    try {
-      return await prisma.notification.update({
-        where: { id },
-        data: { isRead: true },
-        select: {
-          id: true,
-          userId: true,
-          title: true,
-          body: true,
-          type: true,
-          relatedId: true,
-          isRead: true,
-          createdAt: true,
-        },
-      }) as NotificationItem;
-    } catch (e) {
-      if (
-        e instanceof Prisma.PrismaClientKnownRequestError &&
-        e.code === 'P2025'
-      ) {
-        return null;
-      }
-      throw e;
-    }
+    const result = await prisma.notification.updateMany({
+      where: { id, userId },
+      data: { isRead: true },
+    });
+    if (result.count === 0) return null;
+    return prisma.notification.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userId: true,
+        title: true,
+        body: true,
+        type: true,
+        relatedId: true,
+        isRead: true,
+        createdAt: true,
+      },
+    }) as Promise<NotificationItem>;
   }
 
   async createNotification(
