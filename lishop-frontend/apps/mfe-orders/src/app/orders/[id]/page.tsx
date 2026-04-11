@@ -144,6 +144,8 @@ export default function OrderDetailPage({ params }: Props) {
           </span>
           {isCancellable && (
             <button
+              type="button"
+              aria-busy={cancelMutation.isPending}
               onClick={() => {
                 if (window.confirm('Bạn có chắc muốn hủy đơn hàng này?')) {
                   cancelMutation.mutate();
