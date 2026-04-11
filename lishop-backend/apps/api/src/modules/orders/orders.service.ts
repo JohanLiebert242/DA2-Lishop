@@ -53,13 +53,13 @@ export class OrdersService {
     });
 
     await this.cartService.clearCart(userId);
-    await this.notifRepo.createNotification(
+    this.notifRepo.createNotification(
       userId,
       'Đơn hàng đã đặt thành công',
       `Đơn hàng #${order.orderNumber} đang chờ xác nhận.`,
       'ORDER_STATUS',
       order.id,
-    );
+    ).catch((err: unknown) => console.error('[OrdersService] Failed to create place-order notification', err));
 
     return order;
   }
@@ -81,13 +81,13 @@ export class OrdersService {
       throw new BadRequestException('Đơn hàng không thể hủy ở trạng thái hiện tại');
     }
     const cancelled = await this.repo.cancelOrder(orderId);
-    await this.notifRepo.createNotification(
+    this.notifRepo.createNotification(
       userId,
       'Đơn hàng đã được hủy',
       `Đơn hàng #${order.orderNumber} đã được hủy thành công.`,
       'ORDER_STATUS',
       orderId,
-    );
+    ).catch((err: unknown) => console.error('[OrdersService] Failed to create cancel-order notification', err));
     return cancelled;
   }
 }
