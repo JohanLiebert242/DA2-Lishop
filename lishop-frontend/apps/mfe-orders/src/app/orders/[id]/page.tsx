@@ -1,7 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { formatVND } from '@lishop/shared';
 import { ordersApi, OrderStatus } from '../../../lib/orders-api';
@@ -32,18 +32,79 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   PAYPAL: 'PayPal',
 };
 
+const TIMELINE_STEPS: OrderStatus[] = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
+
+function StatusTimeline({ status }: { status: OrderStatus }) {
+  const isCancelled = status === 'CANCELLED' || status === 'REFUNDED';
+  const currentIndex = TIMELINE_STEPS.indexOf(status);
+
+  if (isCancelled) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+        <p className="text-center text-sm font-medium text-red-700">
+          {STATUS_LABELS[status]}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <h2 className="mb-4 text-sm font-semibold text-gray-900">Trạng thái đơn hàng</h2>
+      <div className="flex items-center">
+        {TIMELINE_STEPS.map((step, index) => {
+          const isDone = index <= currentIndex;
+          const isLast = index === TIMELINE_STEPS.length - 1;
+          return (
+            <div key={step} className="flex flex-1 items-center">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+                    isDone ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-400'
+                  }`}
+                >
+                  {index + 1}
+                </div>
+                <span className={`mt-1 text-center text-xs ${isDone ? 'font-medium text-indigo-600' : 'text-gray-400'}`}>
+                  {STATUS_LABELS[step]}
+                </span>
+              </div>
+              {!isLast && (
+                <div
+                  className={`h-0.5 flex-1 ${index < currentIndex ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   params: Promise<{ id: string }>;
 }
 
 export default function OrderDetailPage({ params }: Props) {
   const { id } = use(params);
+  const queryClient = useQueryClient();
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', id],
     queryFn: () => ordersApi.getOrder(id),
     retry: false,
   });
+
+  const cancelMutation = useMutation({
+    mutationFn: () => ordersApi.cancelOrder(id),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['order', id], updated);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+
+  const isCancellable = order?.status === 'PENDING' || order?.status === 'PROCESSING';
 
   if (isLoading) {
     return <div className="mx-auto max-w-3xl px-4 py-16 text-center text-gray-400">Đang tải...</div>;
@@ -77,12 +138,36 @@ export default function OrderDetailPage({ params }: Props) {
             Đặt lúc {new Date(order.createdAt).toLocaleString('vi-VN')}
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1.5 text-sm font-medium ${STATUS_COLORS[order.status]}`}>
-          {STATUS_LABELS[order.status]}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className={`rounded-full px-3 py-1.5 text-sm font-medium ${STATUS_COLORS[order.status]}`}>
+            {STATUS_LABELS[order.status]}
+          </span>
+          {isCancellable && (
+            <button
+              onClick={() => {
+                if (window.confirm('Bạn có chắc muốn hủy đơn hàng này?')) {
+                  cancelMutation.mutate();
+                }
+              }}
+              disabled={cancelMutation.isPending}
+              className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              {cancelMutation.isPending ? 'Đang hủy...' : 'Hủy đơn'}
+            </button>
+          )}
+        </div>
       </div>
 
+      {cancelMutation.isError && (
+        <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+          {cancelMutation.error instanceof Error ? cancelMutation.error.message : 'Hủy đơn thất bại'}
+        </p>
+      )}
+
       <div className="space-y-4">
+        {/* Status Timeline */}
+        <StatusTimeline status={order.status} />
+
         {/* Items */}
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="mb-3 text-sm font-semibold text-gray-900">Sản phẩm</h2>

@@ -5,13 +5,14 @@ function getToken(): string | null {
   return window.localStorage.getItem('lishop_at');
 }
 
-async function apiFetch<T>(path: string): Promise<T> {
+async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const res = await fetch(`${API_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
+    ...init,
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.message ?? 'Request failed');
@@ -64,4 +65,6 @@ export interface OrderSummary {
 export const ordersApi = {
   getOrders: () => apiFetch<OrderSummary[]>('/orders'),
   getOrder: (id: string) => apiFetch<OrderSummary>(`/orders/${id}`),
+  cancelOrder: (id: string) =>
+    apiFetch<OrderSummary>(`/orders/${id}/cancel`, { method: 'PATCH' }),
 };
