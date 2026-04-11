@@ -24,7 +24,17 @@ function NotificationRow({ notif }: { notif: NotificationItem }) {
 
   const markRead = useMutation({
     mutationFn: () => notificationsApi.markAsRead(notif.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notification-feed'] }),
+    onMutate: () => {
+      queryClient.setQueryData<NotificationItem[]>(['notification-feed'], (old) =>
+        old?.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)) ?? [],
+      );
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-feed'] });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-feed'] });
+    },
   });
 
   return (
@@ -44,6 +54,7 @@ function NotificationRow({ notif }: { notif: NotificationItem }) {
       {!notif.isRead && (
         <button
           type="button"
+          aria-label={`Đánh dấu đã đọc: ${notif.title}`}
           onClick={() => markRead.mutate()}
           disabled={markRead.isPending}
           className="shrink-0 rounded-md px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
@@ -89,16 +100,19 @@ function Toggle({
   checked,
   onChange,
   disabled,
+  label,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
+  label: string;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
@@ -135,6 +149,7 @@ function PreferenceRow({ pref }: { pref: NotificationPreference }) {
             checked={pref.emailEnabled}
             onChange={(v) => mutation.mutate({ emailEnabled: v })}
             disabled={mutation.isPending}
+            label="Email"
           />
         </div>
         <div className="flex flex-col items-center gap-1">
@@ -143,6 +158,7 @@ function PreferenceRow({ pref }: { pref: NotificationPreference }) {
             checked={pref.pushEnabled}
             onChange={(v) => mutation.mutate({ pushEnabled: v })}
             disabled={mutation.isPending}
+            label="Push"
           />
         </div>
         <div className="flex flex-col items-center gap-1">
@@ -151,6 +167,7 @@ function PreferenceRow({ pref }: { pref: NotificationPreference }) {
             checked={pref.inAppEnabled}
             onChange={(v) => mutation.mutate({ inAppEnabled: v })}
             disabled={mutation.isPending}
+            label="Trong app"
           />
         </div>
       </div>
