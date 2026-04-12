@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { AdminRepository, AdminStats, AdminOrderItem, AdminUserItem } from './admin.repository';
+import { AdminRepository, AdminStats, AdminOrderItem, AdminUserItem, AdminCoupon, AdminAnalytics } from './admin.repository';
 import { OrderStatus } from '@lishop/database';
 
 @Injectable()
@@ -22,5 +22,23 @@ export class AdminService {
 
   listUsers(): Promise<AdminUserItem[]> {
     return this.repo.findAllUsers();
+  }
+
+  listCoupons(): Promise<AdminCoupon[]> {
+    return this.repo.listCoupons();
+  }
+
+  createCoupon(data: { code: string; type: string; value: number; minOrderVnd?: number; maxUses?: number; expiresAt?: string }): Promise<AdminCoupon> {
+    return this.repo.createCoupon(data);
+  }
+
+  async toggleCoupon(id: string): Promise<AdminCoupon> {
+    const coupon = await this.repo.toggleCoupon(id);
+    if (!coupon) throw new NotFoundException('Mã giảm giá không tồn tại');
+    return coupon;
+  }
+
+  getAnalytics(): Promise<AdminAnalytics> {
+    return this.repo.getAnalytics();
   }
 }

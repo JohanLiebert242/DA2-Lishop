@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { prisma, OrderStatus } from '@lishop/database';
+import { prisma, OrderStatus, CouponType } from '@lishop/database';
 
 export interface AdminStats {
   orderCount: number;
@@ -26,6 +26,35 @@ export interface AdminUserItem {
   role: string;
   loyaltyPoints: number;
   createdAt: Date;
+}
+
+export interface AdminCoupon {
+  id: string;
+  code: string;
+  type: string;
+  value: number;
+  minOrderVnd: number;
+  maxUses: number | null;
+  usedCount: number;
+  expiresAt: Date | null;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface DailyRevenue {
+  date: string; // 'YYYY-MM-DD'
+  amount: number;
+}
+
+export interface TopProduct {
+  productId: string;
+  productName: string;
+  revenue: number;
+}
+
+export interface AdminAnalytics {
+  dailyRevenue: DailyRevenue[];
+  topProducts: TopProduct[];
 }
 
 @Injectable()
@@ -102,5 +131,103 @@ export class AdminRepository {
         createdAt: true,
       },
     }) as Promise<AdminUserItem[]>;
+  }
+
+  listCoupons(): Promise<AdminCoupon[]> {
+    return prisma.coupon.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, code: true, type: true, value: true,
+        minOrderVnd: true, maxUses: true, usedCount: true,
+        expiresAt: true, isActive: true, createdAt: true,
+      },
+    }) as Promise<AdminCoupon[]>;
+  }
+
+  async createCoupon(data: {
+    code: string;
+    type: string;
+    value: number;
+    minOrderVnd?: number;
+    maxUses?: number;
+    expiresAt?: string;
+  }): Promise<AdminCoupon> {
+    return prisma.coupon.create({
+      data: {
+        code: data.code,
+        type: data.type as CouponType,
+        value: data.value,
+        ...(data.minOrderVnd !== undefined && { minOrderVnd: data.minOrderVnd }),
+        maxUses: data.maxUses ?? null,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+      },
+      select: {
+        id: true, code: true, type: true, value: true,
+        minOrderVnd: true, maxUses: true, usedCount: true,
+        expiresAt: true, isActive: true, createdAt: true,
+      },
+    }) as Promise<AdminCoupon>;
+  }
+
+  async toggleCoupon(id: string): Promise<AdminCoupon | null> {
+    const coupon = await prisma.coupon.findUnique({ where: { id }, select: { isActive: true } });
+    if (!coupon) return null;
+    return prisma.coupon.update({
+      where: { id },
+      data: { isActive: !coupon.isActive },
+      select: {
+        id: true, code: true, type: true, value: true,
+        minOrderVnd: true, maxUses: true, usedCount: true,
+        expiresAt: true, isActive: true, createdAt: true,
+      },
+    }) as Promise<AdminCoupon>;
+  }
+
+  async getAnalytics(): Promise<AdminAnalytics> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [orders, orderItems] = await Promise.all([
+      prisma.order.findMany({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+          status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] },
+        },
+        select: { createdAt: true, totalVnd: true },
+      }),
+      prisma.orderItem.findMany({
+        where: {
+          order: { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } },
+        },
+        select: { productId: true, productName: true, totalPriceVnd: true },
+      }),
+    ]);
+
+    // Aggregate daily revenue
+    const revenueMap = new Map<string, number>();
+    for (const order of orders) {
+      const date = order.createdAt.toISOString().slice(0, 10);
+      revenueMap.set(date, (revenueMap.get(date) ?? 0) + order.totalVnd);
+    }
+    const dailyRevenue = Array.from(revenueMap.entries())
+      .map(([date, amount]) => ({ date, amount }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Aggregate top products
+    const productMap = new Map<string, { productName: string; revenue: number }>();
+    for (const item of orderItems) {
+      const existing = productMap.get(item.productId);
+      if (existing) {
+        existing.revenue += item.totalPriceVnd;
+      } else {
+        productMap.set(item.productId, { productName: item.productName, revenue: item.totalPriceVnd });
+      }
+    }
+    const topProducts = Array.from(productMap.entries())
+      .map(([productId, { productName, revenue }]) => ({ productId, productName, revenue }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    return { dailyRevenue, topProducts };
   }
 }
