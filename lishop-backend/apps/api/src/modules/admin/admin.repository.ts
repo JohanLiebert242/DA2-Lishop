@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { prisma, OrderStatus, CouponType } from '@lishop/database';
+import { Injectable, ConflictException } from '@nestjs/common';
+import { prisma, OrderStatus, CouponType, Prisma } from '@lishop/database';
 
 export interface AdminStats {
   orderCount: number;
@@ -152,21 +152,28 @@ export class AdminRepository {
     maxUses?: number;
     expiresAt?: string;
   }): Promise<AdminCoupon> {
-    return prisma.coupon.create({
-      data: {
-        code: data.code,
-        type: data.type as CouponType,
-        value: data.value,
-        ...(data.minOrderVnd !== undefined && { minOrderVnd: data.minOrderVnd }),
-        maxUses: data.maxUses ?? null,
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-      },
-      select: {
-        id: true, code: true, type: true, value: true,
-        minOrderVnd: true, maxUses: true, usedCount: true,
-        expiresAt: true, isActive: true, createdAt: true,
-      },
-    }) as Promise<AdminCoupon>;
+    try {
+      return await prisma.coupon.create({
+        data: {
+          code: data.code,
+          type: data.type as CouponType,
+          value: data.value,
+          minOrderVnd: data.minOrderVnd ?? 0,
+          maxUses: data.maxUses ?? null,
+          expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+        },
+        select: {
+          id: true, code: true, type: true, value: true,
+          minOrderVnd: true, maxUses: true, usedCount: true,
+          expiresAt: true, isActive: true, createdAt: true,
+        },
+      }) as AdminCoupon;
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException('Mã giảm giá đã tồn tại');
+      }
+      throw err;
+    }
   }
 
   async toggleCoupon(id: string): Promise<AdminCoupon | null> {
@@ -197,7 +204,10 @@ export class AdminRepository {
       }),
       prisma.orderItem.findMany({
         where: {
-          order: { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } },
+          order: {
+            createdAt: { gte: thirtyDaysAgo },
+            status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] },
+          },
         },
         select: { productId: true, productName: true, totalPriceVnd: true },
       }),

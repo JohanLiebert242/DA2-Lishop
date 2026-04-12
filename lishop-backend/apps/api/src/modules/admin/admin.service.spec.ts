@@ -17,7 +17,7 @@ const mockUser = {
 
 const mockCoupon = {
   id: 'c1', code: 'TEST10', type: 'PERCENT', value: 10,
-  minOrderVnd: null, maxUses: null, usedCount: 0,
+  minOrderVnd: 0, maxUses: null, usedCount: 0,
   expiresAt: null, isActive: true, createdAt: new Date(),
 };
 
