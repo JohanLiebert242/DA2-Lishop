@@ -50,6 +50,46 @@ export interface AdminUserItem {
   createdAt: string;
 }
 
+export type CouponType = 'PERCENT' | 'FIXED' | 'FREE_SHIPPING';
+
+export interface AdminCoupon {
+  id: string;
+  code: string;
+  type: CouponType;
+  value: number;
+  minOrderVnd: number;
+  maxUses: number | null;
+  usedCount: number;
+  expiresAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateCouponInput {
+  code: string;
+  type: CouponType;
+  value: number;
+  minOrderVnd?: number;
+  maxUses?: number;
+  expiresAt?: string;
+}
+
+export interface DailyRevenue {
+  date: string;
+  amount: number;
+}
+
+export interface TopProduct {
+  productId: string;
+  productName: string;
+  revenue: number;
+}
+
+export interface AdminAnalytics {
+  dailyRevenue: DailyRevenue[];
+  topProducts: TopProduct[];
+}
+
 export const adminApi = {
   getStats: () => apiFetch<AdminStats>('/admin/stats'),
   listOrders: () => apiFetch<AdminOrderItem[]>('/admin/orders'),
@@ -59,4 +99,13 @@ export const adminApi = {
       body: JSON.stringify({ status }),
     }),
   listUsers: () => apiFetch<AdminUserItem[]>('/admin/users'),
+  listCoupons: () => apiFetch<AdminCoupon[]>('/admin/coupons'),
+  createCoupon: (data: CreateCouponInput) =>
+    apiFetch<AdminCoupon>('/admin/coupons', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  toggleCoupon: (id: string) =>
+    apiFetch<AdminCoupon>(`/admin/coupons/${id}/toggle`, { method: 'PATCH' }),
+  getAnalytics: () => apiFetch<AdminAnalytics>('/admin/analytics'),
 };
