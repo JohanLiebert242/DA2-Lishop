@@ -12,6 +12,8 @@ import {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
+type Tab = 'orders' | 'users' | 'promotions' | 'analytics';
+
 const ORDER_STATUSES: OrderStatus[] = [
   'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED',
 ];
@@ -38,6 +40,13 @@ const COUPON_TYPE_LABELS: Record<CouponType, string> = {
   PERCENT: 'Phần trăm (%)',
   FIXED: 'Cố định (₫)',
   FREE_SHIPPING: 'Miễn phí vận chuyển',
+};
+
+const TAB_LABELS: Record<Tab, string> = {
+  orders: 'Đơn hàng',
+  users: 'Người dùng',
+  promotions: 'Khuyến mãi',
+  analytics: 'Phân tích',
 };
 
 // ─── Components ──────────────────────────────────────────────────────────────
@@ -125,6 +134,7 @@ function CouponRow({ coupon }: { coupon: AdminCoupon }) {
           onClick={() => toggleMutation.mutate()}
           disabled={toggleMutation.isPending}
           aria-pressed={coupon.isActive}
+          aria-label={`${coupon.isActive ? 'Tắt' : 'Bật'} mã ${coupon.code}`}
           className={`rounded-full px-2 py-0.5 text-xs font-medium disabled:opacity-50 ${
             coupon.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
           }`}
@@ -155,8 +165,9 @@ function CreateCouponForm({ onClose }: { onClose: () => void }) {
       <h3 className="mb-3 text-sm font-semibold text-gray-900">Tạo mã giảm giá mới</h3>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Mã</label>
+          <label htmlFor="coupon-code" className="block text-xs font-medium text-gray-700 mb-1">Mã</label>
           <input
+            id="coupon-code"
             value={form.code}
             onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
             placeholder="VD: SUMMER10"
@@ -164,8 +175,9 @@ function CreateCouponForm({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Loại</label>
+          <label htmlFor="coupon-type" className="block text-xs font-medium text-gray-700 mb-1">Loại</label>
           <select
+            id="coupon-type"
             value={form.type}
             onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as CouponType }))}
             className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
@@ -176,10 +188,11 @@ function CreateCouponForm({ onClose }: { onClose: () => void }) {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label htmlFor="coupon-value" className="block text-xs font-medium text-gray-700 mb-1">
             Giá trị {form.type === 'PERCENT' ? '(%)' : form.type === 'FIXED' ? '(₫)' : ''}
           </label>
           <input
+            id="coupon-value"
             type="number"
             min={0}
             value={form.value}
@@ -189,8 +202,9 @@ function CreateCouponForm({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Số lần tối đa</label>
+          <label htmlFor="coupon-max-uses" className="block text-xs font-medium text-gray-700 mb-1">Số lần tối đa</label>
           <input
+            id="coupon-max-uses"
             type="number"
             min={1}
             placeholder="Không giới hạn"
@@ -200,8 +214,9 @@ function CreateCouponForm({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Đơn hàng tối thiểu (₫)</label>
+          <label htmlFor="coupon-min-order" className="block text-xs font-medium text-gray-700 mb-1">Đơn hàng tối thiểu (₫)</label>
           <input
+            id="coupon-min-order"
             type="number"
             min={0}
             placeholder="Không yêu cầu"
@@ -211,8 +226,9 @@ function CreateCouponForm({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Hết hạn</label>
+          <label htmlFor="coupon-expires" className="block text-xs font-medium text-gray-700 mb-1">Hết hạn</label>
           <input
+            id="coupon-expires"
             type="date"
             value={form.expiresAt?.slice(0, 10) ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value ? new Date(e.target.value).toISOString() : undefined }))}
@@ -243,8 +259,6 @@ function CreateCouponForm({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
-
-type Tab = 'orders' | 'users' | 'promotions' | 'analytics';
 
 export default function AdminDashboardPage() {
   const [tab, setTab] = useState<Tab>('orders');
@@ -279,13 +293,6 @@ export default function AdminDashboardPage() {
     enabled: tab === 'analytics',
   });
 
-  const TAB_LABELS: Record<Tab, string> = {
-    orders: 'Đơn hàng',
-    users: 'Người dùng',
-    promotions: 'Khuyến mãi',
-    analytics: 'Phân tích',
-  };
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="mb-6 text-2xl font-bold text-gray-900">Bảng điều khiển</h1>
@@ -299,12 +306,14 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1 w-fit">
+      <div role="tablist" className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1 w-fit">
         {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
-            onClick={() => setTab(t)}
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => { setTab(t); setShowCreateCoupon(false); }}
             className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
               tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
