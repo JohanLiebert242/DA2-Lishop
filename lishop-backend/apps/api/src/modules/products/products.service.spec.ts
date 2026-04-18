@@ -18,7 +18,7 @@ const mockProduct = {
   createdAt: new Date(),
   updatedAt: new Date(),
   images: [],
-  tags: [],
+  tags: [{ tagId: 't1', tag: { name: 'smartphone' } }],
   category: { id: 'c1', name: 'Electronics', slug: 'electronics' },
 };
 
@@ -32,6 +32,7 @@ describe('ProductsService', () => {
     update: jest.fn(),
     delete: jest.fn(),
     findFeatured: jest.fn(),
+    findRelated: jest.fn(),
   };
   const categoriesService = { findBySlug: jest.fn(), create: jest.fn() };
 
@@ -83,5 +84,21 @@ describe('ProductsService', () => {
   it('delete throws NotFoundException if product missing', async () => {
     repo.findById.mockResolvedValue(null);
     await expect(service.delete('missing-id')).rejects.toThrow(NotFoundException);
+  });
+
+  it('findRelated returns products ranked by tag overlap', async () => {
+    repo.findBySlug.mockResolvedValue(mockProduct);
+    const related = [{ ...mockProduct, id: 'p2', name: 'Samsung S24', slug: 'samsung-s24' }];
+    repo.findRelated.mockResolvedValue(related);
+    const result = await service.findRelated('iphone-15');
+    expect(repo.findRelated).toHaveBeenCalledWith('p1', 'c1', ['t1'], 6);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.name).toBe('Samsung S24');
+  });
+
+  it('findRelated throws NotFoundException for unknown slug', async () => {
+    repo.findBySlug.mockResolvedValue(null);
+    await expect(service.findRelated('unknown')).rejects.toThrow(NotFoundException);
+    expect(repo.findRelated).not.toHaveBeenCalled();
   });
 });

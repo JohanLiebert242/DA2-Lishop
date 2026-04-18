@@ -27,6 +27,13 @@ export class ProductsService {
     return this.repo.findFeatured(limit);
   }
 
+  async findRelated(slug: string, limit = 6): Promise<ProductWithDetails[]> {
+    const product = await this.repo.findBySlug(slug);
+    if (!product) throw new NotFoundException(`Product not found: ${slug}`);
+    const tagIds = product.tags.map((pt) => pt.tagId);
+    return this.repo.findRelated(product.id, product.categoryId, tagIds, limit);
+  }
+
   async create(dto: CreateProductDto): Promise<ProductWithDetails> {
     const slug = slugify(dto.name, { lower: true, strict: true });
     const { images, tags, categoryId, ...rest } = dto;

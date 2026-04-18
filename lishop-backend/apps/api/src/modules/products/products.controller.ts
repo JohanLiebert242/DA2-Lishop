@@ -43,6 +43,13 @@ export class ProductsController {
   }
 
   @Public()
+  @Get(':slug/related')
+  @ApiOperation({ summary: 'Get related products by category and tag overlap' })
+  async findRelated(@Param('slug') slug: string) {
+    return this.productsService.findRelated(slug);
+  }
+
+  @Public()
   @Get(':slug')
   @ApiOperation({ summary: 'Get product by slug' })
   async findOne(@Param('slug') slug: string) {

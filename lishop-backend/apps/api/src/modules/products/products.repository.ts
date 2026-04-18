@@ -4,7 +4,7 @@ import { ProductListQueryDto, ProductSortOption } from './dto/product-list-query
 
 export interface ProductWithDetails extends Product {
   images: { id: string; url: string; alt: string | null; isPrimary: boolean }[];
-  tags: { tag: { name: string } }[];
+  tags: { tagId: string; tag: { name: string } }[];
   category: { id: string; name: string; slug: string };
 }
 
@@ -100,6 +100,35 @@ export class ProductsRepository {
         category: { select: { id: true, name: true, slug: true } },
       },
     }) as Promise<ProductWithDetails[]>;
+  }
+
+  async findRelated(
+    productId: string,
+    categoryId: string,
+    tagIds: string[],
+    limit = 6,
+  ): Promise<ProductWithDetails[]> {
+    const candidates = await prisma.product.findMany({
+      where: { categoryId, id: { not: productId }, stock: { gt: 0 } },
+      take: 50,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        images: true,
+        tags: { include: { tag: true } },
+        category: { select: { id: true, name: true, slug: true } },
+      },
+    });
+
+    if (tagIds.length === 0) return candidates.slice(0, limit) as ProductWithDetails[];
+
+    const tagIdSet = new Set(tagIds);
+    return candidates
+      .sort((a, b) => {
+        const aOverlap = a.tags.filter((pt) => tagIdSet.has(pt.tagId)).length;
+        const bOverlap = b.tags.filter((pt) => tagIdSet.has(pt.tagId)).length;
+        return bOverlap - aOverlap;
+      })
+      .slice(0, limit) as ProductWithDetails[];
   }
 
   private getOrderBy(sort?: ProductSortOption): Prisma.ProductOrderByWithRelationInput[] {
