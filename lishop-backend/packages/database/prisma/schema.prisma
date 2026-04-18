@@ -385,4 +385,5 @@ model Wishlist {
 
   @@unique([userId, productId])
   @@index([userId])
+  @@index([productId])
 }
