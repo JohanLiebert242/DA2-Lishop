@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { prisma, Product, Prisma } from '@lishop/database';
 import { ProductListQueryDto, ProductSortOption } from './dto/product-list-query.dto';
 
+const RELATED_CANDIDATE_POOL = 50; // cap for in-memory tag-overlap sort
+
 export interface ProductWithDetails extends Product {
   images: { id: string; url: string; alt: string | null; isPrimary: boolean }[];
   tags: { tagId: string; tag: { name: string } }[];
@@ -110,7 +112,7 @@ export class ProductsRepository {
   ): Promise<ProductWithDetails[]> {
     const candidates = await prisma.product.findMany({
       where: { categoryId, id: { not: productId }, stock: { gt: 0 } },
-      take: 50,
+      take: RELATED_CANDIDATE_POOL,
       orderBy: { createdAt: 'desc' },
       include: {
         images: true,
