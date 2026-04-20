@@ -106,6 +106,9 @@ export const catalogApi = {
   getFeatured: (limit = 8) =>
     apiFetch<ProductSummary[]>(`/products/featured?limit=${limit}`),
 
+  getRelatedProducts: (slug: string) =>
+    apiFetch<ProductSummary[]>(`/products/${slug}/related`),
+
   getProductReviews: (productId: string) =>
     apiFetch<ReviewInfo[]>(`/reviews/product/${productId}`),
 

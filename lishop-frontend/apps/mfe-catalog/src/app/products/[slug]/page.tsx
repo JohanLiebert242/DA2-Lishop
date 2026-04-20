@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { formatVND } from '@lishop/shared';
 import { catalogApi, ReviewInfo } from '../../../lib/catalog-api';
+import { RelatedProducts } from '../../../components/related-products';
 import { addToCart } from '../../../lib/cart-helper';
 
 function Stars({ rating, interactive = false, onSelect }: { rating: number; interactive?: boolean; onSelect?: (r: number) => void }) {
@@ -394,6 +395,7 @@ export default function ProductDetailPage({ params }: Props) {
         </div>
       </div>
       <ReviewsSection productId={product.id} />
+      <RelatedProducts slug={slug} />
     </div>
   );
 }
