@@ -9,6 +9,7 @@ import { formatVND } from '@lishop/shared';
 import { catalogApi, ReviewInfo } from '../../../lib/catalog-api';
 import { RelatedProducts } from '../../../components/related-products';
 import { addToCart } from '../../../lib/cart-helper';
+import { getWishlist, addToWishlist, removeFromWishlist, isLoggedIn } from '../../../lib/wishlist-api';
 
 function Stars({ rating, interactive = false, onSelect }: { rating: number; interactive?: boolean; onSelect?: (r: number) => void }) {
   return (
@@ -199,10 +200,33 @@ export default function ProductDetailPage({ params }: Props) {
   const [cartMessage, setCartMessage] = useState('');
   const [qty, setQty] = useState(1);
 
+  const queryClient = useQueryClient();
+
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ['product', slug],
     queryFn: () => catalogApi.getProduct(slug),
   });
+
+  const { data: wishlistIds = [] } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: getWishlist,
+    enabled: typeof window !== 'undefined' && isLoggedIn(),
+  });
+  const isWishlisted = new Set(wishlistIds).has(product?.id ?? '');
+
+  const toggleWishlistMutation = useMutation({
+    mutationFn: () =>
+      isWishlisted ? removeFromWishlist(product!.id) : addToWishlist(product!.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
+  });
+
+  function handleToggleWishlist() {
+    if (!isLoggedIn()) {
+      window.location.href = 'http://localhost:3001/login';
+      return;
+    }
+    toggleWishlistMutation.mutate();
+  }
 
   if (isLoading) {
     return (
@@ -372,13 +396,26 @@ export default function ProductDetailPage({ params }: Props) {
           )}
 
           <div className="mt-6">
-            <button
-              disabled={product.stock === 0 || addingToCart}
-              onClick={handleAddToCart}
-              className="w-full rounded-md bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {addingToCart ? 'Đang thêm...' : product.stock > 0 ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
-            </button>
+            <div className="mt-4 flex gap-3">
+              <button
+                disabled={product.stock === 0 || addingToCart}
+                onClick={handleAddToCart}
+                className="flex-1 rounded-md bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {addingToCart ? 'Đang thêm...' : product.stock > 0 ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
+              </button>
+              <button
+                onClick={handleToggleWishlist}
+                disabled={toggleWishlistMutation.isPending}
+                className={`rounded-md border px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${
+                  isWishlisted
+                    ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {isWishlisted ? '♥ Đã lưu' : '♡ Lưu'}
+              </button>
+            </div>
             {cartMessage && (
               <p className={`mt-2 text-sm text-center ${cartMessage.includes('Đã') ? 'text-green-600' : 'text-red-600'}`}>
                 {cartMessage}
