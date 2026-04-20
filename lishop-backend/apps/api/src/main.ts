@@ -12,8 +12,18 @@ async function bootstrap() {
 
   await (app as any).register(fastifyCookie);
 
+  const allowedOrigins = process.env['ALLOWED_ORIGINS']?.split(',');
   app.enableCors({
-    origin: process.env['ALLOWED_ORIGINS']?.split(',') ?? ['http://localhost:3000'],
+    origin: allowedOrigins
+      ? allowedOrigins
+      : (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+          // In development allow all localhost origins (any port)
+          if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+            cb(null, true);
+          } else {
+            cb(new Error('Not allowed by CORS'));
+          }
+        },
     credentials: true,
   });
 

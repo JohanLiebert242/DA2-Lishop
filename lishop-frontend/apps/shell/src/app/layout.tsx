@@ -2,19 +2,23 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from '../components/providers';
 import { Header } from '../components/header';
+import { Footer } from '../components/footer';
+import { AnnouncementBar } from '../components/announcement-bar';
 
 export const metadata: Metadata = {
-  title: 'Lishop',
-  description: 'Lishop E-Commerce Platform',
+  title: 'Lishop — Mua sắm thông minh',
+  description: 'Nền tảng thương mại điện tử hàng đầu Việt Nam. Hàng nghìn sản phẩm chất lượng.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body className="min-h-screen bg-gray-50">
+      <body className="flex min-h-screen flex-col bg-warm">
         <Providers>
+          <AnnouncementBar />
           <Header />
-          <main>{children}</main>
+          <main className="flex-1">{children}</main>
+          <Footer />
         </Providers>
       </body>
     </html>

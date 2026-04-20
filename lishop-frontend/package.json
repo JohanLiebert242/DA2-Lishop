@@ -2,7 +2,7 @@
   "name": "lishop-frontend",
   "private": true,
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --concurrency=11",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
@@ -10,10 +10,16 @@
     "clean": "turbo run clean"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^20.0.0",
+    "tailwindcss": "^4.0.0",
     "turbo": "^2.0.0",
     "typescript": "^5.5.0",
-    "@types/node": "^20.0.0"
+    "webpack": "^5.90.0"
   },
-  "engines": { "node": ">=20.0.0", "pnpm": ">=9.0.0" },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
   "packageManager": "pnpm@9.0.0"
 }

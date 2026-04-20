@@ -34,50 +34,75 @@ export default function ProductListPage() {
   const nextCursor = data?.nextCursor;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Tất cả sản phẩm</h1>
+    <div className="min-h-screen bg-warm">
+      {/* Page header */}
+      <div className="bg-white border-b border-warm">
+        <div className="mx-auto max-w-7xl px-4 py-6">
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight">Tất cả sản phẩm</h1>
+          <p className="mt-1 text-sm text-muted">Khám phá hàng nghìn sản phẩm chất lượng</p>
+        </div>
+      </div>
 
-      <div className="flex gap-8">
-        <CategorySidebar
-          categories={categories}
-          selectedId={categoryId}
-          onSelect={handleCategoryChange}
-        />
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="flex gap-7">
+          <CategorySidebar
+            categories={categories}
+            selectedId={categoryId}
+            onSelect={handleCategoryChange}
+          />
 
-        <div className="flex-1">
-          <div className="mb-4 flex items-center justify-between">
-            <ProductFilters
-              sort={sort}
-              q={q}
-              onSortChange={setSort}
-              onQChange={setQ}
-            />
-            {isFetching && <span className="text-sm text-gray-400">Đang tải...</span>}
+          <div className="flex-1 min-w-0">
+            {/* Filter bar */}
+            <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+              <ProductFilters sort={sort} q={q} onSortChange={setSort} onQChange={setQ} />
+              <div className="flex items-center gap-2">
+                {isFetching && (
+                  <div className="flex items-center gap-2 text-xs font-medium text-indigo-600">
+                    <div className="h-3.5 w-3.5 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+                    Đang tải...
+                  </div>
+                )}
+                {!isFetching && items.length > 0 && (
+                  <span className="text-xs text-muted">{items.length} sản phẩm</span>
+                )}
+              </div>
+            </div>
+
+            {/* Empty state */}
+            {items.length === 0 && !isFetching ? (
+              <div className="flex flex-col h-60 items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 text-center gap-3">
+                <span className="text-4xl">🔍</span>
+                <div>
+                  <p className="font-semibold text-stone-600">Không tìm thấy sản phẩm</p>
+                  <p className="mt-1 text-sm text-muted">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {items.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
+
+            {/* Load more */}
+            {nextCursor && (
+              <div className="mt-10 flex justify-center">
+                <button
+                  onClick={() => setCursor(nextCursor)}
+                  disabled={isFetching}
+                  className="btn-primary px-8 py-3"
+                >
+                  {isFetching ? (
+                    <span className="flex items-center gap-2">
+                      <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      Đang tải...
+                    </span>
+                  ) : 'Xem thêm sản phẩm'}
+                </button>
+              </div>
+            )}
           </div>
-
-          {items.length === 0 && !isFetching ? (
-            <div className="flex h-48 items-center justify-center text-gray-400">
-              Không tìm thấy sản phẩm phù hợp
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {items.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
-
-          {nextCursor && (
-            <div className="mt-8 flex justify-center">
-              <button
-                onClick={() => setCursor(nextCursor)}
-                disabled={isFetching}
-                className="rounded-md bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {isFetching ? 'Đang tải...' : 'Xem thêm'}
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

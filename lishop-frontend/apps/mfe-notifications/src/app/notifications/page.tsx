@@ -9,6 +9,7 @@ import {
   UpsertPreferenceInput,
   EVENT_LABELS,
 } from '../../lib/notifications-api';
+import { AccountSidebar } from '../../components/account-sidebar';
 
 // ─── Feed ───────────────────────────────────────────────────────────────────
 
@@ -39,15 +40,22 @@ function NotificationRow({ notif }: { notif: NotificationItem }) {
 
   return (
     <div
-      className={`flex items-start gap-3 border-b px-4 py-3 last:border-0 transition-colors ${
-        notif.isRead ? 'opacity-60' : 'bg-indigo-50/40'
+      className={`card p-4 flex items-start gap-3 transition-all ${
+        notif.isRead ? 'opacity-60' : 'border-indigo-200 bg-indigo-50/30'
       }`}
     >
-      <span className="mt-0.5 text-xl">{TYPE_ICONS[notif.type] ?? '🔔'}</span>
+      <div className="relative shrink-0">
+        <span className="text-xl">{TYPE_ICONS[notif.type] ?? '🔔'}</span>
+        {!notif.isRead && (
+          <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-indigo-500 ring-2 ring-white" />
+        )}
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900">{notif.title}</p>
-        <p className="mt-0.5 text-xs text-gray-600">{notif.body}</p>
-        <p className="mt-1 text-xs text-gray-400">
+        <p className={`text-sm font-bold ${notif.isRead ? 'text-stone-600' : 'text-stone-900'}`}>
+          {notif.title}
+        </p>
+        <p className="mt-0.5 text-xs text-muted">{notif.body}</p>
+        <p className="mt-1.5 text-xs text-faint">
           {new Date(notif.createdAt).toLocaleString('vi-VN')}
         </p>
       </div>
@@ -57,9 +65,9 @@ function NotificationRow({ notif }: { notif: NotificationItem }) {
           aria-label={`Đánh dấu đã đọc: ${notif.title}`}
           onClick={() => markRead.mutate()}
           disabled={markRead.isPending}
-          className="shrink-0 rounded-md px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+          className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 transition-colors"
         >
-          Đánh dấu đã đọc
+          Đã đọc
         </button>
       )}
     </div>
@@ -73,20 +81,37 @@ function FeedTab() {
   });
 
   if (isLoading) {
-    return <p className="py-12 text-center text-sm text-gray-400">Đang tải...</p>;
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="card p-4 animate-pulse">
+            <div className="flex gap-3">
+              <div className="h-6 w-6 rounded-full bg-stone-100 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-40 rounded bg-stone-100" />
+                <div className="h-2.5 w-64 rounded bg-stone-100" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   if (notifications.length === 0) {
     return (
-      <div className="py-12 text-center">
-        <p className="text-4xl">🔔</p>
-        <p className="mt-3 text-sm text-gray-500">Chưa có thông báo nào.</p>
+      <div className="card flex flex-col items-center justify-center py-16 text-center gap-3">
+        <span className="text-5xl">🔔</span>
+        <div>
+          <p className="font-bold text-stone-700">Chưa có thông báo nào</p>
+          <p className="mt-1 text-sm text-muted">Các thông báo về đơn hàng và khuyến mãi sẽ hiển thị ở đây.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="space-y-3">
       {notifications.map((notif) => (
         <NotificationRow key={notif.id} notif={notif} />
       ))}
@@ -116,7 +141,7 @@ function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
-        checked ? 'bg-blue-600' : 'bg-gray-300'
+        checked ? 'bg-indigo-600' : 'bg-stone-200'
       }`}
     >
       <span
@@ -140,11 +165,11 @@ function PreferenceRow({ pref }: { pref: NotificationPreference }) {
   });
 
   return (
-    <div className="flex items-center justify-between border-b py-4 last:border-0">
-      <span className="text-sm font-medium text-gray-800">{label}</span>
+    <div className="flex items-center justify-between border-b border-warm py-4 last:border-0">
+      <span className="text-sm font-semibold text-stone-800">{label}</span>
       <div className="flex items-center gap-6">
         <div className="flex flex-col items-center gap-1">
-          <span className="text-xs text-gray-500">Email</span>
+          <span className="text-xs text-muted">Email</span>
           <Toggle
             checked={pref.emailEnabled}
             onChange={(v) => mutation.mutate({ emailEnabled: v })}
@@ -153,7 +178,7 @@ function PreferenceRow({ pref }: { pref: NotificationPreference }) {
           />
         </div>
         <div className="flex flex-col items-center gap-1">
-          <span className="text-xs text-gray-500">Push</span>
+          <span className="text-xs text-muted">Push</span>
           <Toggle
             checked={pref.pushEnabled}
             onChange={(v) => mutation.mutate({ pushEnabled: v })}
@@ -162,7 +187,7 @@ function PreferenceRow({ pref }: { pref: NotificationPreference }) {
           />
         </div>
         <div className="flex flex-col items-center gap-1">
-          <span className="text-xs text-gray-500">Trong app</span>
+          <span className="text-xs text-muted">Trong app</span>
           <Toggle
             checked={pref.inAppEnabled}
             onChange={(v) => mutation.mutate({ inAppEnabled: v })}
@@ -182,20 +207,20 @@ function PreferencesTab() {
   });
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b px-6 py-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between border-b border-warm px-5 py-3.5">
+        <span className="text-xs font-bold uppercase tracking-widest text-muted">
           Loại thông báo
         </span>
         <div className="flex gap-6">
-          <span className="w-11 text-center text-xs font-semibold uppercase text-gray-500">Email</span>
-          <span className="w-11 text-center text-xs font-semibold uppercase text-gray-500">Push</span>
-          <span className="w-11 text-center text-xs font-semibold uppercase text-gray-500">App</span>
+          <span className="w-11 text-center text-xs font-bold uppercase text-muted">Email</span>
+          <span className="w-11 text-center text-xs font-bold uppercase text-muted">Push</span>
+          <span className="w-11 text-center text-xs font-bold uppercase text-muted">App</span>
         </div>
       </div>
-      <div className="px-6">
+      <div className="px-5">
         {isLoading ? (
-          <p className="py-8 text-center text-sm text-gray-400">Đang tải...</p>
+          <p className="py-8 text-center text-sm text-muted">Đang tải...</p>
         ) : (
           preferences.map((pref) => (
             <PreferenceRow key={pref.eventType} pref={pref} />
@@ -214,45 +239,53 @@ export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('feed');
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Thông báo</h1>
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="flex gap-7">
+        <AccountSidebar activeSection="notifications" />
 
-      {/* Tabs */}
-      <div className="mb-4 flex border-b">
-        <button
-          type="button"
-          onClick={() => setActiveTab('feed')}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'feed'
-              ? 'border-b-2 border-indigo-600 text-indigo-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Thông báo
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('preferences')}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'preferences'
-              ? 'border-b-2 border-indigo-600 text-indigo-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Cài đặt
-        </button>
-      </div>
+        <div className="flex-1 min-w-0">
+          {/* Page header */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-black text-stone-900 tracking-tight">Thông báo</h1>
+            <p className="mt-0.5 text-sm text-muted">Cập nhật về đơn hàng, khuyến mãi và nhiều hơn nữa</p>
+          </div>
 
-      {activeTab === 'feed' ? (
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <FeedTab />
+          {/* Tabs */}
+          <div className="mb-5 flex gap-1 rounded-xl bg-stone-100 p-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('feed')}
+              className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+                activeTab === 'feed'
+                  ? 'bg-white text-indigo-700 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              Thông báo
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('preferences')}
+              className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+                activeTab === 'preferences'
+                  ? 'bg-white text-indigo-700 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              Cài đặt
+            </button>
+          </div>
+
+          {activeTab === 'feed' ? (
+            <FeedTab />
+          ) : (
+            <>
+              <PreferencesTab />
+              <p className="mt-3 text-center text-xs text-muted">Thay đổi được lưu tự động.</p>
+            </>
+          )}
         </div>
-      ) : (
-        <>
-          <PreferencesTab />
-          <p className="mt-4 text-center text-xs text-gray-400">Thay đổi được lưu tự động.</p>
-        </>
-      )}
+      </div>
     </div>
   );
 }

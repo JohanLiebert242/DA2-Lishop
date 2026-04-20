@@ -2,16 +2,28 @@
   "name": "@lishop/database",
   "version": "0.0.1",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "scripts": {
     "db:generate": "dotenv -e ../../.env -- prisma generate",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "db:migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
-    "db:seed": "dotenv -e ../../.env -- ts-node prisma/seed.ts",
+    "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "db:studio": "dotenv -e ../../.env -- prisma studio"
   },
-  "dependencies": { "@prisma/client": "^5.16.0", "bcrypt": "^5.1.0" },
-  "devDependencies": { "@types/bcrypt": "^5.0.0", "@types/node": "^20.0.0", "dotenv-cli": "^7.4.0", "prisma": "^5.16.0", "ts-node": "^10.9.0" }
+  "dependencies": {
+    "@prisma/client": "^5.16.0",
+    "bcrypt": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "dotenv-cli": "^7.4.0",
+    "prisma": "^5.16.0",
+    "ts-node": "^10.9.0",
+    "tsx": "^4.21.0"
+  }
 }

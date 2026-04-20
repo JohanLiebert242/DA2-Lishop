@@ -33,7 +33,7 @@ export default function RegisterPage() {
         window.dispatchEvent(new CustomEvent('lishop:auth', { detail: { accessToken: result.accessToken } }));
       }
       setSuccess(true);
-      setTimeout(() => { window.location.href = 'http://localhost:3000'; }, 500);
+      setTimeout(() => { window.location.href = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010'; }, 500);
     } catch (e) {
       setServerError((e as Error).message);
     }
@@ -41,80 +41,115 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-green-600">Đăng ký thành công! Vui lòng kiểm tra email để xác nhận. Đang chuyển hướng...</p>
+      <div className="flex min-h-screen items-center justify-center bg-warm">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 shadow-brand">
+            <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-lg font-bold text-stone-900">Tài khoản đã được tạo!</p>
+          <p className="text-sm text-muted">Đang chuyển hướng về trang chủ...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-sm">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900">Tạo tài khoản</h1>
+    <div className="flex min-h-screen bg-warm">
+      {/* Left panel */}
+      <div
+        className="hidden lg:flex lg:w-2/5 flex-col items-center justify-center p-12 text-white relative overflow-hidden"
+        style={{ background: 'linear-gradient(145deg, #4c1d95 0%, #7c3aed 50%, #a855f7 100%)' }}
+      >
+        <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #fbbf24, transparent)' }} />
+        <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full opacity-15" style={{ background: 'radial-gradient(circle, #c084fc, transparent)' }} />
+        <div className="relative z-10 text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+            <span className="text-3xl font-black">Li</span>
+          </div>
+          <h2 className="text-3xl font-black tracking-tight">Tham gia Lishop</h2>
+          <p className="mt-3 text-white/70 leading-relaxed max-w-xs mx-auto">
+            Tạo tài khoản miễn phí và bắt đầu mua sắm ngay hôm nay
+          </p>
+          <div className="mt-8 flex flex-col gap-2.5 text-sm text-white/80">
+            {['🎁 Nhận ưu đãi chào mừng 10%', '⭐ Tích điểm thưởng mỗi đơn', '📦 Theo dõi đơn hàng dễ dàng'].map(t => (
+              <div key={t} className="flex items-center gap-2">{t}</div>
+            ))}
+          </div>
+        </div>
+      </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">Họ</label>
-              <input
-                id="lastName"
-                {...register('lastName')}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-              {errors.lastName && <p className="mt-1 text-xs text-red-600">{errors.lastName.message}</p>}
+      {/* Right form */}
+      <div className="flex flex-1 items-center justify-center p-6 lg:p-12">
+        <div className="w-full max-w-md">
+          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 shadow-brand">
+              <span className="text-base font-black text-white">Li</span>
             </div>
-            <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">Tên</label>
-              <input
-                id="firstName"
-                {...register('firstName')}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-              {errors.firstName && <p className="mt-1 text-xs text-red-600">{errors.firstName.message}</p>}
+            <span className="text-xl font-black text-stone-900">Lishop</span>
+          </div>
+
+          <h1 className="text-3xl font-black text-stone-900 tracking-tight">Tạo tài khoản</h1>
+          <p className="mt-1.5 text-sm text-muted">
+            Đã có tài khoản?{' '}
+            <Link href="/login" className="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+              Đăng nhập
+            </Link>
+          </p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-4" noValidate>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="lastName" className="block mb-1.5 text-sm font-semibold text-stone-700">Họ</label>
+                <input id="lastName" {...register('lastName')} className="input-field" placeholder="Nguyễn" />
+                {errors.lastName && <p className="mt-1 text-xs font-medium text-red-600">{errors.lastName.message}</p>}
+              </div>
+              <div>
+                <label htmlFor="firstName" className="block mb-1.5 text-sm font-semibold text-stone-700">Tên</label>
+                <input id="firstName" {...register('firstName')} className="input-field" placeholder="Văn A" />
+                {errors.firstName && <p className="mt-1 text-xs font-medium text-red-600">{errors.firstName.message}</p>}
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              {...register('email')}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-            {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
-          </div>
+            <div>
+              <label htmlFor="email" className="block mb-1.5 text-sm font-semibold text-stone-700">Email</label>
+              <input id="email" type="email" autoComplete="email" {...register('email')} className="input-field" placeholder="ten@email.com" />
+              {errors.email && <p className="mt-1 text-xs font-medium text-red-600">{errors.email.message}</p>}
+            </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Mật khẩu</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              {...register('password')}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-            {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
-          </div>
+            <div>
+              <label htmlFor="password" className="block mb-1.5 text-sm font-semibold text-stone-700">Mật khẩu</label>
+              <input id="password" type="password" autoComplete="new-password" {...register('password')} className="input-field" placeholder="Tối thiểu 8 ký tự" />
+              {errors.password && <p className="mt-1 text-xs font-medium text-red-600">{errors.password.message}</p>}
+            </div>
 
-          {serverError && (
-            <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{serverError}</p>
-          )}
+            {serverError && (
+              <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-100 p-3.5">
+                <svg className="h-4 w-4 text-red-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+                </svg>
+                <p className="text-sm text-red-700 font-medium">{serverError}</p>
+              </div>
+            )}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {isSubmitting ? 'Đang tạo tài khoản...' : 'Đăng ký'}
-          </button>
-        </form>
+            <button type="submit" disabled={isSubmitting} className="btn-primary w-full py-3 text-base mt-2">
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Đang tạo tài khoản...
+                </span>
+              ) : 'Tạo tài khoản miễn phí'}
+            </button>
 
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Đã có tài khoản?{' '}
-          <Link href="/login" className="text-indigo-600 hover:underline">Đăng nhập</Link>
-        </p>
+            <p className="text-center text-xs text-muted">
+              Bằng cách đăng ký, bạn đồng ý với{' '}
+              <span className="font-semibold text-stone-600">Điều khoản dịch vụ</span>{' '}
+              và{' '}
+              <span className="font-semibold text-stone-600">Chính sách bảo mật</span>
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   );

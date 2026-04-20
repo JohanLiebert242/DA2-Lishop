@@ -2,9 +2,9 @@
   "name": "@lishop/contracts",
   "version": "0.0.1",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": "./dist/index.js" },
   "dependencies": { "zod": "^3.23.0" },
   "devDependencies": { "@lishop/config": "workspace:*" }
 }
