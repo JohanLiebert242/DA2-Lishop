@@ -30,6 +30,7 @@ function ReviewsSection({ productId }: { productId: string }) {
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'highest' | 'lowest'>('newest');
   const token = typeof window !== 'undefined' ? localStorage.getItem('lishop_at') : null;
 
   const { data: reviews = [] } = useQuery({
@@ -50,6 +51,20 @@ function ReviewsSection({ productId }: { productId: string }) {
   const avgRating =
     reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
 
+  const starCounts = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    count: reviews.filter((r) => r.rating === star).length,
+    pct: reviews.length > 0
+      ? (reviews.filter((r) => r.rating === star).length / reviews.length) * 100
+      : 0,
+  }));
+
+  const sortedReviews = [...reviews].sort((a, b) => {
+    if (sortOrder === 'highest') return b.rating - a.rating;
+    if (sortOrder === 'lowest') return a.rating - b.rating;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
   return (
     <div className="mt-8 border-t pt-8">
       <div className="mb-4 flex items-center justify-between">
@@ -61,6 +76,20 @@ function ReviewsSection({ productId }: { productId: string }) {
               <span className="text-sm text-gray-500">
                 {avgRating.toFixed(1)} ({reviews.length} đánh giá)
               </span>
+            </div>
+          )}
+          {reviews.length > 0 && (
+            <div className="mt-3 w-48 space-y-1">
+              {starCounts.map(({ star, count, pct }) => (
+                <div key={star} className="flex items-center gap-2 text-xs">
+                  <span className="w-3 text-right text-gray-500">{star}</span>
+                  <span className="text-yellow-400">★</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-full rounded-full bg-yellow-400" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="w-4 text-right text-gray-400">{count}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -113,11 +142,25 @@ function ReviewsSection({ productId }: { productId: string }) {
         </div>
       )}
 
+      {reviews.length > 1 && (
+        <div className="mb-3 flex justify-end">
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+            className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 focus:outline-none"
+          >
+            <option value="newest">Mới nhất</option>
+            <option value="highest">Đánh giá cao nhất</option>
+            <option value="lowest">Đánh giá thấp nhất</option>
+          </select>
+        </div>
+      )}
+
       {reviews.length === 0 ? (
         <p className="text-sm text-gray-400">Chưa có đánh giá nào.</p>
       ) : (
         <div className="space-y-4">
-          {reviews.map((review: ReviewInfo) => (
+          {sortedReviews.map((review: ReviewInfo) => (
             <div key={review.id} className="rounded-xl border border-gray-100 bg-white p-4">
               <div className="mb-1 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -153,6 +196,7 @@ export default function ProductDetailPage({ params }: Props) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [addingToCart, setAddingToCart] = useState(false);
   const [cartMessage, setCartMessage] = useState('');
+  const [qty, setQty] = useState(1);
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ['product', slug],
@@ -183,7 +227,7 @@ export default function ProductDetailPage({ params }: Props) {
     setAddingToCart(true);
     setCartMessage('');
     try {
-      await addToCart(product.id, 1);
+      await addToCart(product.id, qty);
       setCartMessage('Đã thêm vào giỏ hàng!');
       setTimeout(() => setCartMessage(''), 3000);
     } catch (err: unknown) {
@@ -222,7 +266,7 @@ export default function ProductDetailPage({ params }: Props) {
                 src={currentImage.url}
                 alt={currentImage.alt ?? product.name}
                 fill
-                className="object-cover"
+                className="object-cover transition-transform duration-300 hover:scale-[1.35] cursor-zoom-in"
                 priority
               />
             ) : (
@@ -278,6 +322,12 @@ export default function ProductDetailPage({ params }: Props) {
             )}
           </div>
 
+          {product.stock > 0 && product.stock <= 10 && (
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+              ⚠️ Chỉ còn {product.stock} sản phẩm
+            </div>
+          )}
+
           {product.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {product.tags.map(({ tag }) => (
@@ -285,6 +335,38 @@ export default function ProductDetailPage({ params }: Props) {
                   {tag.name}
                 </span>
               ))}
+            </div>
+          )}
+
+          {product.stock > 0 && (
+            <div className="mt-4 flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-700">Số lượng:</span>
+              <div className="flex items-center rounded-md border border-gray-300">
+                <button
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  disabled={qty <= 1}
+                  className="flex h-9 w-9 items-center justify-center text-lg font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  value={qty}
+                  onChange={(e) =>
+                    setQty(Math.min(product.stock, Math.max(1, parseInt(e.target.value) || 1)))
+                  }
+                  className="w-12 border-x border-gray-300 py-1.5 text-center text-sm font-semibold focus:outline-none"
+                  min={1}
+                  max={product.stock}
+                />
+                <button
+                  onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
+                  disabled={qty >= product.stock}
+                  className="flex h-9 w-9 items-center justify-center text-lg font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                >
+                  +
+                </button>
+              </div>
             </div>
           )}
 
