@@ -25,7 +25,7 @@ export default function WishlistPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-warm">
-      <MiniHeader title="Yêu thích" backHref={`${MFE_CATALOG}/products`} />
+      <MiniHeader title="Yêu thích" />
       <main className="mx-auto flex w-full max-w-5xl flex-1 gap-6 px-4 py-8">
         <AccountSidebar activeSection="wishlist" />
         <div className="flex-1">
