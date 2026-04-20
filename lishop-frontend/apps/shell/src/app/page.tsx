@@ -26,7 +26,7 @@ interface FlashSale { id: string; endAt: string; items: FlashSaleItem[]; }
 interface Category { id: string; name: string; slug: string; imageUrl: string | null; parentId: string | null; }
 
 // ─── API fetchers ─────────────────────────────────────────────────────────────
-const apiFetch = async <T>(path: string): Promise<T> => {
+const apiFetch = async <T,>(path: string): Promise<T> => {
   const res  = await fetch(`${API_URL}${path}`);
   const json = await res.json();
   return (json.data ?? json) as T;
