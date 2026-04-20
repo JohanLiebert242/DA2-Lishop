@@ -1,18 +1,17 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
-
 const MFE_ORDERS  = process.env['NEXT_PUBLIC_MFE_ORDERS_URL']        ?? 'http://localhost:3005';
 const MFE_PROFILE = process.env['NEXT_PUBLIC_MFE_PROFILE_URL']       ?? 'http://localhost:3006';
 const MFE_NOTIF   = process.env['NEXT_PUBLIC_MFE_NOTIFICATIONS_URL'] ?? 'http://localhost:3008';
 
 const NAV = [
-  { icon: '📦', label: 'Đơn hàng của tôi', href: `${MFE_ORDERS}/orders`, matchHost: '3005' },
-  { icon: '👤', label: 'Trang cá nhân',    href: `${MFE_PROFILE}/profile`, matchHost: '3006' },
-  { icon: '🔔', label: 'Thông báo',        href: `${MFE_NOTIF}/notifications`, matchHost: '3008' },
+  { icon: '📦', label: 'Đơn hàng của tôi', href: `${MFE_ORDERS}/orders`,      key: 'orders' },
+  { icon: '👤', label: 'Trang cá nhân',    href: `${MFE_PROFILE}/profile`,     key: 'profile' },
+  { icon: '♡',  label: 'Yêu thích',        href: `${MFE_PROFILE}/wishlist`,    key: 'wishlist' },
+  { icon: '🔔', label: 'Thông báo',         href: `${MFE_NOTIF}/notifications`, key: 'notifications' },
 ];
 
-export function AccountSidebar({ activeSection }: { activeSection: 'orders' | 'profile' | 'notifications' }) {
+export function AccountSidebar({ activeSection }: { activeSection: 'orders' | 'profile' | 'notifications' | 'wishlist' }) {
   return (
     <aside className="w-56 shrink-0">
       <div className="rounded-2xl bg-white border border-warm shadow-sm overflow-hidden">
@@ -28,10 +27,7 @@ export function AccountSidebar({ activeSection }: { activeSection: 'orders' | 'p
         {/* Nav */}
         <nav className="p-2">
           {NAV.map(item => {
-            const isActive =
-              (activeSection === 'orders' && item.matchHost === '3005') ||
-              (activeSection === 'profile' && item.matchHost === '3006') ||
-              (activeSection === 'notifications' && item.matchHost === '3008');
+            const isActive = item.key === activeSection;
             return (
               <a
                 key={item.label}
