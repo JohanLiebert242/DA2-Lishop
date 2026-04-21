@@ -23,6 +23,7 @@ import { ShippingModule } from './modules/shipping/shipping.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { ReturnsModule } from './modules/returns/returns.module';
 import { SupportModule } from './modules/support/support.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { SupportModule } from './modules/support/support.module';
     InventoryModule,
     ReturnsModule,
     SupportModule,
+    PaymentsModule,
   ],
   controllers: [HealthController],
   providers: [

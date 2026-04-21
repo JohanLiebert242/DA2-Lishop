@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { CreateCouponDto } from './dto/create-coupon.dto';
+import { ModerateReviewDto } from './dto/moderate-review.dto';
 import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -17,7 +18,13 @@ import { UpdateTicketStatusDto } from '../support/dto/update-ticket-status.dto';
 import { AddMessageDto } from '../support/dto/add-message.dto';
 import { CreateFaqDto } from '../support/dto/create-faq.dto';
 import { UpdateFaqDto } from '../support/dto/update-faq.dto';
-import { TicketStatus } from '@lishop/database';
+import { ReviewsService } from '../reviews/reviews.service';
+import { FlashSalesService } from '../promotions/flash-sales.service';
+import { CreateFlashSaleDto } from '../promotions/dto/create-flash-sale.dto';
+import { UpdateFlashSaleDto } from '../promotions/dto/update-flash-sale.dto';
+import { AddFlashSaleItemDto } from '../promotions/dto/add-flash-sale-item.dto';
+import { PaymentsService } from '../payments/payments.service';
+import { ReviewStatus, TicketStatus } from '@lishop/database';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -30,6 +37,9 @@ export class AdminController {
     private readonly returnsService: ReturnsService,
     private readonly ticketsService: SupportTicketsService,
     private readonly faqService: FaqService,
+    private readonly reviewsService: ReviewsService,
+    private readonly flashSalesService: FlashSalesService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   @Get('stats')
@@ -166,5 +176,81 @@ export class AdminController {
   @ApiOperation({ summary: 'Delete a FAQ' })
   deleteFaq(@Param('id', ParseUUIDPipe) id: string) {
     return this.faqService.delete(id);
+  }
+
+  // ---- Review moderation ----
+
+  @Get('reviews')
+  @ApiOperation({ summary: 'List all reviews (optional ?status filter)' })
+  getAllReviews(@Query('status') status?: ReviewStatus) {
+    return this.reviewsService.findAllForAdmin(status);
+  }
+
+  @Patch('reviews/:id/status')
+  @ApiOperation({ summary: 'Moderate a review (approve / reject)' })
+  moderateReview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ModerateReviewDto,
+  ) {
+    return this.reviewsService.moderateReview(id, dto.status);
+  }
+
+  // ---- Flash sale admin CRUD ----
+
+  @Get('flash-sales')
+  @ApiOperation({ summary: 'List all flash sales' })
+  getAllFlashSales() {
+    return this.flashSalesService.findAll();
+  }
+
+  @Post('flash-sales')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a flash sale' })
+  createFlashSale(@Body() dto: CreateFlashSaleDto) {
+    return this.flashSalesService.create(dto);
+  }
+
+  @Patch('flash-sales/:id')
+  @ApiOperation({ summary: 'Update a flash sale' })
+  updateFlashSale(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateFlashSaleDto,
+  ) {
+    return this.flashSalesService.update(id, dto);
+  }
+
+  @Delete('flash-sales/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a flash sale' })
+  deleteFlashSale(@Param('id', ParseUUIDPipe) id: string) {
+    return this.flashSalesService.delete(id);
+  }
+
+  @Post('flash-sales/:id/items')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add a product item to a flash sale' })
+  addFlashSaleItem(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddFlashSaleItemDto,
+  ) {
+    return this.flashSalesService.addItem(id, dto.productId, dto.discountPercent);
+  }
+
+  @Delete('flash-sales/:id/items/:itemId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a product item from a flash sale' })
+  removeFlashSaleItem(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+  ) {
+    return this.flashSalesService.removeItem(id, itemId);
+  }
+
+  // ---- Payment admin ----
+
+  @Patch('payments/:orderId/confirm')
+  @ApiOperation({ summary: 'Manually confirm payment for an order (e.g. COD)' })
+  confirmPayment(@Param('orderId', ParseUUIDPipe) orderId: string) {
+    return this.paymentsService.confirmPaymentAdmin(orderId);
   }
 }

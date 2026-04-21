@@ -191,6 +191,31 @@ export const adminApi = {
   deleteFaq: (id: string) =>
     apiFetch<void>(`/admin/faq/${id}`, { method: 'DELETE' }),
 
+  // Reviews
+  getReviews: (status?: string) =>
+    apiFetch<AdminReview[]>(`/admin/reviews${status ? `?status=${status}` : ''}`),
+  moderateReview: (id: string, status: ReviewStatus) =>
+    apiFetch<AdminReview>(`/admin/reviews/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  // Flash sales
+  getFlashSales: () => apiFetch<AdminFlashSale[]>('/admin/flash-sales'),
+  createFlashSale: (data: { startAt: string; endAt: string; isActive?: boolean }) =>
+    apiFetch<AdminFlashSale>('/admin/flash-sales', { method: 'POST', body: JSON.stringify(data) }),
+  updateFlashSale: (id: string, data: { startAt?: string; endAt?: string; isActive?: boolean }) =>
+    apiFetch<AdminFlashSale>(`/admin/flash-sales/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteFlashSale: (id: string) =>
+    apiFetch<void>(`/admin/flash-sales/${id}`, { method: 'DELETE' }),
+  addFlashSaleItem: (saleId: string, productId: string, discountPercent: number) =>
+    apiFetch<AdminFlashSale>(`/admin/flash-sales/${saleId}/items`, {
+      method: 'POST',
+      body: JSON.stringify({ productId, discountPercent }),
+    }),
+  removeFlashSaleItem: (saleId: string, itemId: string) =>
+    apiFetch<AdminFlashSale>(`/admin/flash-sales/${saleId}/items/${itemId}`, { method: 'DELETE' }),
+
   // Products
   listProducts: () =>
     apiFetch<{ items: AdminProduct[]; nextCursor: string | null }>('/products?limit=100'),
@@ -267,4 +292,43 @@ export interface CreateProductInput {
   categoryId: string;
   images?: { url: string; alt?: string; isPrimary?: boolean }[];
   tags?: string[];
+}
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+
+export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface AdminReview {
+  id: string;
+  productId: string;
+  userId: string;
+  rating: number;
+  content: string;
+  status: ReviewStatus;
+  verifiedPurchase: boolean;
+  createdAt: string;
+  product: { name: string; slug: string };
+  user: { email: string; firstName: string; lastName: string };
+}
+
+// ─── Flash Sales ─────────────────────────────────────────────────────────────
+
+export interface FlashSaleItem {
+  id: string;
+  discountPercent: number;
+  product: {
+    id: string;
+    name: string;
+    slug: string;
+    priceVnd: number;
+    images: { url: string }[];
+  };
+}
+
+export interface AdminFlashSale {
+  id: string;
+  startAt: string;
+  endAt: string;
+  isActive: boolean;
+  items: FlashSaleItem[];
 }

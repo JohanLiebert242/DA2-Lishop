@@ -11,6 +11,19 @@ export interface ReviewWithUser {
   createdAt: Date;
 }
 
+export interface AdminReview {
+  id: string;
+  productId: string;
+  userId: string;
+  rating: number;
+  content: string;
+  status: ReviewStatus;
+  verifiedPurchase: boolean;
+  createdAt: Date;
+  product: { name: string; slug: string };
+  user: { email: string; firstName: string; lastName: string };
+}
+
 @Injectable()
 export class ReviewsRepository {
   async findByProductId(productId: string): Promise<ReviewWithUser[]> {
@@ -54,5 +67,78 @@ export class ReviewsRepository {
 
   create(data: Prisma.ReviewCreateInput): Promise<Review> {
     return prisma.review.create({ data });
+  }
+
+  findByIdAdmin(id: string): Promise<AdminReview | null> {
+    return prisma.review.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        productId: true,
+        userId: true,
+        rating: true,
+        content: true,
+        status: true,
+        verifiedPurchase: true,
+        createdAt: true,
+        product: { select: { name: true, slug: true } },
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
+    });
+  }
+
+  async findAll(status?: ReviewStatus): Promise<AdminReview[]> {
+    return prisma.review.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        productId: true,
+        userId: true,
+        rating: true,
+        content: true,
+        status: true,
+        verifiedPurchase: true,
+        createdAt: true,
+        product: { select: { name: true, slug: true } },
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
+    });
+  }
+
+  async moderateReview(id: string, status: ReviewStatus): Promise<AdminReview> {
+    const updated = await prisma.review.update({
+      where: { id },
+      data: { status },
+      select: {
+        id: true,
+        productId: true,
+        userId: true,
+        rating: true,
+        content: true,
+        status: true,
+        verifiedPurchase: true,
+        createdAt: true,
+        product: { select: { name: true, slug: true } },
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
+    });
+
+    // Recalculate product averageRating and reviewCount based on APPROVED reviews
+    const aggregate = await prisma.review.aggregate({
+      where: { productId: updated.productId, status: ReviewStatus.APPROVED },
+      _avg: { rating: true },
+      _count: { id: true },
+    });
+
+    await prisma.product.update({
+      where: { id: updated.productId },
+      data: {
+        averageRating: aggregate._avg.rating ?? 0,
+        reviewCount: aggregate._count.id,
+      },
+    });
+
+    return updated;
   }
 }

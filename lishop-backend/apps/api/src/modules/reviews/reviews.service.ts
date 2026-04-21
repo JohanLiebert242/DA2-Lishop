@@ -1,5 +1,5 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { ReviewsRepository, ReviewWithUser } from './reviews.repository';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ReviewsRepository, ReviewWithUser, AdminReview } from './reviews.repository';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { Review, ReviewStatus } from '@lishop/database';
 
@@ -25,5 +25,15 @@ export class ReviewsService {
       product: { connect: { id: productId } },
       user: { connect: { id: userId } },
     });
+  }
+
+  findAllForAdmin(status?: ReviewStatus): Promise<AdminReview[]> {
+    return this.repo.findAll(status);
+  }
+
+  async moderateReview(id: string, status: ReviewStatus): Promise<AdminReview> {
+    const existing = await this.repo.findByIdAdmin(id);
+    if (!existing) throw new NotFoundException(`Review ${id} not found`);
+    return this.repo.moderateReview(id, status);
   }
 }

@@ -10,11 +10,12 @@ import {
   adminApi, OrderStatus, AdminOrderItem, AdminCoupon, CouponType, CreateCouponInput,
   ProductStock, AdminReturn, AdminTicket, TicketStatus, FAQ,
   AdminProduct, AdminCategory, CreateProductInput,
+  AdminReview, ReviewStatus, AdminFlashSale, FlashSaleItem,
 } from '../../lib/admin-api';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-type Tab = 'orders' | 'users' | 'promotions' | 'analytics' | 'inventory' | 'returns' | 'tickets' | 'faq' | 'products';
+type Tab = 'orders' | 'users' | 'promotions' | 'analytics' | 'inventory' | 'returns' | 'tickets' | 'faq' | 'products' | 'reviews' | 'flashsales';
 
 const ORDER_STATUSES: OrderStatus[] = [
   'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED',
@@ -54,7 +55,23 @@ const TAB_LABELS: Record<Tab, string> = {
   returns: 'Đổi trả',
   tickets: 'Hỗ trợ',
   faq: 'FAQ',
+  reviews: 'Đánh giá',
+  flashsales: 'Flash Sale',
 };
+
+const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
+  PENDING: 'Chờ duyệt',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Từ chối',
+};
+
+const REVIEW_STATUS_COLORS: Record<ReviewStatus, string> = {
+  PENDING: 'bg-amber-100 text-amber-800',
+  APPROVED: 'bg-emerald-100 text-emerald-800',
+  REJECTED: 'bg-red-100 text-red-800',
+};
+
+const REVIEW_STATUSES: ReviewStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
 
 const TICKET_STATUS_COLORS: Record<TicketStatus, string> = {
   OPEN: 'bg-amber-100 text-amber-800',
@@ -922,6 +939,249 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
   );
 }
 
+// ─── ReviewRow ────────────────────────────────────────────────────────────────
+
+function ReviewRow({ review }: { review: AdminReview }) {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (status: ReviewStatus) => adminApi.moderateReview(review.id, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-reviews'] }),
+  });
+
+  const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+  const userName =
+    review.user.firstName && review.user.lastName
+      ? `${review.user.firstName} ${review.user.lastName}`
+      : review.user.email;
+
+  return (
+    <tr className="border-b last:border-0 hover:bg-gray-50">
+      <td className="px-4 py-3 text-sm text-gray-900 max-w-[140px] truncate">{review.product.name}</td>
+      <td className="px-4 py-3 text-sm text-gray-700 max-w-[120px] truncate">{userName}</td>
+      <td className="px-4 py-3 text-sm text-amber-500 tracking-tight">{stars}</td>
+      <td className="px-4 py-3 text-sm text-gray-700 max-w-xs">
+        <p className="line-clamp-2">{review.content}</p>
+      </td>
+      <td className="px-4 py-3">
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${REVIEW_STATUS_COLORS[review.status]}`}>
+          {REVIEW_STATUS_LABELS[review.status]}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-xs text-gray-500">
+        {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex gap-1">
+          {review.status !== 'APPROVED' && (
+            <button
+              type="button"
+              onClick={() => mutation.mutate('APPROVED')}
+              disabled={mutation.isPending}
+              className="rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-200 disabled:opacity-50"
+            >
+              Duyệt
+            </button>
+          )}
+          {review.status !== 'REJECTED' && (
+            <button
+              type="button"
+              onClick={() => mutation.mutate('REJECTED')}
+              disabled={mutation.isPending}
+              className="rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-800 hover:bg-red-200 disabled:opacity-50"
+            >
+              Từ chối
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ─── FlashSaleModal ───────────────────────────────────────────────────────────
+
+interface FlashSaleModalProps {
+  existing?: AdminFlashSale;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+function FlashSaleModal({ existing, onClose, onSaved }: FlashSaleModalProps) {
+  const toLocal = (iso: string) => iso ? iso.slice(0, 16) : '';
+  const [startAt, setStartAt] = useState(toLocal(existing?.startAt ?? ''));
+  const [endAt, setEndAt] = useState(toLocal(existing?.endAt ?? ''));
+  const [isActive, setIsActive] = useState(existing?.isActive ?? true);
+  const [error, setError] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      const data = { startAt: new Date(startAt).toISOString(), endAt: new Date(endAt).toISOString(), isActive };
+      return existing
+        ? adminApi.updateFlashSale(existing.id, data)
+        : adminApi.createFlashSale(data);
+    },
+    onSuccess: () => { onSaved(); onClose(); },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <h3 className="mb-4 text-base font-semibold text-gray-900">
+          {existing ? 'Chỉnh sửa Flash Sale' : 'Tạo Flash Sale mới'}
+        </h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Bắt đầu</label>
+            <input
+              type="datetime-local"
+              value={startAt}
+              onChange={(e) => setStartAt(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Kết thúc</label>
+            <input
+              type="datetime-local"
+              value={endAt}
+              onChange={(e) => setEndAt(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-gray-700">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+            />
+            Kích hoạt ngay
+          </label>
+        </div>
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button" onClick={onClose}
+            className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={() => mutation.mutate()}
+            disabled={!startAt || !endAt || mutation.isPending}
+            className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {mutation.isPending ? 'Đang lưu...' : existing ? 'Cập nhật' : 'Tạo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── FlashSaleItemsPanel ──────────────────────────────────────────────────────
+
+function FlashSaleItemsPanel({ sale }: { sale: AdminFlashSale }) {
+  const queryClient = useQueryClient();
+  const [productId, setProductId] = useState('');
+  const [discountPercent, setDiscountPercent] = useState(10);
+  const [addError, setAddError] = useState('');
+
+  const addMutation = useMutation({
+    mutationFn: () => adminApi.addFlashSaleItem(sale.id, productId.trim(), discountPercent),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-flash-sales'] });
+      setProductId('');
+      setDiscountPercent(10);
+      setAddError('');
+    },
+    onError: (err: Error) => setAddError(err.message),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (itemId: string) => adminApi.removeFlashSaleItem(sale.id, itemId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-flash-sales'] }),
+  });
+
+  return (
+    <tr className="border-b bg-indigo-50">
+      <td colSpan={6} className="px-6 py-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-indigo-700">
+          Sản phẩm trong Flash Sale
+        </p>
+        {sale.items.length === 0 ? (
+          <p className="mb-3 text-xs text-gray-500">Chưa có sản phẩm nào.</p>
+        ) : (
+          <table className="mb-3 w-full rounded-md overflow-hidden text-xs">
+            <thead className="bg-indigo-100 text-indigo-800">
+              <tr>
+                <th className="px-3 py-1.5 text-left">Sản phẩm</th>
+                <th className="px-3 py-1.5 text-left">Giá gốc</th>
+                <th className="px-3 py-1.5 text-left">Giảm giá</th>
+                <th className="px-3 py-1.5 text-left"></th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {sale.items.map((item: FlashSaleItem) => (
+                <tr key={item.id} className="border-t border-indigo-100">
+                  <td className="px-3 py-1.5 text-gray-900">{item.product.name}</td>
+                  <td className="px-3 py-1.5 text-gray-600">{(item.product.priceVnd / 1000).toFixed(0)}k</td>
+                  <td className="px-3 py-1.5">
+                    <span className="rounded-full bg-orange-100 px-2 py-0.5 font-medium text-orange-800">
+                      -{item.discountPercent}%
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => removeMutation.mutate(item.id)}
+                      disabled={removeMutation.isPending}
+                      className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                    >
+                      Xóa
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Product ID (UUID)</label>
+            <input
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+              placeholder="xxxxxxxx-xxxx-..."
+              className="w-64 rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Giảm giá (%)</label>
+            <input
+              type="number" min={1} max={99} value={discountPercent}
+              onChange={(e) => setDiscountPercent(Number(e.target.value))}
+              className="w-20 rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => addMutation.mutate()}
+            disabled={!productId.trim() || addMutation.isPending}
+            className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {addMutation.isPending ? 'Đang thêm...' : '+ Thêm sản phẩm'}
+          </button>
+        </div>
+        {addError && <p className="mt-1 text-xs text-red-600">{addError}</p>}
+      </td>
+    </tr>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboardPage() {
@@ -935,6 +1195,10 @@ export default function AdminDashboardPage() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [productSearch, setProductSearch] = useState('');
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<string>('');
+  const [showFlashSaleModal, setShowFlashSaleModal] = useState(false);
+  const [editingFlashSale, setEditingFlashSale] = useState<AdminFlashSale | null>(null);
+  const [expandedFlashSaleId, setExpandedFlashSaleId] = useState<string | null>(null);
 
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
@@ -1003,6 +1267,18 @@ export default function AdminDashboardPage() {
     enabled: tab === 'products' || showProductModal,
   });
 
+  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
+    queryKey: ['admin-reviews', reviewStatusFilter],
+    queryFn: () => adminApi.getReviews(reviewStatusFilter || undefined),
+    enabled: tab === 'reviews',
+  });
+
+  const { data: flashSales = [], isLoading: flashSalesLoading } = useQuery({
+    queryKey: ['admin-flash-sales'],
+    queryFn: () => adminApi.getFlashSales(),
+    enabled: tab === 'flashsales',
+  });
+
   const deleteFaqMutation = useMutation({
     mutationFn: (id: string) => adminApi.deleteFaq(id),
     onSuccess: () => {
@@ -1020,6 +1296,14 @@ export default function AdminDashboardPage() {
   const deleteProductMutation = useMutation({
     mutationFn: (id: string) => adminApi.deleteProduct(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
+  });
+
+  const deleteFlashSaleMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteFlashSale(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-flash-sales'] });
+      setExpandedFlashSaleId(null);
+    },
   });
 
   return (
@@ -1593,6 +1877,161 @@ export default function AdminDashboardPage() {
           </div>
         );
       })()}
+
+      {/* Reviews tab */}
+      {tab === 'reviews' && (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
+            <h2 className="mr-auto text-sm font-semibold text-gray-900">
+              {reviewsLoading ? 'Đang tải...' : `${reviews.length} đánh giá`}
+            </h2>
+            {[
+              { label: 'Tất cả', value: '' },
+              { label: 'Chờ duyệt', value: 'PENDING' },
+              { label: 'Đã duyệt', value: 'APPROVED' },
+              { label: 'Từ chối', value: 'REJECTED' },
+            ].map(({ label, value }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setReviewStatusFilter(value)}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                  reviewStatusFilter === value
+                    ? 'bg-indigo-100 text-indigo-700'
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Sản phẩm</th>
+                  <th className="px-4 py-2 text-left">Người dùng</th>
+                  <th className="px-4 py-2 text-left">Sao</th>
+                  <th className="px-4 py-2 text-left">Nội dung</th>
+                  <th className="px-4 py-2 text-left">Trạng thái</th>
+                  <th className="px-4 py-2 text-left">Ngày</th>
+                  <th className="px-4 py-2 text-left">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reviews.map((review) => <ReviewRow key={review.id} review={review} />)}
+              </tbody>
+            </table>
+            {!reviewsLoading && reviews.length === 0 && (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">Không có đánh giá nào.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Flash Sales tab */}
+      {tab === 'flashsales' && (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <h2 className="text-sm font-semibold text-gray-900">
+              {flashSalesLoading ? 'Đang tải...' : `${flashSales.length} Flash Sale`}
+            </h2>
+            <button
+              type="button"
+              onClick={() => { setEditingFlashSale(null); setShowFlashSaleModal(true); }}
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+            >
+              + Tạo Flash Sale
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Bắt đầu</th>
+                  <th className="px-4 py-2 text-left">Kết thúc</th>
+                  <th className="px-4 py-2 text-left">Trạng thái</th>
+                  <th className="px-4 py-2 text-left">Số SP</th>
+                  <th className="px-4 py-2 text-left">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {flashSales.map((sale) => (
+                  <>
+                    <tr key={sale.id} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {new Date(sale.startAt).toLocaleString('vi-VN')}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {new Date(sale.endAt).toLocaleString('vi-VN')}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          sale.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {sale.isActive ? 'Đang bật' : 'Tắt'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{sale.items.length} sản phẩm</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedFlashSaleId((prev) => prev === sale.id ? null : sale.id)
+                            }
+                            className={`rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
+                              expandedFlashSaleId === sale.id
+                                ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            Sản phẩm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setEditingFlashSale(sale); setShowFlashSaleModal(true); }}
+                            className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm('Xóa Flash Sale này?')) {
+                                deleteFlashSaleMutation.mutate(sale.id);
+                              }
+                            }}
+                            disabled={deleteFlashSaleMutation.isPending}
+                            className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {expandedFlashSaleId === sale.id && (
+                      <FlashSaleItemsPanel key={`items-${sale.id}`} sale={sale} />
+                    )}
+                  </>
+                ))}
+              </tbody>
+            </table>
+            {!flashSalesLoading && flashSales.length === 0 && (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có Flash Sale nào.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Flash Sale modal */}
+      {showFlashSaleModal && (
+        <FlashSaleModal
+          existing={editingFlashSale ?? undefined}
+          onClose={() => { setShowFlashSaleModal(false); setEditingFlashSale(null); }}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['admin-flash-sales'] })}
+        />
+      )}
 
       {/* FAQ modal */}
       {showFaqModal && (

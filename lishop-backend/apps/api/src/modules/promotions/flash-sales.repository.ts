@@ -19,6 +19,26 @@ export interface FlashSaleWithItems {
   }[];
 }
 
+const FLASH_SALE_INCLUDE = {
+  items: {
+    include: {
+      product: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          priceVnd: true,
+          images: {
+            where: { isPrimary: true },
+            take: 1,
+            select: { url: true },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
 @Injectable()
 export class FlashSalesRepository {
   async findActive(): Promise<FlashSaleWithItems[]> {
@@ -29,26 +49,69 @@ export class FlashSalesRepository {
         startAt: { lte: now },
         endAt: { gte: now },
       },
-      include: {
+      include: FLASH_SALE_INCLUDE,
+      orderBy: { startAt: 'desc' },
+    });
+  }
+
+  findAll(): Promise<FlashSaleWithItems[]> {
+    return prisma.flashSale.findMany({
+      include: FLASH_SALE_INCLUDE,
+      orderBy: { startAt: 'desc' },
+    });
+  }
+
+  findById(id: string): Promise<FlashSaleWithItems | null> {
+    return prisma.flashSale.findUnique({
+      where: { id },
+      include: FLASH_SALE_INCLUDE,
+    });
+  }
+
+  create(data: { startAt: Date; endAt: Date; isActive?: boolean }): Promise<FlashSaleWithItems> {
+    return prisma.flashSale.create({
+      data: {
+        startAt: data.startAt,
+        endAt: data.endAt,
+        isActive: data.isActive ?? true,
+      },
+      include: FLASH_SALE_INCLUDE,
+    });
+  }
+
+  update(id: string, data: { startAt?: Date; endAt?: Date; isActive?: boolean }): Promise<FlashSaleWithItems> {
+    return prisma.flashSale.update({
+      where: { id },
+      data,
+      include: FLASH_SALE_INCLUDE,
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    await prisma.flashSale.delete({ where: { id } });
+  }
+
+  addItem(saleId: string, productId: string, discountPercent: number): Promise<FlashSaleWithItems> {
+    return prisma.flashSale.update({
+      where: { id: saleId },
+      data: {
         items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-                priceVnd: true,
-                images: {
-                  where: { isPrimary: true },
-                  take: 1,
-                  select: { url: true },
-                },
-              },
-            },
-          },
+          create: { productId, discountPercent },
         },
       },
-      orderBy: { startAt: 'desc' },
+      include: FLASH_SALE_INCLUDE,
+    });
+  }
+
+  removeItem(saleId: string, itemId: string): Promise<FlashSaleWithItems> {
+    return prisma.flashSale.update({
+      where: { id: saleId },
+      data: {
+        items: {
+          delete: { id: itemId },
+        },
+      },
+      include: FLASH_SALE_INCLUDE,
     });
   }
 }

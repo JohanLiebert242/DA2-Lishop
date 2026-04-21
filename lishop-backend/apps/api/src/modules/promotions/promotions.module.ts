@@ -8,6 +8,6 @@ import { PromotionsController } from './promotions.controller';
 @Module({
   providers: [CouponsRepository, CouponsService, FlashSalesRepository, FlashSalesService],
   controllers: [PromotionsController],
-  exports: [CouponsService],
+  exports: [CouponsService, FlashSalesService],
 })
 export class PromotionsModule {}
