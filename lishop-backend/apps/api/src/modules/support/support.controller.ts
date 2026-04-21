@@ -1,0 +1,109 @@
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../auth/decorators/public.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { SupportTicketsService } from './support-tickets.service';
+import { FaqService } from './faq.service';
+import { ChatbotService } from './chatbot.service';
+import { IsString } from 'class-validator';
+import { CreateTicketDto } from './dto/create-ticket.dto';
+import { AddMessageDto } from './dto/add-message.dto';
+
+class ChatRequestDto {
+  @IsString()
+  message!: string;
+}
+
+@ApiTags('support')
+@Controller('support')
+export class SupportController {
+  constructor(
+    private readonly ticketsService: SupportTicketsService,
+    private readonly faqService: FaqService,
+    private readonly chatbotService: ChatbotService,
+  ) {}
+
+  // ---- Ticket routes (auth required) ----
+
+  @Post('tickets')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a support ticket' })
+  createTicket(
+    @CurrentUser('id') userId: string,
+    @Body() dto: CreateTicketDto,
+  ) {
+    return this.ticketsService.createTicket(userId, dto);
+  }
+
+  @Get('tickets')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my support tickets' })
+  getMyTickets(@CurrentUser('id') userId: string) {
+    return this.ticketsService.getMyTickets(userId);
+  }
+
+  @Get('tickets/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get a support ticket with messages' })
+  getMyTicket(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.ticketsService.getMyTicket(userId, id);
+  }
+
+  @Post('tickets/:id/messages')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Add a message to a ticket' })
+  addMessage(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddMessageDto,
+  ) {
+    return this.ticketsService.addCustomerMessage(userId, id, dto);
+  }
+
+  // ---- FAQ routes (public) ----
+
+  @Get('faq')
+  @Public()
+  @ApiOperation({ summary: 'Get published FAQs grouped by category' })
+  getFaq() {
+    return this.faqService.getPublished();
+  }
+
+  @Get('faq/search')
+  @Public()
+  @ApiOperation({ summary: 'Search FAQs' })
+  searchFaq(@Query('q') q: string) {
+    return this.faqService.search(q ?? '');
+  }
+
+  // ---- Chatbot (public) ----
+
+  @Post('chat')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Chat with rule-based bot' })
+  chat(@Body() dto: ChatRequestDto) {
+    return this.chatbotService.reply(dto.message ?? '');
+  }
+}

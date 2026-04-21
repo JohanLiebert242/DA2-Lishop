@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -8,8 +8,16 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@lishop/contracts';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ReturnsService } from '../returns/returns.service';
 import { UpdateReturnStatusDto } from '../returns/dto/update-return-status.dto';
+import { SupportTicketsService } from '../support/support-tickets.service';
+import { FaqService } from '../support/faq.service';
+import { UpdateTicketStatusDto } from '../support/dto/update-ticket-status.dto';
+import { AddMessageDto } from '../support/dto/add-message.dto';
+import { CreateFaqDto } from '../support/dto/create-faq.dto';
+import { UpdateFaqDto } from '../support/dto/update-faq.dto';
+import { TicketStatus } from '@lishop/database';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -20,6 +28,8 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly returnsService: ReturnsService,
+    private readonly ticketsService: SupportTicketsService,
+    private readonly faqService: FaqService,
   ) {}
 
   @Get('stats')
@@ -97,5 +107,64 @@ export class AdminController {
     @Body() dto: UpdateReturnStatusDto,
   ) {
     return this.returnsService.updateReturnStatus(id, dto);
+  }
+
+  // ---- Support tickets ----
+
+  @Get('tickets')
+  @ApiOperation({ summary: 'List all support tickets' })
+  getAllTickets(@Query('status') status?: TicketStatus) {
+    return this.ticketsService.getAllTickets(status);
+  }
+
+  @Patch('tickets/:id/status')
+  @ApiOperation({ summary: 'Update ticket status' })
+  updateTicketStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTicketStatusDto,
+  ) {
+    return this.ticketsService.updateTicketStatus(id, dto);
+  }
+
+  @Post('tickets/:id/messages')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Admin reply to a ticket' })
+  addTicketMessage(
+    @CurrentUser('id') adminId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddMessageDto,
+  ) {
+    return this.ticketsService.addAdminMessage(adminId, id, dto);
+  }
+
+  // ---- FAQ ----
+
+  @Get('faq')
+  @ApiOperation({ summary: 'List all FAQs (including unpublished)' })
+  getAllFaq() {
+    return this.faqService.findAll();
+  }
+
+  @Post('faq')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a FAQ' })
+  createFaq(@Body() dto: CreateFaqDto) {
+    return this.faqService.create(dto);
+  }
+
+  @Patch('faq/:id')
+  @ApiOperation({ summary: 'Update a FAQ' })
+  updateFaq(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateFaqDto,
+  ) {
+    return this.faqService.update(id, dto);
+  }
+
+  @Delete('faq/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a FAQ' })
+  deleteFaq(@Param('id', ParseUUIDPipe) id: string) {
+    return this.faqService.delete(id);
   }
 }

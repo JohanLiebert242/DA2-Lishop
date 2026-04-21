@@ -157,4 +157,64 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify({ status, adminNote }),
     }),
+
+  // Support tickets
+  getTickets: (status?: string) =>
+    apiFetch<AdminTicket[]>(`/admin/tickets${status ? `?status=${status}` : ''}`),
+  updateTicketStatus: (id: string, status: TicketStatus) =>
+    apiFetch<AdminTicket>(`/admin/tickets/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  addTicketMessage: (id: string, content: string) =>
+    apiFetch<{ id: string; content: string; isAdmin: boolean; createdAt: string }>(
+      `/admin/tickets/${id}/messages`,
+      { method: 'POST', body: JSON.stringify({ content }) },
+    ),
+
+  // FAQ
+  getAllFaq: () => apiFetch<FAQ[]>('/admin/faq'),
+  createFaq: (data: {
+    question: string;
+    answer: string;
+    category: string;
+    sortOrder?: number;
+    isPublished?: boolean;
+  }) => apiFetch<FAQ>('/admin/faq', { method: 'POST', body: JSON.stringify(data) }),
+  updateFaq: (id: string, data: Partial<{
+    question: string;
+    answer: string;
+    category: string;
+    sortOrder: number;
+    isPublished: boolean;
+  }>) => apiFetch<FAQ>(`/admin/faq/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteFaq: (id: string) =>
+    apiFetch<void>(`/admin/faq/${id}`, { method: 'DELETE' }),
 };
+
+// ─── Support / FAQ types ──────────────────────────────────────────────────────
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+export type TicketCategory = 'ORDER' | 'PRODUCT' | 'SHIPPING' | 'PAYMENT' | 'RETURN' | 'OTHER';
+
+export interface AdminTicket {
+  id: string;
+  subject: string;
+  category: TicketCategory;
+  status: TicketStatus;
+  orderRef: string | null;
+  createdAt: string;
+  user: { email: string; firstName: string; lastName: string };
+  _count: { messages: number };
+  messages: { content: string; createdAt: string; isAdmin: boolean }[];
+}
+
+export interface FAQ {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+  sortOrder: number;
+  isPublished: boolean;
+  createdAt: string;
+}

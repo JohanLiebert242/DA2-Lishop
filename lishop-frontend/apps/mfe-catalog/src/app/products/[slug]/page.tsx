@@ -10,6 +10,7 @@ import { catalogApi, ReviewInfo } from '../../../lib/catalog-api';
 import { RelatedProducts } from '../../../components/related-products';
 import { addToCart } from '../../../lib/cart-helper';
 import { getWishlist, addToWishlist, removeFromWishlist, isLoggedIn } from '../../../lib/wishlist-api';
+import { ChatWidget } from '../../../components/chat-widget';
 
 function Stars({ rating, interactive = false, onSelect }: { rating: number; interactive?: boolean; onSelect?: (r: number) => void }) {
   return (
@@ -433,6 +434,7 @@ export default function ProductDetailPage({ params }: Props) {
       </div>
       <ReviewsSection productId={product.id} />
       <RelatedProducts slug={slug} />
+      <ChatWidget />
     </div>
   );
 }

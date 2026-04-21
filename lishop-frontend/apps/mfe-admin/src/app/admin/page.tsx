@@ -8,12 +8,12 @@ import {
 import { formatVND } from '@lishop/shared';
 import {
   adminApi, OrderStatus, AdminOrderItem, AdminCoupon, CouponType, CreateCouponInput,
-  ProductStock, AdminReturn,
+  ProductStock, AdminReturn, AdminTicket, TicketStatus, FAQ,
 } from '../../lib/admin-api';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-type Tab = 'orders' | 'users' | 'promotions' | 'analytics' | 'inventory' | 'returns';
+type Tab = 'orders' | 'users' | 'promotions' | 'analytics' | 'inventory' | 'returns' | 'tickets' | 'faq';
 
 const ORDER_STATUSES: OrderStatus[] = [
   'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED',
@@ -50,7 +50,36 @@ const TAB_LABELS: Record<Tab, string> = {
   analytics: 'Phân tích',
   inventory: 'Kho hàng',
   returns: 'Đổi trả',
+  tickets: 'Hỗ trợ',
+  faq: 'FAQ',
 };
+
+const TICKET_STATUS_COLORS: Record<TicketStatus, string> = {
+  OPEN: 'bg-amber-100 text-amber-800',
+  IN_PROGRESS: 'bg-blue-100 text-blue-800',
+  RESOLVED: 'bg-emerald-100 text-emerald-800',
+  CLOSED: 'bg-gray-100 text-gray-700',
+};
+
+const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
+  OPEN: 'Mở',
+  IN_PROGRESS: 'Đang xử lý',
+  RESOLVED: 'Đã giải quyết',
+  CLOSED: 'Đã đóng',
+};
+
+const TICKET_STATUSES: TicketStatus[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+
+const TICKET_CATEGORY_LABELS: Record<string, string> = {
+  ORDER: 'Đơn hàng',
+  PRODUCT: 'Sản phẩm',
+  SHIPPING: 'Vận chuyển',
+  PAYMENT: 'Thanh toán',
+  RETURN: 'Đổi trả',
+  OTHER: 'Khác',
+};
+
+const FAQ_CATEGORIES = ['ORDER', 'PRODUCT', 'SHIPPING', 'PAYMENT', 'RETURN', 'OTHER'];
 
 const RETURN_REASON_LABELS: Record<string, string> = {
   DAMAGED: 'Hàng bị hỏng',
@@ -541,12 +570,230 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
   );
 }
 
+function TicketRow({ ticket }: { ticket: AdminTicket }) {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<TicketStatus>(ticket.status);
+  const [showReply, setShowReply] = useState(false);
+  const [replyText, setReplyText] = useState('');
+
+  const statusMutation = useMutation({
+    mutationFn: (s: TicketStatus) => adminApi.updateTicketStatus(ticket.id, s),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-tickets'] }),
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: () => adminApi.addTicketMessage(ticket.id, replyText),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
+      setShowReply(false);
+      setReplyText('');
+    },
+  });
+
+  const lastMessage = ticket.messages[ticket.messages.length - 1];
+
+  return (
+    <>
+      <tr className="border-b last:border-0 hover:bg-gray-50">
+        <td className="px-4 py-3 font-mono text-xs text-gray-500">{ticket.id.slice(0, 8)}…</td>
+        <td className="px-4 py-3 text-sm text-gray-700">{ticket.user.email}</td>
+        <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">{ticket.subject}</td>
+        <td className="px-4 py-3 text-xs text-gray-500">
+          {TICKET_CATEGORY_LABELS[ticket.category] ?? ticket.category}
+        </td>
+        <td className="px-4 py-3">
+          <select
+            value={status}
+            onChange={(e) => {
+              const s = e.target.value as TicketStatus;
+              setStatus(s);
+              statusMutation.mutate(s);
+            }}
+            disabled={statusMutation.isPending}
+            className={`cursor-pointer rounded-full border-0 px-2 py-1 text-xs font-medium disabled:opacity-50 ${TICKET_STATUS_COLORS[status]}`}
+          >
+            {TICKET_STATUSES.map((s) => (
+              <option key={s} value={s}>{TICKET_STATUS_LABELS[s]}</option>
+            ))}
+          </select>
+        </td>
+        <td className="px-4 py-3 text-xs text-gray-500">
+          {new Date(ticket.createdAt).toLocaleDateString('vi-VN')}
+        </td>
+        <td className="px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setShowReply((v) => !v)}
+            className={`rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
+              showReply
+                ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Phản hồi
+          </button>
+        </td>
+      </tr>
+      {showReply && (
+        <tr className="border-b bg-indigo-50">
+          <td colSpan={7} className="px-4 py-3">
+            {lastMessage && (
+              <div className="mb-3 rounded-md border border-gray-200 bg-white p-3">
+                <p className="mb-1 text-xs font-medium text-gray-500">
+                  Tin nhắn cuối ({lastMessage.isAdmin ? 'Admin' : 'Khách'}
+                  {' · '}{new Date(lastMessage.createdAt).toLocaleDateString('vi-VN')}):
+                </p>
+                <p className="text-sm text-gray-700 line-clamp-3">{lastMessage.content}</p>
+              </div>
+            )}
+            <textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Nhập phản hồi..."
+              rows={3}
+              className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => replyMutation.mutate()}
+                disabled={!replyText.trim() || replyMutation.isPending}
+                className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {replyMutation.isPending ? 'Đang gửi...' : 'Gửi'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowReply(false); setReplyText(''); }}
+                className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+interface FaqModalProps {
+  existing?: FAQ;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+function FaqModal({ existing, onClose, onSaved }: FaqModalProps) {
+  const [question, setQuestion] = useState(existing?.question ?? '');
+  const [answer, setAnswer] = useState(existing?.answer ?? '');
+  const [category, setCategory] = useState(existing?.category ?? 'OTHER');
+  const [sortOrder, setSortOrder] = useState(existing?.sortOrder ?? 0);
+  const [isPublished, setIsPublished] = useState(existing?.isPublished ?? false);
+  const [error, setError] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      existing
+        ? adminApi.updateFaq(existing.id, { question, answer, category, sortOrder, isPublished })
+        : adminApi.createFaq({ question, answer, category, sortOrder, isPublished }),
+    onSuccess: () => { onSaved(); onClose(); },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+        <h3 className="mb-4 text-base font-semibold text-gray-900">
+          {existing ? 'Chỉnh sửa FAQ' : 'Thêm FAQ mới'}
+        </h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Câu hỏi</label>
+            <input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              placeholder="Nhập câu hỏi..."
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Câu trả lời</label>
+            <textarea
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              rows={4}
+              className="w-full resize-none rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              placeholder="Nhập câu trả lời..."
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Danh mục</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              >
+                {FAQ_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{TICKET_CATEGORY_LABELS[c] ?? c}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Thứ tự</label>
+              <input
+                type="number"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(Number(e.target.value))}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div className="flex flex-col justify-end pb-1">
+              <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={isPublished}
+                  onChange={(e) => setIsPublished(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                />
+                Đã đăng
+              </label>
+            </div>
+          </div>
+        </div>
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={() => mutation.mutate()}
+            disabled={!question.trim() || !answer.trim() || mutation.isPending}
+            className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {mutation.isPending ? 'Đang lưu...' : existing ? 'Cập nhật' : 'Tạo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboardPage() {
   const [tab, setTab] = useState<Tab>('orders');
   const [showCreateCoupon, setShowCreateCoupon] = useState(false);
   const [adjustingProductId, setAdjustingProductId] = useState<string | null>(null);
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<string>('');
+  const [showFaqModal, setShowFaqModal] = useState(false);
+  const [editingFaq, setEditingFaq] = useState<FAQ | null>(null);
+  const [deletingFaqId, setDeletingFaqId] = useState<string | null>(null);
 
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
@@ -587,6 +834,34 @@ export default function AdminDashboardPage() {
     queryKey: ['admin-returns'],
     queryFn: () => adminApi.getReturns(),
     enabled: tab === 'returns',
+  });
+
+  const { data: tickets = [], isLoading: ticketsLoading } = useQuery({
+    queryKey: ['admin-tickets', ticketStatusFilter],
+    queryFn: () => adminApi.getTickets(ticketStatusFilter || undefined),
+    enabled: tab === 'tickets',
+  });
+
+  const queryClient = useQueryClient();
+
+  const { data: faqs = [], isLoading: faqsLoading } = useQuery({
+    queryKey: ['admin-faq'],
+    queryFn: () => adminApi.getAllFaq(),
+    enabled: tab === 'faq',
+  });
+
+  const deleteFaqMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteFaq(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-faq'] });
+      setDeletingFaqId(null);
+    },
+  });
+
+  const toggleFaqPublishedMutation = useMutation({
+    mutationFn: ({ id, isPublished }: { id: string; isPublished: boolean }) =>
+      adminApi.updateFaq(id, { isPublished }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-faq'] }),
   });
 
   return (
@@ -893,6 +1168,176 @@ export default function AdminDashboardPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Tickets tab */}
+      {tab === 'tickets' && (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
+            <h2 className="mr-auto text-sm font-semibold text-gray-900">
+              {ticketsLoading ? 'Đang tải...' : `${tickets.length} yêu cầu hỗ trợ`}
+            </h2>
+            {/* Status filter tabs */}
+            {[
+              { label: 'Tất cả', value: '' },
+              { label: 'Mở', value: 'OPEN' },
+              { label: 'Đang xử lý', value: 'IN_PROGRESS' },
+              { label: 'Đã giải quyết', value: 'RESOLVED' },
+              { label: 'Đã đóng', value: 'CLOSED' },
+            ].map(({ label, value }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTicketStatusFilter(value)}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                  ticketStatusFilter === value
+                    ? 'bg-indigo-100 text-indigo-700'
+                    : 'text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">#</th>
+                  <th className="px-4 py-2 text-left">Email khách</th>
+                  <th className="px-4 py-2 text-left">Chủ đề</th>
+                  <th className="px-4 py-2 text-left">Danh mục</th>
+                  <th className="px-4 py-2 text-left">Trạng thái</th>
+                  <th className="px-4 py-2 text-left">Ngày tạo</th>
+                  <th className="px-4 py-2 text-left">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tickets.map((ticket) => (
+                  <TicketRow key={ticket.id} ticket={ticket} />
+                ))}
+              </tbody>
+            </table>
+            {!ticketsLoading && tickets.length === 0 && (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có yêu cầu hỗ trợ.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* FAQ tab */}
+      {tab === 'faq' && (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <h2 className="text-sm font-semibold text-gray-900">
+              {faqsLoading ? 'Đang tải...' : `${faqs.length} FAQ`}
+            </h2>
+            <button
+              type="button"
+              onClick={() => { setEditingFaq(null); setShowFaqModal(true); }}
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+            >
+              + Thêm FAQ
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Câu hỏi</th>
+                  <th className="px-4 py-2 text-left">Danh mục</th>
+                  <th className="px-4 py-2 text-left">Đã đăng</th>
+                  <th className="px-4 py-2 text-left">Thứ tự</th>
+                  <th className="px-4 py-2 text-left">Sửa</th>
+                  <th className="px-4 py-2 text-left">Xóa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {faqs.map((faq) => (
+                  <tr key={faq.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="max-w-xs truncate px-4 py-3 text-sm text-gray-900">
+                      {faq.question}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {TICKET_CATEGORY_LABELS[faq.category] ?? faq.category}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleFaqPublishedMutation.mutate({
+                            id: faq.id,
+                            isPublished: !faq.isPublished,
+                          })
+                        }
+                        disabled={toggleFaqPublishedMutation.isPending}
+                        aria-pressed={faq.isPublished}
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium disabled:opacity-50 ${
+                          faq.isPublished
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
+                        {faq.isPublished ? 'Đang đăng' : 'Ẩn'}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{faq.sortOrder}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => { setEditingFaq(faq); setShowFaqModal(true); }}
+                        className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        Sửa
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      {deletingFaqId === faq.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => deleteFaqMutation.mutate(faq.id)}
+                            disabled={deleteFaqMutation.isPending}
+                            className="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                          >
+                            Xác nhận
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingFaqId(null)}
+                            className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setDeletingFaqId(faq.id)}
+                          className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                        >
+                          Xóa
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!faqsLoading && faqs.length === 0 && (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có FAQ nào.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* FAQ modal */}
+      {showFaqModal && (
+        <FaqModal
+          existing={editingFaq ?? undefined}
+          onClose={() => { setShowFaqModal(false); setEditingFaq(null); }}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['admin-faq'] })}
+        />
       )}
     </div>
   );

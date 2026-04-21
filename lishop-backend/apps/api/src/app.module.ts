@@ -22,6 +22,7 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { ReturnsModule } from './modules/returns/returns.module';
+import { SupportModule } from './modules/support/support.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ReturnsModule } from './modules/returns/returns.module';
     ShippingModule,
     InventoryModule,
     ReturnsModule,
+    SupportModule,
   ],
   controllers: [HealthController],
   providers: [
