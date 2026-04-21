@@ -90,6 +90,41 @@ export interface AdminAnalytics {
   topProducts: TopProduct[];
 }
 
+// Inventory types
+export interface ProductStock {
+  id: string;
+  name: string;
+  slug: string;
+  stock: number;
+  weightGrams: number;
+  isLowStock: boolean;
+  lastMovement: { type: string; delta: number; createdAt: string } | null;
+}
+
+export interface StockMovement {
+  id: string;
+  type: string;
+  delta: number;
+  balanceAfter: number;
+  referenceId: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+// Returns types
+export interface AdminReturn {
+  id: string;
+  orderId: string;
+  status: string;
+  reason: string;
+  description: string | null;
+  adminNote: string | null;
+  createdAt: string;
+  order: { orderNumber: string; totalVnd: number };
+  user: { email: string; firstName: string; lastName: string };
+  items: { id: string; orderItemId: string; quantity: number }[];
+}
+
 export const adminApi = {
   getStats: () => apiFetch<AdminStats>('/admin/stats'),
   listOrders: () => apiFetch<AdminOrderItem[]>('/admin/orders'),
@@ -108,4 +143,18 @@ export const adminApi = {
   toggleCoupon: (id: string) =>
     apiFetch<AdminCoupon>(`/admin/coupons/${id}/toggle`, { method: 'PATCH' }),
   getAnalytics: () => apiFetch<AdminAnalytics>('/admin/analytics'),
+  getInventory: () => apiFetch<ProductStock[]>('/admin/inventory'),
+  adjustStock: (productId: string, delta: number, note?: string) =>
+    apiFetch<{ id: string; name: string; stock: number }>(`/admin/inventory/${productId}/adjust`, {
+      method: 'POST',
+      body: JSON.stringify({ delta, note }),
+    }),
+  getStockMovements: (productId: string) =>
+    apiFetch<StockMovement[]>(`/admin/inventory/${productId}/movements`),
+  getReturns: () => apiFetch<AdminReturn[]>('/admin/returns'),
+  updateReturnStatus: (id: string, status: string, adminNote?: string) =>
+    apiFetch<AdminReturn>(`/admin/returns/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, adminNote }),
+    }),
 };

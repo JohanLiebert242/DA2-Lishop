@@ -19,7 +19,8 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (json.data ?? json) as T;
 }
 
-export interface CartItemInfo {
+export interface CartItem {
+  id?: string;
   productId: string;
   productName: string;
   productSlug: string;
@@ -27,17 +28,18 @@ export interface CartItemInfo {
   quantity: number;
   priceVnd: number;
   stock: number;
+  weightGrams?: number;
 }
 
-export interface CartInfo {
-  items: CartItemInfo[];
+export interface CartDto {
+  items: CartItem[];
   subtotalVnd: number;
+  couponCode: string | null;
   discountVnd: number;
   totalVnd: number;
-  couponCode: string | null;
 }
 
-export interface AddressInfo {
+export interface Address {
   id: string;
   fullName: string;
   phone: string;
@@ -48,6 +50,29 @@ export interface AddressInfo {
   isDefault: boolean;
 }
 
+export interface ShippingOption {
+  provider: 'GHN' | 'GHTK' | 'VIETTEL_POST';
+  name: string;
+  feeVnd: number;
+  estimatedDays: string;
+}
+
+export interface PlaceOrderInput {
+  addressId: string;
+  paymentMethod: string;
+  shippingProvider: string;
+  notes?: string;
+}
+
+export interface PlaceOrderResult {
+  id: string;
+  orderNumber: string;
+}
+
+// Legacy types for backwards compatibility
+export type CartItemInfo = CartItem;
+export type CartInfo = CartDto;
+export type AddressInfo = Address;
 export interface CreateAddressInput {
   fullName: string;
   phone: string;
@@ -57,31 +82,40 @@ export interface CreateAddressInput {
   country?: string;
 }
 
-export interface OrderResult {
-  id: string;
-  orderNumber: string;
-  status: string;
-  subtotalVnd: number;
-  shippingFeeVnd: number;
-  discountVnd: number;
-  totalVnd: number;
-  createdAt: string;
+export async function getCart(): Promise<CartDto> {
+  return apiFetch<CartDto>('/cart');
 }
 
+export async function getAddresses(): Promise<Address[]> {
+  return apiFetch<Address[]>('/addresses');
+}
+
+export async function createAddress(data: CreateAddressInput): Promise<Address> {
+  return apiFetch<Address>('/addresses', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getShippingRates(cityName: string, weightGrams: number): Promise<ShippingOption[]> {
+  const params = new URLSearchParams({ cityName, weightGrams: String(weightGrams) });
+  return apiFetch<ShippingOption[]>(`/shipping/rates?${params.toString()}`);
+}
+
+export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
+  return apiFetch<PlaceOrderResult>('/orders', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+// Legacy checkoutApi object for backwards compatibility
 export const checkoutApi = {
-  getCart: () => apiFetch<CartInfo>('/cart'),
-
-  getAddresses: () => apiFetch<AddressInfo[]>('/addresses'),
-
-  createAddress: (data: CreateAddressInput) =>
-    apiFetch<AddressInfo>('/addresses', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
+  getCart,
+  getAddresses,
+  createAddress,
   placeOrder: (addressId: string, paymentMethod = 'COD', notes?: string) =>
-    apiFetch<OrderResult>('/orders', {
-      method: 'POST',
-      body: JSON.stringify({ addressId, paymentMethod, notes }),
-    }),
+    placeOrder({ addressId, paymentMethod, shippingProvider: 'GHN', notes }),
 };
+
+export { getToken };

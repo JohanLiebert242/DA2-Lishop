@@ -1,10 +1,19 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { formatVND } from '@lishop/shared';
-import { ordersApi, OrderStatus } from '../../../lib/orders-api';
+import {
+  ordersApi,
+  OrderStatus,
+  getTracking,
+  getMyReturn,
+  createReturn,
+  ReturnReason,
+  ReturnStatus,
+  CreateReturnInput,
+} from '../../../lib/orders-api';
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: 'Chờ xác nhận',
@@ -33,6 +42,51 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 
 const TIMELINE_STEPS: OrderStatus[] = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
+
+const PROVIDER_LABELS: Record<string, string> = {
+  GHN: 'Giao Hàng Nhanh',
+  GHTK: 'Giao Hàng Tiết Kiệm',
+  VIETTEL_POST: 'Viettel Post',
+};
+
+const SHIPMENT_EVENT_LABELS: Record<string, string> = {
+  CREATED: 'Đã tạo đơn',
+  PICKED_UP: 'Đã lấy hàng',
+  IN_TRANSIT: 'Đang vận chuyển',
+  ARRIVED: 'Đã đến bưu cục',
+  DELIVERED: 'Đã giao hàng',
+  FAILED: 'Giao thất bại',
+};
+
+const RETURN_REASON_LABELS: Record<ReturnReason, string> = {
+  DAMAGED: 'Hàng bị hỏng',
+  WRONG_ITEM: 'Sai sản phẩm',
+  NOT_AS_DESCRIBED: 'Không đúng mô tả',
+  CHANGED_MIND: 'Đổi ý',
+  OTHER: 'Khác',
+};
+
+const RETURN_STATUS_COLORS: Record<ReturnStatus, string> = {
+  PENDING: 'bg-amber-100 text-amber-800',
+  APPROVED: 'bg-blue-100 text-blue-800',
+  REJECTED: 'bg-red-100 text-red-800',
+  RECEIVED: 'bg-violet-100 text-violet-800',
+  COMPLETED: 'bg-emerald-100 text-emerald-800',
+};
+
+const RETURN_STATUS_LABELS: Record<ReturnStatus, string> = {
+  PENDING: 'Chờ xử lý',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Từ chối',
+  RECEIVED: 'Đã nhận hàng',
+  COMPLETED: 'Hoàn tất',
+};
+
+function getEventDotColor(status: string): string {
+  if (status === 'DELIVERED') return 'bg-emerald-500';
+  if (status === 'FAILED') return 'bg-red-500';
+  return 'bg-indigo-500';
+}
 
 function StatusTimeline({ status }: { status: OrderStatus }) {
   const isCancelled = status === 'CANCELLED' || status === 'REFUNDED';
@@ -90,12 +144,32 @@ export default function OrderDetailPage({ params }: Props) {
   const { id } = use(params);
   const queryClient = useQueryClient();
 
+  // State — all declared unconditionally at top
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnReason, setReturnReason] = useState<ReturnReason>('DAMAGED');
+  const [returnDescription, setReturnDescription] = useState('');
+  const [returnItemQtys, setReturnItemQtys] = useState<Record<string, number>>({});
+
+  // Queries — all declared unconditionally at top
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', id],
     queryFn: () => ordersApi.getOrder(id),
     retry: false,
   });
 
+  const { data: trackingData } = useQuery({
+    queryKey: ['tracking', id],
+    queryFn: () => getTracking(id),
+    retry: false,
+  });
+
+  const { data: myReturn } = useQuery({
+    queryKey: ['my-return', id],
+    queryFn: () => getMyReturn(id),
+    retry: false,
+  });
+
+  // Mutations — all declared unconditionally at top
   const cancelMutation = useMutation({
     mutationFn: () => ordersApi.cancelOrder(id),
     onSuccess: (updated) => {
@@ -104,7 +178,35 @@ export default function OrderDetailPage({ params }: Props) {
     },
   });
 
+  const returnMutation = useMutation({
+    mutationFn: (input: CreateReturnInput) => createReturn(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-return', id] });
+      setShowReturnModal(false);
+      setReturnDescription('');
+      setReturnItemQtys({});
+    },
+  });
+
   const isCancellable = order?.status === 'PENDING' || order?.status === 'PROCESSING';
+  const shipment = trackingData?.shipment ?? null;
+
+  function handleReturnSubmit() {
+    if (!order) return;
+    const items = order.items
+      .map((item) => ({
+        orderItemId: item.id,
+        quantity: returnItemQtys[item.id] ?? 0,
+      }))
+      .filter((item) => item.quantity > 0);
+
+    returnMutation.mutate({
+      orderId: id,
+      reason: returnReason,
+      description: returnDescription || undefined,
+      items,
+    });
+  }
 
   if (isLoading) {
     return <div className="mx-auto max-w-3xl px-4 py-16 text-center text-gray-400">Đang tải...</div>;
@@ -241,7 +343,208 @@ export default function OrderDetailPage({ params }: Props) {
             <p className="text-sm text-gray-600">{order.notes}</p>
           </div>
         )}
+
+        {/* Shipment tracking */}
+        {shipment && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-gray-900">Thông tin vận chuyển</h2>
+            <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3 text-sm">
+              <div>
+                <p className="text-xs text-gray-500">Đơn vị vận chuyển</p>
+                <p className="font-medium text-gray-900">
+                  {PROVIDER_LABELS[shipment.provider] ?? shipment.provider}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Mã vận đơn</p>
+                <p className="font-medium text-gray-900">
+                  {shipment.trackingNumber ?? 'Chưa có mã vận đơn'}
+                </p>
+              </div>
+              {shipment.estimatedAt && (
+                <div>
+                  <p className="text-xs text-gray-500">Dự kiến giao</p>
+                  <p className="font-medium text-gray-900">
+                    {new Date(shipment.estimatedAt).toLocaleDateString('vi-VN')}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {shipment.events.length > 0 && (
+              <div className="mt-3 border-t pt-3">
+                <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Lịch sử vận chuyển</p>
+                <div className="space-y-3">
+                  {[...shipment.events].reverse().map((event) => (
+                    <div key={event.id} className="flex gap-3">
+                      <div className="mt-1 flex-shrink-0">
+                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${getEventDotColor(event.status)}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium text-gray-900">
+                            {SHIPMENT_EVENT_LABELS[event.status] ?? event.status}
+                          </p>
+                          <p className="flex-shrink-0 text-xs text-gray-400">
+                            {new Date(event.createdAt).toLocaleString('vi-VN')}
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-600">{event.description}</p>
+                        {event.location && (
+                          <p className="text-xs text-gray-400">{event.location}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Return request section */}
+        {order.status === 'DELIVERED' && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-gray-900">Đổi trả hàng</h2>
+
+            {myReturn ? (
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${RETURN_STATUS_COLORS[myReturn.status]}`}>
+                    {RETURN_STATUS_LABELS[myReturn.status]}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {RETURN_REASON_LABELS[myReturn.reason]}
+                  </span>
+                </div>
+                {myReturn.description && (
+                  <p className="text-sm text-gray-600 mb-2">{myReturn.description}</p>
+                )}
+                {myReturn.adminNote && (
+                  <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                    <span className="font-medium">Ghi chú từ admin: </span>
+                    {myReturn.adminNote}
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-gray-400">
+                  Yêu cầu tạo lúc {new Date(myReturn.createdAt).toLocaleString('vi-VN')}
+                </p>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowReturnModal(true)}
+                className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+              >
+                Yêu cầu đổi trả
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Return modal */}
+      {showReturnModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-base font-semibold text-gray-900">Yêu cầu đổi trả hàng</h3>
+
+            <div className="space-y-4">
+              {/* Reason */}
+              <div>
+                <label htmlFor="return-reason" className="block text-xs font-medium text-gray-700 mb-1">
+                  Lý do <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="return-reason"
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value as ReturnReason)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                >
+                  {(Object.keys(RETURN_REASON_LABELS) as ReturnReason[]).map((r) => (
+                    <option key={r} value={r}>{RETURN_REASON_LABELS[r]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label htmlFor="return-description" className="block text-xs font-medium text-gray-700 mb-1">
+                  Mô tả thêm (không bắt buộc)
+                </label>
+                <textarea
+                  id="return-description"
+                  value={returnDescription}
+                  onChange={(e) => setReturnDescription(e.target.value)}
+                  maxLength={500}
+                  rows={3}
+                  placeholder="Mô tả chi tiết vấn đề..."
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none resize-none"
+                />
+                <p className="mt-1 text-right text-xs text-gray-400">{returnDescription.length}/500</p>
+              </div>
+
+              {/* Item quantities */}
+              <div>
+                <p className="text-xs font-medium text-gray-700 mb-2">Sản phẩm cần đổi trả</p>
+                <div className="space-y-2">
+                  {order.items.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-sm text-gray-900">{item.productName}</p>
+                        <p className="text-xs text-gray-500">Đã mua: {item.quantity}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label htmlFor={`return-qty-${item.id}`} className="text-xs text-gray-500">
+                          Số lượng trả:
+                        </label>
+                        <input
+                          id={`return-qty-${item.id}`}
+                          type="number"
+                          min={0}
+                          max={item.quantity}
+                          value={returnItemQtys[item.id] ?? 0}
+                          onChange={(e) =>
+                            setReturnItemQtys((prev) => ({
+                              ...prev,
+                              [item.id]: Math.min(Number(e.target.value), item.quantity),
+                            }))
+                          }
+                          className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm text-center focus:border-indigo-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {returnMutation.isError && (
+              <p className="mt-3 text-sm text-red-600">
+                {returnMutation.error instanceof Error ? returnMutation.error.message : 'Gửi yêu cầu thất bại'}
+              </p>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowReturnModal(false)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleReturnSubmit}
+                disabled={returnMutation.isPending}
+                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {returnMutation.isPending ? 'Đang gửi...' : 'Gửi yêu cầu'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

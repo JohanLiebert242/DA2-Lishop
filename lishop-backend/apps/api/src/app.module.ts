@@ -19,6 +19,9 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
+import { ShippingModule } from './modules/shipping/shipping.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { ReturnsModule } from './modules/returns/returns.module';
 
 @Module({
   imports: [
@@ -36,6 +39,9 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
     AdminModule,
     NotificationsModule,
     WishlistModule,
+    ShippingModule,
+    InventoryModule,
+    ReturnsModule,
   ],
   controllers: [HealthController],
   providers: [

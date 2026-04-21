@@ -94,8 +94,8 @@ export class AdminRepository {
     }));
   }
 
-  findOrderById(id: string): Promise<{ id: string; status: OrderStatus } | null> {
-    return prisma.order.findUnique({ where: { id }, select: { id: true, status: true } });
+  findOrderById(id: string): Promise<{ id: string; status: OrderStatus; userId: string; orderNumber: string } | null> {
+    return prisma.order.findUnique({ where: { id }, select: { id: true, status: true, userId: true, orderNumber: true } });
   }
 
   async updateOrderStatus(id: string, status: OrderStatus): Promise<AdminOrderItem> {

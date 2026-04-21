@@ -12,6 +12,7 @@ export interface CartRow {
     priceVnd: number;
     priceUsd: number;
     stock: number;
+    weightGrams: number;
     images: { url: string }[];
   };
 }
@@ -35,6 +36,7 @@ export class CartRepository {
             priceVnd: true,
             priceUsd: true,
             stock: true,
+            weightGrams: true,
             images: {
               where: { isPrimary: true },
               take: 1,

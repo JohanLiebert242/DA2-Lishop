@@ -62,9 +62,70 @@ export interface OrderSummary {
   payment: OrderPaymentInfo | null;
 }
 
+// Shipment tracking types
+export interface ShipmentEvent {
+  id: string;
+  status: string;
+  location: string | null;
+  description: string;
+  createdAt: string;
+}
+
+export interface ShipmentInfo {
+  id: string;
+  provider: string;
+  trackingNumber: string | null;
+  estimatedAt: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  events: ShipmentEvent[];
+}
+
+export interface TrackingResponse {
+  shipment: ShipmentInfo | null;
+}
+
+// Return request types
+export type ReturnReason = 'DAMAGED' | 'WRONG_ITEM' | 'NOT_AS_DESCRIBED' | 'CHANGED_MIND' | 'OTHER';
+export type ReturnStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'COMPLETED';
+
+export interface CreateReturnInput {
+  orderId: string;
+  reason: ReturnReason;
+  description?: string;
+  items: { orderItemId: string; quantity: number }[];
+}
+
+export interface ReturnRequest {
+  id: string;
+  orderId: string;
+  status: ReturnStatus;
+  reason: ReturnReason;
+  description: string | null;
+  adminNote: string | null;
+  createdAt: string;
+  items: { id: string; orderItemId: string; quantity: number }[];
+}
+
 export const ordersApi = {
   getOrders: () => apiFetch<OrderSummary[]>('/orders'),
   getOrder: (id: string) => apiFetch<OrderSummary>(`/orders/${id}`),
   cancelOrder: (id: string) =>
     apiFetch<OrderSummary>(`/orders/${id}/cancel`, { method: 'PATCH' }),
 };
+
+export async function getTracking(orderId: string): Promise<TrackingResponse> {
+  return apiFetch<TrackingResponse>(`/orders/${orderId}/tracking`);
+}
+
+export async function createReturn(input: CreateReturnInput): Promise<ReturnRequest> {
+  return apiFetch<ReturnRequest>('/returns', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function getMyReturn(orderId: string): Promise<ReturnRequest | null> {
+  const returns = await apiFetch<ReturnRequest[]>('/returns');
+  return returns.find((r) => r.orderId === orderId) ?? null;
+}

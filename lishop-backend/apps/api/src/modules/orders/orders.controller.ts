@@ -34,6 +34,15 @@ export class OrdersController {
     return this.ordersService.findMyOrder(userId, id);
   }
 
+  @Get(':id/tracking')
+  @ApiOperation({ summary: 'Get shipment tracking info for an order' })
+  async getTracking(
+    @CurrentUser('id') userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.ordersService.getTracking(userId, id);
+  }
+
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancel an order (PENDING or PROCESSING only)' })
   async cancelOrder(

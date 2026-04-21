@@ -1,15 +1,27 @@
 import { Test } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { OrdersRepository } from './orders.repository';
 import { AddressesRepository } from '../addresses/addresses.repository';
 import { CartService } from '../cart/cart.service';
 import { NotificationsRepository } from '../notifications/notifications.repository';
-import { PaymentMethod, OrderStatus } from '@lishop/database';
+import { ShippingService } from '../shipping/shipping.service';
+import { PaymentMethod, OrderStatus, ShippingProvider } from '@lishop/database';
 
 const mockCart = {
   items: [
-    { productId: 'p1', productName: 'iPhone 15', quantity: 2, priceVnd: 20000000, priceUsd: 800, stock: 5, productSlug: 'iphone-15', id: 'ci1', imageUrl: null },
+    {
+      productId: 'p1',
+      productName: 'iPhone 15',
+      quantity: 2,
+      priceVnd: 20000000,
+      priceUsd: 800,
+      stock: 5,
+      weightGrams: 500,
+      productSlug: 'iphone-15',
+      id: 'ci1',
+      imageUrl: null,
+    },
   ],
   subtotalVnd: 40000000,
   subtotalUsd: 1600,
@@ -35,6 +47,7 @@ const mockOrder = {
   id: 'order1',
   orderNumber: 'LS-123456',
   status: OrderStatus.PENDING,
+  shippingProvider: ShippingProvider.GHN,
   subtotalVnd: 40000000,
   shippingFeeVnd: 30000,
   discountVnd: 0,
@@ -45,6 +58,12 @@ const mockOrder = {
   items: [],
   address: { fullName: 'A', phone: '09', street: 'B', district: 'C', city: 'D', country: 'VN' },
   payment: { id: 'pay1', method: 'COD', amountVnd: 40030000, status: 'PENDING' },
+};
+
+const defaultDto = {
+  addressId: 'addr1',
+  paymentMethod: PaymentMethod.COD,
+  shippingProvider: ShippingProvider.GHN,
 };
 
 describe('OrdersService', () => {
@@ -58,6 +77,7 @@ describe('OrdersService', () => {
   const addressRepo = { findById: jest.fn() };
   const cartService = { getCart: jest.fn(), clearCart: jest.fn() };
   const notifRepo = { createNotification: jest.fn() };
+  const shippingService = { calculateFee: jest.fn().mockReturnValue(30000) };
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -67,6 +87,7 @@ describe('OrdersService', () => {
         { provide: AddressesRepository, useValue: addressRepo },
         { provide: CartService, useValue: cartService },
         { provide: NotificationsRepository, useValue: notifRepo },
+        { provide: ShippingService, useValue: shippingService },
       ],
     }).compile();
     service = module.get(OrdersService);
@@ -76,29 +97,38 @@ describe('OrdersService', () => {
 
   it('placeOrder throws BadRequestException when cart is empty', async () => {
     cartService.getCart.mockResolvedValue({ ...mockCart, items: [], subtotalVnd: 0, totalVnd: 0 });
-    await expect(service.placeOrder('u1', { addressId: 'addr1', paymentMethod: PaymentMethod.COD })).rejects.toThrow(BadRequestException);
+    await expect(service.placeOrder('u1', defaultDto)).rejects.toThrow(BadRequestException);
+  });
+
+  it('placeOrder throws ConflictException when stock is insufficient', async () => {
+    cartService.getCart.mockResolvedValue({
+      ...mockCart,
+      items: [{ ...mockCart.items[0], stock: 1, quantity: 3 }],
+    });
+    await expect(service.placeOrder('u1', defaultDto)).rejects.toThrow(ConflictException);
   });
 
   it('placeOrder throws NotFoundException when address not found', async () => {
     cartService.getCart.mockResolvedValue(mockCart);
     addressRepo.findById.mockResolvedValue(null);
-    await expect(service.placeOrder('u1', { addressId: 'addr99', paymentMethod: PaymentMethod.COD })).rejects.toThrow(NotFoundException);
+    await expect(service.placeOrder('u1', { ...defaultDto, addressId: 'addr99' })).rejects.toThrow(NotFoundException);
   });
 
   it('placeOrder throws NotFoundException when address belongs to another user', async () => {
     cartService.getCart.mockResolvedValue(mockCart);
     addressRepo.findById.mockResolvedValue({ ...mockAddress, userId: 'u2' });
-    await expect(service.placeOrder('u1', { addressId: 'addr1', paymentMethod: PaymentMethod.COD })).rejects.toThrow(NotFoundException);
+    await expect(service.placeOrder('u1', defaultDto)).rejects.toThrow(NotFoundException);
   });
 
   it('placeOrder creates order, clears cart, and creates notification', async () => {
     cartService.getCart.mockResolvedValue(mockCart);
     addressRepo.findById.mockResolvedValue(mockAddress);
+    shippingService.calculateFee.mockReturnValue(30000);
     repo.create.mockResolvedValue(mockOrder);
     cartService.clearCart.mockResolvedValue(undefined);
     notifRepo.createNotification.mockResolvedValue({});
 
-    const result = await service.placeOrder('u1', { addressId: 'addr1', paymentMethod: PaymentMethod.COD });
+    const result = await service.placeOrder('u1', defaultDto);
 
     expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'u1',
@@ -106,6 +136,7 @@ describe('OrdersService', () => {
       subtotalVnd: 40000000,
       shippingFeeVnd: 30000,
       discountVnd: 0,
+      shippingProvider: ShippingProvider.GHN,
     }));
     expect(cartService.clearCart).toHaveBeenCalledWith('u1');
     expect(notifRepo.createNotification).toHaveBeenCalledWith(

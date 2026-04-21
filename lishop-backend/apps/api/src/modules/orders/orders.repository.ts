@@ -1,5 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { prisma, OrderStatus, PaymentMethod, PaymentStatus } from '@lishop/database';
+import {
+  prisma,
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  ShippingProvider,
+  StockMovementType,
+} from '@lishop/database';
+
+export interface ShipmentWithEvents {
+  id: string;
+  provider: string;
+  trackingNumber: string | null;
+  estimatedAt: Date | null;
+  shippedAt: Date | null;
+  deliveredAt: Date | null;
+  events: { id: string; status: string; location: string | null; description: string; createdAt: Date }[];
+}
 
 export interface OrderItemInput {
   productId: string;
@@ -12,6 +29,7 @@ export interface OrderItemInput {
 export interface CreateOrderInput {
   userId: string;
   addressId: string;
+  shippingProvider: ShippingProvider;
   subtotalVnd: number;
   shippingFeeVnd: number;
   discountVnd: number;
@@ -25,6 +43,7 @@ export interface OrderWithDetails {
   id: string;
   orderNumber: string;
   status: OrderStatus;
+  shippingProvider: ShippingProvider;
   subtotalVnd: number;
   shippingFeeVnd: number;
   discountVnd: number;
@@ -73,17 +92,39 @@ const ORDER_INCLUDE = {
   },
 };
 
+const ESTIMATED_DAYS: Record<ShippingProvider, number> = {
+  GHN: 2,
+  GHTK: 3,
+  VIETTEL_POST: 4,
+};
+
 @Injectable()
 export class OrdersRepository {
   async create(input: CreateOrderInput): Promise<OrderWithDetails> {
     const orderNumber = `LS-${Date.now()}`;
+    const estimatedAt = new Date();
+    estimatedAt.setDate(estimatedAt.getDate() + ESTIMATED_DAYS[input.shippingProvider]);
+
     return prisma.$transaction(async (tx) => {
+      // Decrement stock atomically; throws P2025 if any item has insufficient stock
+      const stockUpdates = await Promise.all(
+        input.items.map((item) =>
+          tx.product.update({
+            where: { id: item.productId, stock: { gte: item.quantity } },
+            data: { stock: { decrement: item.quantity } },
+            select: { id: true, stock: true },
+          }),
+        ),
+      );
+
+      // Create order
       const order = await tx.order.create({
         data: {
           orderNumber,
           userId: input.userId,
           addressId: input.addressId,
           status: OrderStatus.PENDING,
+          shippingProvider: input.shippingProvider,
           subtotalVnd: input.subtotalVnd,
           shippingFeeVnd: input.shippingFeeVnd,
           discountVnd: input.discountVnd,
@@ -101,6 +142,23 @@ export class OrdersRepository {
         },
         include: ORDER_INCLUDE,
       });
+
+      // Log stock movements
+      await tx.stockMovement.createMany({
+        data: input.items.map((item) => {
+          const updated = stockUpdates.find((s) => s.id === item.productId)!;
+          return {
+            productId: item.productId,
+            type: StockMovementType.ORDER_PLACED,
+            delta: -item.quantity,
+            balanceAfter: updated.stock,
+            referenceId: order.id,
+            note: `Đơn hàng #${orderNumber}`,
+          };
+        }),
+      });
+
+      // Create payment
       await tx.payment.create({
         data: {
           orderId: order.id,
@@ -109,7 +167,24 @@ export class OrdersRepository {
           status: PaymentStatus.PENDING,
         },
       });
-      return prisma.order.findUniqueOrThrow({
+
+      // Create shipment + initial event
+      const shipment = await tx.shipment.create({
+        data: {
+          orderId: order.id,
+          provider: input.shippingProvider,
+          estimatedAt,
+        },
+      });
+      await tx.shipmentEvent.create({
+        data: {
+          shipmentId: shipment.id,
+          status: 'CREATED',
+          description: 'Đơn hàng đã được tạo và chờ xác nhận',
+        },
+      });
+
+      return tx.order.findUniqueOrThrow({
         where: { id: order.id },
         include: ORDER_INCLUDE,
       }) as Promise<OrderWithDetails>;
@@ -124,6 +199,21 @@ export class OrdersRepository {
     }) as Promise<OrderWithDetails[]>;
   }
 
+  async findShipmentByOrderId(orderId: string, userId: string): Promise<ShipmentWithEvents | null> {
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, userId },
+      select: {
+        shipment: {
+          include: {
+            events: { orderBy: { createdAt: 'desc' } },
+          },
+        },
+      },
+    });
+    if (!order) return null;
+    return order.shipment as ShipmentWithEvents | null;
+  }
+
   findByIdAndUserId(id: string, userId: string): Promise<OrderWithDetails | null> {
     return prisma.order.findFirst({
       where: { id, userId },
@@ -131,11 +221,40 @@ export class OrdersRepository {
     }) as Promise<OrderWithDetails | null>;
   }
 
-  cancelOrder(id: string): Promise<OrderWithDetails> {
-    return prisma.order.update({
-      where: { id },
-      data: { status: OrderStatus.CANCELLED },
-      include: ORDER_INCLUDE,
-    }) as Promise<OrderWithDetails>;
+  async cancelOrder(id: string): Promise<OrderWithDetails> {
+    return prisma.$transaction(async (tx) => {
+      const items = await tx.orderItem.findMany({ where: { orderId: id } });
+
+      // Restore stock
+      const stockUpdates = await Promise.all(
+        items.map((item) =>
+          tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+            select: { id: true, stock: true },
+          }),
+        ),
+      );
+
+      await tx.stockMovement.createMany({
+        data: items.map((item) => {
+          const updated = stockUpdates.find((s) => s.id === item.productId)!;
+          return {
+            productId: item.productId,
+            type: StockMovementType.ORDER_CANCELLED,
+            delta: item.quantity,
+            balanceAfter: updated.stock,
+            referenceId: id,
+            note: 'Đơn hàng bị hủy — hoàn kho',
+          };
+        }),
+      });
+
+      return tx.order.update({
+        where: { id },
+        data: { status: OrderStatus.CANCELLED },
+        include: ORDER_INCLUDE,
+      }) as Promise<OrderWithDetails>;
+    });
   }
 }

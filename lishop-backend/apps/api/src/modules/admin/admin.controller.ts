@@ -3,10 +3,13 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { CreateCouponDto } from './dto/create-coupon.dto';
+import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@lishop/contracts';
+import { ReturnsService } from '../returns/returns.service';
+import { UpdateReturnStatusDto } from '../returns/dto/update-return-status.dto';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -14,7 +17,10 @@ import { UserRole } from '@lishop/contracts';
 @Roles(UserRole.ADMIN)
 @ApiBearerAuth()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly returnsService: ReturnsService,
+  ) {}
 
   @Get('stats')
   @ApiOperation({ summary: 'Get platform statistics' })
@@ -35,6 +41,16 @@ export class AdminController {
     @Body() dto: UpdateOrderStatusDto,
   ) {
     return this.adminService.updateOrderStatus(id, dto.status);
+  }
+
+  @Post('orders/:id/tracking')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add a tracking event to an order shipment' })
+  addTrackingEvent(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddTrackingEventDto,
+  ) {
+    return this.adminService.addTrackingEvent(id, dto);
   }
 
   @Get('users')
@@ -66,5 +82,20 @@ export class AdminController {
   @ApiOperation({ summary: 'Get revenue and top products analytics' })
   getAnalytics() {
     return this.adminService.getAnalytics();
+  }
+
+  @Get('returns')
+  @ApiOperation({ summary: 'List all return requests' })
+  getAllReturns() {
+    return this.returnsService.getAllReturns();
+  }
+
+  @Patch('returns/:id/status')
+  @ApiOperation({ summary: 'Update return request status' })
+  updateReturnStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateReturnStatusDto,
+  ) {
+    return this.returnsService.updateReturnStatus(id, dto);
   }
 }
