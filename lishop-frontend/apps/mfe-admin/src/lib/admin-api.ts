@@ -190,6 +190,18 @@ export const adminApi = {
   }>) => apiFetch<FAQ>(`/admin/faq/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteFaq: (id: string) =>
     apiFetch<void>(`/admin/faq/${id}`, { method: 'DELETE' }),
+
+  // Products
+  listProducts: () =>
+    apiFetch<{ items: AdminProduct[]; nextCursor: string | null }>('/products?limit=100'),
+  createProduct: (data: CreateProductInput) =>
+    apiFetch<AdminProduct>('/products', { method: 'POST', body: JSON.stringify(data) }),
+  updateProduct: (id: string, data: Partial<CreateProductInput>) =>
+    apiFetch<AdminProduct>(`/products/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteProduct: (id: string) =>
+    apiFetch<void>(`/products/${id}`, { method: 'DELETE' }),
+  listCategories: () =>
+    apiFetch<AdminCategory[]>('/categories'),
 };
 
 // ─── Support / FAQ types ──────────────────────────────────────────────────────
@@ -217,4 +229,42 @@ export interface FAQ {
   sortOrder: number;
   isPublished: boolean;
   createdAt: string;
+}
+
+// ─── Products ─────────────────────────────────────────────────────────────────
+
+export interface AdminProduct {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  priceVnd: number;
+  priceUsd: number;
+  stock: number;
+  weightGrams: number;
+  averageRating: number;
+  reviewCount: number;
+  categoryId: string;
+  category: { id: string; name: string; slug: string };
+  images: { id: string; url: string; alt: string | null; isPrimary: boolean }[];
+  createdAt: string;
+}
+
+export interface AdminCategory {
+  id: string;
+  name: string;
+  slug: string;
+  parentId: string | null;
+}
+
+export interface CreateProductInput {
+  name: string;
+  description: string;
+  priceVnd: number;
+  priceUsd: number;
+  stock: number;
+  weightGrams?: number;
+  categoryId: string;
+  images?: { url: string; alt?: string; isPrimary?: boolean }[];
+  tags?: string[];
 }

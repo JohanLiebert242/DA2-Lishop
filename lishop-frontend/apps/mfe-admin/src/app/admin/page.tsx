@@ -9,11 +9,12 @@ import { formatVND } from '@lishop/shared';
 import {
   adminApi, OrderStatus, AdminOrderItem, AdminCoupon, CouponType, CreateCouponInput,
   ProductStock, AdminReturn, AdminTicket, TicketStatus, FAQ,
+  AdminProduct, AdminCategory, CreateProductInput,
 } from '../../lib/admin-api';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-type Tab = 'orders' | 'users' | 'promotions' | 'analytics' | 'inventory' | 'returns' | 'tickets' | 'faq';
+type Tab = 'orders' | 'users' | 'promotions' | 'analytics' | 'inventory' | 'returns' | 'tickets' | 'faq' | 'products';
 
 const ORDER_STATUSES: OrderStatus[] = [
   'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED',
@@ -46,6 +47,7 @@ const COUPON_TYPE_LABELS: Record<CouponType, string> = {
 const TAB_LABELS: Record<Tab, string> = {
   orders: 'Đơn hàng',
   users: 'Người dùng',
+  products: 'Sản phẩm',
   promotions: 'Khuyến mãi',
   analytics: 'Phân tích',
   inventory: 'Kho hàng',
@@ -784,6 +786,142 @@ function FaqModal({ existing, onClose, onSaved }: FaqModalProps) {
   );
 }
 
+interface ProductModalProps {
+  existing?: AdminProduct;
+  categories: AdminCategory[];
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+function ProductModal({ existing, categories, onClose, onSaved }: ProductModalProps) {
+  const [name, setName] = useState(existing?.name ?? '');
+  const [description, setDescription] = useState(existing?.description ?? '');
+  const [priceVnd, setPriceVnd] = useState(existing?.priceVnd ?? 0);
+  const [priceUsd, setPriceUsd] = useState(existing?.priceUsd ?? 0);
+  const [stock, setStock] = useState(existing?.stock ?? 0);
+  const [weightGrams, setWeightGrams] = useState(existing?.weightGrams ?? 500);
+  const [categoryId, setCategoryId] = useState(existing?.categoryId ?? (categories[0]?.id ?? ''));
+  const [imageUrl, setImageUrl] = useState(existing?.images.find((i) => i.isPrimary)?.url ?? '');
+  const [error, setError] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      const data: CreateProductInput = {
+        name, description, priceVnd, priceUsd, stock, weightGrams, categoryId,
+        ...(imageUrl ? { images: [{ url: imageUrl, isPrimary: true }] } : {}),
+      };
+      return existing
+        ? adminApi.updateProduct(existing.id, data)
+        : adminApi.createProduct(data);
+    },
+    onSuccess: () => { onSaved(); onClose(); },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <h3 className="mb-4 text-base font-semibold text-gray-900">
+          {existing ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
+        </h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Tên sản phẩm</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              placeholder="Tên sản phẩm..."
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Mô tả</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full resize-none rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              placeholder="Mô tả sản phẩm..."
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Giá (VND)</label>
+              <input
+                type="number" min={0} value={priceVnd}
+                onChange={(e) => setPriceVnd(Number(e.target.value))}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Giá (USD cents)</label>
+              <input
+                type="number" min={0} value={priceUsd}
+                onChange={(e) => setPriceUsd(Number(e.target.value))}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Tồn kho</label>
+              <input
+                type="number" min={0} value={stock}
+                onChange={(e) => setStock(Number(e.target.value))}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Trọng lượng (g)</label>
+              <input
+                type="number" min={1} value={weightGrams}
+                onChange={(e) => setWeightGrams(Number(e.target.value))}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Danh mục</label>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">URL hình ảnh chính (không bắt buộc)</label>
+            <input
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+              placeholder="https://..."
+            />
+          </div>
+        </div>
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button" onClick={onClose}
+            className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={() => mutation.mutate()}
+            disabled={!name.trim() || !description.trim() || !categoryId || mutation.isPending}
+            className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {mutation.isPending ? 'Đang lưu...' : existing ? 'Cập nhật' : 'Tạo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboardPage() {
@@ -794,6 +932,9 @@ export default function AdminDashboardPage() {
   const [showFaqModal, setShowFaqModal] = useState(false);
   const [editingFaq, setEditingFaq] = useState<FAQ | null>(null);
   const [deletingFaqId, setDeletingFaqId] = useState<string | null>(null);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+  const [productSearch, setProductSearch] = useState('');
 
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
@@ -850,6 +991,18 @@ export default function AdminDashboardPage() {
     enabled: tab === 'faq',
   });
 
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['admin-products'],
+    queryFn: () => adminApi.listProducts(),
+    enabled: tab === 'products',
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['admin-categories'],
+    queryFn: () => adminApi.listCategories(),
+    enabled: tab === 'products' || showProductModal,
+  });
+
   const deleteFaqMutation = useMutation({
     mutationFn: (id: string) => adminApi.deleteFaq(id),
     onSuccess: () => {
@@ -862,6 +1015,11 @@ export default function AdminDashboardPage() {
     mutationFn: ({ id, isPublished }: { id: string; isPublished: boolean }) =>
       adminApi.updateFaq(id, { isPublished }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-faq'] }),
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteProduct(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
   });
 
   return (
@@ -1331,12 +1489,127 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
+      {/* Products tab */}
+      {tab === 'products' && (() => {
+        const allProducts = productsData?.items ?? [];
+        const filtered = productSearch.trim()
+          ? allProducts.filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+          : allProducts;
+        return (
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 border-b px-4 py-3">
+              <h2 className="mr-auto text-sm font-semibold text-gray-900">
+                {productsLoading ? 'Đang tải...' : `${allProducts.length} sản phẩm`}
+              </h2>
+              <input
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Tìm sản phẩm..."
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none w-48"
+              />
+              <button
+                type="button"
+                onClick={() => { setEditingProduct(null); setShowProductModal(true); }}
+                className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 whitespace-nowrap"
+              >
+                + Thêm sản phẩm
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Hình</th>
+                    <th className="px-4 py-2 text-left">Tên sản phẩm</th>
+                    <th className="px-4 py-2 text-left">Danh mục</th>
+                    <th className="px-4 py-2 text-left">Giá (VND)</th>
+                    <th className="px-4 py-2 text-left">Kho</th>
+                    <th className="px-4 py-2 text-left">Đánh giá</th>
+                    <th className="px-4 py-2 text-left">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((product) => {
+                    const img = product.images.find((i) => i.isPrimary) ?? product.images[0];
+                    return (
+                      <tr key={product.id} className="border-b last:border-0 hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          {img ? (
+                            <img src={img.url} alt={img.alt ?? product.name} className="h-10 w-10 rounded-md object-cover" />
+                          ) : (
+                            <div className="h-10 w-10 rounded-md bg-gray-100" />
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium text-gray-900 max-w-[200px] truncate">{product.name}</p>
+                          <p className="text-xs text-gray-400">{product.slug}</p>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{product.category.name}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          {formatVND(product.priceVnd)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-sm font-medium ${product.stock <= 10 ? 'text-red-600' : 'text-gray-900'}`}>
+                            {product.stock}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500">
+                          ★ {product.averageRating.toFixed(1)} ({product.reviewCount})
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => { setEditingProduct(product); setShowProductModal(true); }}
+                              className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Xóa sản phẩm "${product.name}"?`)) {
+                                  deleteProductMutation.mutate(product.id);
+                                }
+                              }}
+                              disabled={deleteProductMutation.isPending}
+                              className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            >
+                              Xóa
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {!productsLoading && filtered.length === 0 && (
+                <p className="px-4 py-8 text-center text-sm text-gray-400">
+                  {productSearch ? 'Không tìm thấy sản phẩm.' : 'Chưa có sản phẩm nào.'}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* FAQ modal */}
       {showFaqModal && (
         <FaqModal
           existing={editingFaq ?? undefined}
           onClose={() => { setShowFaqModal(false); setEditingFaq(null); }}
           onSaved={() => queryClient.invalidateQueries({ queryKey: ['admin-faq'] })}
+        />
+      )}
+
+      {/* Product modal */}
+      {showProductModal && (
+        <ProductModal
+          existing={editingProduct ?? undefined}
+          categories={categories}
+          onClose={() => { setShowProductModal(false); setEditingProduct(null); }}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['admin-products'] })}
         />
       )}
     </div>
