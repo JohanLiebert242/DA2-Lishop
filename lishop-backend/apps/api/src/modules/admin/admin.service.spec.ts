@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminRepository } from './admin.repository';
+import { NotificationsRepository } from '../notifications/notifications.repository';
 import { OrderStatus } from '@lishop/database';
 
 const mockStats = { orderCount: 10, revenueVnd: 5000000, userCount: 20, productCount: 30 };
@@ -39,10 +40,18 @@ describe('AdminService', () => {
     toggleCoupon: jest.fn(),
     getAnalytics: jest.fn(),
   };
+  const notifRepo = {
+    createNotification: jest.fn(),
+  };
 
   beforeEach(async () => {
+    notifRepo.createNotification.mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
-      providers: [AdminService, { provide: AdminRepository, useValue: repo }],
+      providers: [
+        AdminService,
+        { provide: AdminRepository, useValue: repo },
+        { provide: NotificationsRepository, useValue: notifRepo },
+      ],
     }).compile();
     service = module.get(AdminService);
   });
@@ -67,7 +76,7 @@ describe('AdminService', () => {
   });
 
   it('updateOrderStatus updates and returns order', async () => {
-    repo.findOrderById.mockResolvedValue({ id: 'o1', status: OrderStatus.PENDING });
+    repo.findOrderById.mockResolvedValue({ id: 'o1', userId: 'u1', orderNumber: 'LS-1', status: OrderStatus.PENDING });
     repo.updateOrderStatus.mockResolvedValue({ ...mockOrder, status: OrderStatus.SHIPPED });
     const result = await service.updateOrderStatus('o1', OrderStatus.SHIPPED);
     expect(repo.updateOrderStatus).toHaveBeenCalledWith('o1', OrderStatus.SHIPPED);
