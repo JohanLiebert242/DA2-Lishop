@@ -18,4 +18,10 @@ export async function addToCart(productId: string, quantity: number): Promise<vo
     const json = await res.json();
     throw new Error(json.message ?? 'Failed to add to cart');
   }
+  // Bump the cart badge count in localStorage so the shell can read it
+  const json = await res.json();
+  const cart = json.data ?? json;
+  if (typeof cart.items === 'object') {
+    window.localStorage.setItem('lishop_cart_count', String((cart.items as unknown[]).length));
+  }
 }

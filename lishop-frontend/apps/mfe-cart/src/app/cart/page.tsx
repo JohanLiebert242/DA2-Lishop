@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -80,6 +80,13 @@ export default function CartPage() {
     queryFn: () => cartApi.getCart(),
     retry: false,
   });
+
+  // Sync item count to localStorage for the shell cart badge
+  useEffect(() => {
+    if (cart && typeof window !== 'undefined') {
+      window.localStorage.setItem('lishop_cart_count', String(cart.items.length));
+    }
+  }, [cart]);
 
   const updateMutation = useMutation({
     mutationFn: ({ productId, quantity }: { productId: string; quantity: number }) =>
