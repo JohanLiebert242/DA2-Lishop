@@ -79,6 +79,15 @@ export class AdminController {
     return this.adminService.listUsers();
   }
 
+  @Patch('users/:id/role')
+  @ApiOperation({ summary: 'Change a user role (ADMIN ↔ CUSTOMER)' })
+  updateUserRole(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('role') role: string,
+  ) {
+    return this.adminService.updateUserRole(id, role);
+  }
+
   @Get('coupons')
   @ApiOperation({ summary: 'List all coupons' })
   listCoupons() {

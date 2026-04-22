@@ -140,4 +140,22 @@ export class AdminService {
   getAnalytics(): Promise<AdminAnalytics> {
     return this.repo.getAnalytics();
   }
+
+  async updateUserRole(userId: string, role: string): Promise<AdminUserItem> {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Người dùng không tồn tại');
+    return prisma.user.update({
+      where: { id: userId },
+      data: { role: role as any },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        loyaltyPoints: true,
+        createdAt: true,
+      },
+    }) as Promise<AdminUserItem>;
+  }
 }

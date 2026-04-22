@@ -191,6 +191,13 @@ export const adminApi = {
   deleteFaq: (id: string) =>
     apiFetch<void>(`/admin/faq/${id}`, { method: 'DELETE' }),
 
+  // Users
+  updateUserRole: (id: string, role: 'ADMIN' | 'CUSTOMER') =>
+    apiFetch<AdminUserItem>(`/admin/users/${id}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    }),
+
   // Payments
   getPayments: () => apiFetch<AdminPayment[]>('/admin/payments'),
   confirmPaymentAdmin: (orderId: string) =>
