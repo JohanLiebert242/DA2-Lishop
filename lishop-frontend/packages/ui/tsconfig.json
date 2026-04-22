@@ -1,4 +1,7 @@
 {
   "extends": "@lishop/config/tsconfig",
-  "compilerOptions": { "noEmit": true }
+  "compilerOptions": {
+    "noEmit": true,
+    "skipLibCheck": true
+  }
 }
