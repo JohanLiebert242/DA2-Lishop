@@ -248,6 +248,12 @@ export class AdminController {
 
   // ---- Payment admin ----
 
+  @Get('payments')
+  @ApiOperation({ summary: 'List all payments' })
+  getAllPayments() {
+    return this.paymentsService.getAllPayments();
+  }
+
   @Patch('payments/:orderId/confirm')
   @ApiOperation({ summary: 'Manually confirm payment for an order (e.g. COD)' })
   confirmPayment(@Param('orderId', ParseUUIDPipe) orderId: string) {

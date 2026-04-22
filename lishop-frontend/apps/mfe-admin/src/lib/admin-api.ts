@@ -191,6 +191,11 @@ export const adminApi = {
   deleteFaq: (id: string) =>
     apiFetch<void>(`/admin/faq/${id}`, { method: 'DELETE' }),
 
+  // Payments
+  getPayments: () => apiFetch<AdminPayment[]>('/admin/payments'),
+  confirmPaymentAdmin: (orderId: string) =>
+    apiFetch<AdminPayment>(`/admin/payments/${orderId}/confirm`, { method: 'PATCH' }),
+
   // Reviews
   getReviews: (status?: string) =>
     apiFetch<AdminReview[]>(`/admin/reviews${status ? `?status=${status}` : ''}`),
@@ -292,6 +297,27 @@ export interface CreateProductInput {
   categoryId: string;
   images?: { url: string; alt?: string; isPrimary?: boolean }[];
   tags?: string[];
+}
+
+// ─── Payments ────────────────────────────────────────────────────────────────
+
+export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+
+export interface AdminPayment {
+  id: string;
+  orderId: string;
+  method: string;
+  amountVnd: number;
+  status: PaymentStatus;
+  providerRef: string | null;
+  invoiceUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+  order: {
+    orderNumber: string;
+    userId: string;
+    user: { email: string; firstName: string; lastName: string };
+  };
 }
 
 // ─── Reviews ─────────────────────────────────────────────────────────────────

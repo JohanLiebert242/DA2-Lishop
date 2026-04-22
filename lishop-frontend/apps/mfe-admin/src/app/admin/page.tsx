@@ -11,11 +11,12 @@ import {
   ProductStock, AdminReturn, AdminTicket, TicketStatus, FAQ,
   AdminProduct, AdminCategory, CreateProductInput,
   AdminReview, ReviewStatus, AdminFlashSale, FlashSaleItem,
+  AdminPayment, PaymentStatus,
 } from '../../lib/admin-api';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-type Tab = 'orders' | 'users' | 'promotions' | 'analytics' | 'inventory' | 'returns' | 'tickets' | 'faq' | 'products' | 'reviews' | 'flashsales';
+type Tab = 'orders' | 'users' | 'promotions' | 'analytics' | 'inventory' | 'returns' | 'tickets' | 'faq' | 'products' | 'reviews' | 'flashsales' | 'payments';
 
 const ORDER_STATUSES: OrderStatus[] = [
   'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED',
@@ -57,6 +58,28 @@ const TAB_LABELS: Record<Tab, string> = {
   faq: 'FAQ',
   reviews: 'Đánh giá',
   flashsales: 'Flash Sale',
+  payments: 'Thanh toán',
+};
+
+const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  PENDING: 'Chờ thanh toán',
+  COMPLETED: 'Đã thanh toán',
+  FAILED: 'Thất bại',
+  REFUNDED: 'Đã hoàn tiền',
+};
+
+const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
+  PENDING: 'bg-amber-100 text-amber-800',
+  COMPLETED: 'bg-emerald-100 text-emerald-800',
+  FAILED: 'bg-red-100 text-red-800',
+  REFUNDED: 'bg-gray-100 text-gray-700',
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  COD: 'Tiền mặt (COD)',
+  VNPAY: 'VNPay',
+  MOMO: 'MoMo',
+  STRIPE: 'Stripe',
 };
 
 const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
@@ -1279,6 +1302,12 @@ export default function AdminDashboardPage() {
     enabled: tab === 'flashsales',
   });
 
+  const { data: payments = [], isLoading: paymentsLoading } = useQuery({
+    queryKey: ['admin-payments'],
+    queryFn: () => adminApi.getPayments(),
+    enabled: tab === 'payments',
+  });
+
   const deleteFaqMutation = useMutation({
     mutationFn: (id: string) => adminApi.deleteFaq(id),
     onSuccess: () => {
@@ -1304,6 +1333,11 @@ export default function AdminDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-flash-sales'] });
       setExpandedFlashSaleId(null);
     },
+  });
+
+  const confirmPaymentMutation = useMutation({
+    mutationFn: (orderId: string) => adminApi.confirmPaymentAdmin(orderId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-payments'] }),
   });
 
   return (
@@ -2019,6 +2053,79 @@ export default function AdminDashboardPage() {
             </table>
             {!flashSalesLoading && flashSales.length === 0 && (
               <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có Flash Sale nào.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Payments tab */}
+      {tab === 'payments' && (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b">
+            <h2 className="text-sm font-semibold text-gray-900">
+              {paymentsLoading ? 'Đang tải...' : `${payments.length} giao dịch`}
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Đơn hàng</th>
+                  <th className="px-4 py-2 text-left">Khách hàng</th>
+                  <th className="px-4 py-2 text-left">Phương thức</th>
+                  <th className="px-4 py-2 text-left">Số tiền</th>
+                  <th className="px-4 py-2 text-left">Trạng thái</th>
+                  <th className="px-4 py-2 text-left">Ngày</th>
+                  <th className="px-4 py-2 text-left">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p) => {
+                  const userName =
+                    p.order.user.firstName && p.order.user.lastName
+                      ? `${p.order.user.firstName} ${p.order.user.lastName}`
+                      : p.order.user.email;
+                  return (
+                    <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="px-4 py-3 font-mono text-sm text-gray-700">
+                        #{p.order.orderNumber}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 max-w-[140px] truncate">
+                        {userName}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {PAYMENT_METHOD_LABELS[p.method] ?? p.method}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        {formatVND(p.amountVnd)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[p.status as PaymentStatus] ?? 'bg-gray-100 text-gray-700'}`}>
+                          {PAYMENT_STATUS_LABELS[p.status as PaymentStatus] ?? p.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500">
+                        {new Date(p.createdAt).toLocaleDateString('vi-VN')}
+                      </td>
+                      <td className="px-4 py-3">
+                        {p.status === 'PENDING' && p.method === 'COD' && (
+                          <button
+                            type="button"
+                            onClick={() => confirmPaymentMutation.mutate(p.orderId)}
+                            disabled={confirmPaymentMutation.isPending}
+                            className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            {confirmPaymentMutation.isPending ? 'Đang xác nhận...' : 'Xác nhận COD'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {!paymentsLoading && payments.length === 0 && (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có giao dịch nào.</p>
             )}
           </div>
         </div>

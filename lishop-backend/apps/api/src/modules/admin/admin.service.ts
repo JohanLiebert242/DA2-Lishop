@@ -22,6 +22,11 @@ export class AdminService {
   async updateOrderStatus(orderId: string, status: OrderStatus): Promise<AdminOrderItem> {
     const order = await this.repo.findOrderById(orderId);
     if (!order) throw new NotFoundException('Đơn hàng không tồn tại');
+
+    if (status === OrderStatus.DELIVERED && order.status !== OrderStatus.DELIVERED) {
+      await this.awardLoyalty(orderId, order.userId, order.orderNumber);
+    }
+
     const updated = await this.repo.updateOrderStatus(orderId, status);
     this.notifRepo
       .createNotification(
@@ -33,6 +38,31 @@ export class AdminService {
       )
       .catch((err: unknown) => console.error('[AdminService] notification failed', err));
     return updated;
+  }
+
+  private async awardLoyalty(orderId: string, userId: string, orderNumber: string): Promise<void> {
+    const full = await prisma.order.findUnique({ where: { id: orderId }, select: { totalVnd: true } });
+    if (!full) return;
+    const points = Math.floor(full.totalVnd / 1000);
+    if (points <= 0) return;
+    await prisma.$transaction([
+      prisma.loyaltyPoint.create({
+        data: { userId, points, description: `Tích điểm đơn hàng #${orderNumber}` },
+      }),
+      prisma.user.update({
+        where: { id: userId },
+        data: { loyaltyPoints: { increment: points } },
+      }),
+    ]);
+    this.notifRepo
+      .createNotification(
+        userId,
+        'Bạn nhận được điểm tích lũy!',
+        `Bạn nhận được ${points} điểm từ đơn hàng #${orderNumber}.`,
+        'ORDER_STATUS',
+        orderId,
+      )
+      .catch((err: unknown) => console.error('[AdminService] loyalty notification failed', err));
   }
 
   async addTrackingEvent(orderId: string, dto: AddTrackingEventDto): Promise<void> {
@@ -60,7 +90,11 @@ export class AdminService {
 
     if (dto.status === 'DELIVERED') {
       await prisma.shipment.update({ where: { id: shipmentId }, data: { deliveredAt: new Date() } });
+      const prev = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } });
       await prisma.order.update({ where: { id: orderId }, data: { status: OrderStatus.DELIVERED } });
+      if (prev?.status !== OrderStatus.DELIVERED) {
+        await this.awardLoyalty(orderId, order.userId, order.orderNumber);
+      }
       this.notifRepo
         .createNotification(
           order.userId,

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PaymentsRepository, PaymentInfo } from './payments.repository';
+import { PaymentsRepository, PaymentInfo, AdminPaymentItem } from './payments.repository';
 import { PaymentMethod } from '@lishop/database';
 
 @Injectable()
@@ -28,6 +28,10 @@ export class PaymentsService {
       paymentUrl: `https://payment.example.com/pay?ref=${orderId}`,
       status: 'PENDING',
     };
+  }
+
+  getAllPayments(): Promise<AdminPaymentItem[]> {
+    return this.repo.findAll();
   }
 
   confirmPaymentAdmin(orderId: string): Promise<PaymentInfo> {
