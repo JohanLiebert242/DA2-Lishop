@@ -283,7 +283,7 @@ export default function CheckoutPage() {
             <div className="rounded-lg bg-amber-50 p-4 text-center">
               <p className="text-sm font-medium text-amber-800">Chưa có địa chỉ giao hàng</p>
               <a
-                href={`${MFE_PROFILE}/profile`}
+                href={`${MFE_PROFILE}/addresses`}
                 className="mt-2 inline-block text-xs text-indigo-600 hover:underline"
               >
                 Thêm địa chỉ trong trang tài khoản →

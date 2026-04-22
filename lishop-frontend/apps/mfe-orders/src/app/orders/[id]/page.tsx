@@ -188,6 +188,17 @@ export default function OrderDetailPage({ params }: Props) {
     },
   });
 
+  const paymentMutation = useMutation({
+    mutationFn: () => ordersApi.initiatePayment(id),
+    onSuccess: (res) => {
+      if (res.paymentUrl) {
+        window.location.href = res.paymentUrl;
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['order', id] });
+      }
+    },
+  });
+
   const isCancellable = order?.status === 'PENDING' || order?.status === 'PROCESSING';
   const shipment = trackingData?.shipment ?? null;
 
@@ -332,6 +343,16 @@ export default function OrderDetailPage({ params }: Props) {
                   order.payment.status === 'COMPLETED' ? 'Đã thanh toán' : order.payment.status}
               </p>
               <p className="mt-2 text-sm font-bold text-indigo-600">{formatVND(order.payment.amountVnd)}</p>
+              {order.payment.status === 'PENDING' && order.payment.method !== 'COD' && (
+                <button
+                  type="button"
+                  onClick={() => paymentMutation.mutate()}
+                  disabled={paymentMutation.isPending}
+                  className="mt-3 w-full rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {paymentMutation.isPending ? 'Đang chuyển hướng...' : 'Thanh toán ngay'}
+                </button>
+              )}
             </div>
           )}
         </div>

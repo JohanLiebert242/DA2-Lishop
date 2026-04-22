@@ -112,6 +112,10 @@ export const ordersApi = {
   getOrder: (id: string) => apiFetch<OrderSummary>(`/orders/${id}`),
   cancelOrder: (id: string) =>
     apiFetch<OrderSummary>(`/orders/${id}/cancel`, { method: 'PATCH' }),
+  initiatePayment: (orderId: string) =>
+    apiFetch<{ paymentUrl: string | null; status: string }>(`/payments/${orderId}/initiate`, {
+      method: 'POST',
+    }),
 };
 
 export async function getTracking(orderId: string): Promise<TrackingResponse> {
