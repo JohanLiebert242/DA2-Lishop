@@ -32,4 +32,15 @@ export class CouponsRepository {
   findAll(): Promise<Coupon[]> {
     return prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
   }
+
+  findPublic(): Promise<Coupon[]> {
+    return prisma.coupon.findMany({
+      where: {
+        isActive: true,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+  }
 }

@@ -4,11 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatVND } from '@lishop/shared';
+import { useAuthStore } from '../stores/auth.store';
 
-const API_URL     = process.env['NEXT_PUBLIC_API_URL']         ?? 'http://localhost:4000';
-const CATALOG_URL = process.env['NEXT_PUBLIC_MFE_CATALOG_URL'] ?? 'http://localhost:3002';
-const AUTH_URL    = process.env['NEXT_PUBLIC_MFE_AUTH_URL']    ?? 'http://localhost:3001';
-const PROMO_URL   = process.env['NEXT_PUBLIC_MFE_PROMOTIONS_URL'] ?? 'http://localhost:3007';
+const API_URL     = process.env['NEXT_PUBLIC_API_URL']             ?? 'http://localhost:4000';
+const CATALOG_URL = process.env['NEXT_PUBLIC_MFE_CATALOG_URL']     ?? 'http://localhost:3002';
+const AUTH_URL    = process.env['NEXT_PUBLIC_MFE_AUTH_URL']        ?? 'http://localhost:3001';
+const PROMO_URL   = process.env['NEXT_PUBLIC_MFE_PROMOTIONS_URL']  ?? 'http://localhost:3007';
+const ORDERS_URL  = process.env['NEXT_PUBLIC_MFE_ORDERS_URL']      ?? 'http://localhost:3005';
+const PROFILE_URL = process.env['NEXT_PUBLIC_MFE_PROFILE_URL']     ?? 'http://localhost:3006';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ProductImage { id: string; url: string; alt: string | null; isPrimary: boolean; }
@@ -181,6 +184,8 @@ const BRANDS = [
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function HomePage() {
+  const { user } = useAuthStore();
+
   const { data: featured = [], isLoading: featuredLoading } = useQuery({
     queryKey: ['home-featured'],
     queryFn: () => apiFetch<Product[]>('/products/featured?limit=8'),
@@ -256,10 +261,17 @@ export default function HomePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </Link>
-            <Link href={`${AUTH_URL}/register`}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/15 backdrop-blur-sm border border-white/30 px-7 py-3.5 text-sm font-semibold text-white hover:bg-white/25 transition-all">
-              Đăng ký miễn phí
-            </Link>
+            {user ? (
+              <Link href={`${ORDERS_URL}/orders`}
+                className="inline-flex items-center gap-2 rounded-xl bg-white/15 backdrop-blur-sm border border-white/30 px-7 py-3.5 text-sm font-semibold text-white hover:bg-white/25 transition-all">
+                Đơn hàng của tôi
+              </Link>
+            ) : (
+              <Link href={`${AUTH_URL}/register`}
+                className="inline-flex items-center gap-2 rounded-xl bg-white/15 backdrop-blur-sm border border-white/30 px-7 py-3.5 text-sm font-semibold text-white hover:bg-white/25 transition-all">
+                Đăng ký miễn phí
+              </Link>
+            )}
           </div>
 
           {/* Stats row */}
@@ -529,11 +541,15 @@ export default function HomePage() {
       {/* ── Promo banner ─────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 pb-10">
         <div className="grid gap-4 sm:grid-cols-3">
-          {[
+          {(user ? [
+            { icon:'🎁', title:'Tặng voucher 50K', desc:'Kiểm tra các mã ưu đãi của bạn', bg:'from-indigo-600 to-violet-600', cta:'Xem ngay', href:`${PROMO_URL}/promotions` },
+            { icon:'📦', title:'Flash sale hàng ngày', desc:'12:00 & 20:00 mỗi ngày', bg:'from-rose-600 to-red-600', cta:'Xem ngay', href:`${PROMO_URL}/promotions` },
+            { icon:'⭐', title:'Tích điểm mỗi đơn', desc:'Đổi điểm lấy quà hấp dẫn', bg:'from-amber-500 to-orange-500', cta:'Xem điểm', href:`${PROFILE_URL}/profile` },
+          ] : [
             { icon:'🎁', title:'Tặng voucher 50K', desc:'Cho đơn đầu tiên của bạn', bg:'from-indigo-600 to-violet-600', cta:'Nhận ngay', href:`${AUTH_URL}/register` },
             { icon:'📦', title:'Flash sale hàng ngày', desc:'12:00 & 20:00 mỗi ngày', bg:'from-rose-600 to-red-600', cta:'Xem ngay', href:`${PROMO_URL}/promotions` },
             { icon:'⭐', title:'Tích điểm mỗi đơn', desc:'Đổi điểm lấy quà hấp dẫn', bg:'from-amber-500 to-orange-500', cta:'Tìm hiểu', href:`${AUTH_URL}/register` },
-          ].map(b => (
+          ]).map(b => (
             <Link key={b.title} href={b.href}
               className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${b.bg} p-5 text-white hover:-translate-y-1 transition-all shadow-warm hover:shadow-brand`}>
               <div className="absolute -right-4 -bottom-4 text-7xl opacity-20 group-hover:opacity-30 transition-opacity">{b.icon}</div>

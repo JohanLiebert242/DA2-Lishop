@@ -34,7 +34,8 @@ function ReviewsSection({ productId }: { productId: string }) {
   const [content, setContent] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'highest' | 'lowest'>('newest');
-  const token = typeof window !== 'undefined' ? localStorage.getItem('lishop_at') : null;
+  const m = typeof window !== 'undefined' ? document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/) : null;
+  const token = m ? decodeURIComponent(m[1]) : null;
 
   const { data: reviews = [] } = useQuery({
     queryKey: ['reviews', productId],

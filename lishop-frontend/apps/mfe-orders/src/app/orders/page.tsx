@@ -1,10 +1,13 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { formatVND } from '@lishop/shared';
 import { ordersApi, OrderStatus } from '../../lib/orders-api';
 import { AccountSidebar } from '../../components/account-sidebar';
+
+const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
 
 const STATUS_META: Record<OrderStatus, { label: string; color: string; dot: string }> = {
   PENDING:    { label: 'Chờ xác nhận', color: 'bg-amber-50 text-amber-700 border border-amber-200',   dot: 'bg-amber-400' },
@@ -29,6 +32,11 @@ function SkeletonCard() {
 }
 
 export default function OrdersPage() {
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
+    if (!match) window.location.replace(`${AUTH_URL}/login`);
+  }, []);
+
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['my-orders'],
     queryFn: () => ordersApi.getOrders(),

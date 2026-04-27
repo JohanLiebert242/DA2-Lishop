@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { profileApi, UpdateProfileInput, LoyaltyPointItem } from '../../lib/profile-api';
 import { AccountSidebar } from '../../components/account-sidebar';
 
+const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
+
 export default function ProfilePage() {
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
+    if (!match) window.location.replace(`${AUTH_URL}/login`);
+  }, []);
+
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<UpdateProfileInput>({});

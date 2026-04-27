@@ -1,7 +1,8 @@
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
 export async function addToCart(productId: string, quantity: number): Promise<void> {
-  const token = typeof window !== 'undefined' ? window.localStorage.getItem('lishop_at') : null;
+  const m = typeof window !== 'undefined' ? document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/) : null;
+  const token = m ? decodeURIComponent(m[1]) : null;
   if (!token) {
     window.location.href = 'http://localhost:3001/login';
     return;

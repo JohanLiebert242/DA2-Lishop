@@ -34,6 +34,12 @@ export default function PromotionsPage() {
     refetchInterval: 1_000,
   });
 
+  const { data: coupons = [] } = useQuery({
+    queryKey: ['public-coupons'],
+    queryFn: () => promotionsApi.getPublicCoupons(),
+    staleTime: 60_000,
+  });
+
   const activeSale = flashSales[0];
 
   return (
@@ -121,29 +127,34 @@ export default function PromotionsPage() {
             </div>
 
             {/* Active coupons highlight */}
-            <div className="card p-5 bg-gradient-to-br from-indigo-50 to-violet-50">
-              <h3 className="mb-3 font-black text-stone-900 text-sm">🎫 Mã giảm giá hot</h3>
-              <div className="space-y-2.5">
-                {[
-                  { code: 'WELCOME10', desc: 'Giảm 10% · Đơn từ 500K' },
-                  { code: 'FREESHIP',  desc: 'Miễn phí giao hàng' },
-                  { code: 'VIP20',     desc: 'Giảm 20% · Đơn từ 2 triệu' },
-                ].map(c => (
-                  <div key={c.code} className="flex items-center justify-between rounded-xl bg-white border border-warm px-3 py-2.5 shadow-sm">
-                    <div>
-                      <p className="text-xs font-black text-indigo-700 tracking-widest">{c.code}</p>
-                      <p className="text-xs text-muted mt-0.5">{c.desc}</p>
-                    </div>
-                    <button
-                      onClick={() => navigator.clipboard?.writeText(c.code)}
-                      className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors ml-2"
-                    >
-                      Sao chép
-                    </button>
-                  </div>
-                ))}
+            {coupons.length > 0 && (
+              <div className="card p-5 bg-gradient-to-br from-indigo-50 to-violet-50">
+                <h3 className="mb-3 font-black text-stone-900 text-sm">🎫 Mã giảm giá hot</h3>
+                <div className="space-y-2.5">
+                  {coupons.map(c => {
+                    const desc = c.type === 'PERCENT'
+                      ? `Giảm ${c.value}%${c.minOrderVnd > 0 ? ` · Đơn từ ${(c.minOrderVnd / 1000).toFixed(0)}K` : ''}`
+                      : c.type === 'FIXED'
+                      ? `Giảm ${(c.value / 1000).toFixed(0)}K${c.minOrderVnd > 0 ? ` · Đơn từ ${(c.minOrderVnd / 1000).toFixed(0)}K` : ''}`
+                      : 'Miễn phí giao hàng';
+                    return (
+                      <div key={c.id} className="flex items-center justify-between rounded-xl bg-white border border-warm px-3 py-2.5 shadow-sm">
+                        <div>
+                          <p className="text-xs font-black text-indigo-700 tracking-widest">{c.code}</p>
+                          <p className="text-xs text-muted mt-0.5">{desc}</p>
+                        </div>
+                        <button
+                          onClick={() => navigator.clipboard?.writeText(c.code)}
+                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors ml-2"
+                        >
+                          Sao chép
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -4,8 +4,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { authApi } from '../../lib/auth-api';
+
+const SHELL_URL = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
 
 const LoginSchema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -18,6 +20,11 @@ export default function LoginPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
+    if (match) window.location.replace(SHELL_URL);
+  }, []);
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(LoginSchema),
   });
@@ -26,12 +33,10 @@ export default function LoginPage() {
     setServerError(null);
     try {
       const result = await authApi.login(data);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('lishop_at', result.accessToken);
-        window.dispatchEvent(new CustomEvent('lishop:auth', { detail: { accessToken: result.accessToken } }));
-      }
+      document.cookie = `lishop_at=${encodeURIComponent(result.accessToken)}; path=/; SameSite=Lax`;
       setSuccess(true);
-      setTimeout(() => { window.location.href = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010'; }, 500);
+      const shellUrl = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
+      setTimeout(() => { window.location.href = shellUrl; }, 500);
     } catch (e) {
       setServerError((e as Error).message);
     }

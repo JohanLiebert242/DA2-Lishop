@@ -26,6 +26,7 @@ export function useAuth() {
     const meData = await meRes.json();
     const userProfile = meData.data ?? meData;
 
+    document.cookie = `lishop_at=${encodeURIComponent(token)}; path=/; SameSite=Lax`;
     setAuth(userProfile, token);
     eventBus.emit(LishopEvent.AUTH_LOGIN, { userId: userProfile.id, role: userProfile.role });
   }, [setAuth]);
@@ -38,6 +39,7 @@ export function useAuth() {
         headers: { Authorization: `Bearer ${accessToken}` },
       }).catch(() => {});
     }
+    document.cookie = 'lishop_at=; path=/; SameSite=Lax; max-age=0';
     clearAuth();
     eventBus.emit(LishopEvent.AUTH_LOGOUT, undefined);
   }, [accessToken, clearAuth]);

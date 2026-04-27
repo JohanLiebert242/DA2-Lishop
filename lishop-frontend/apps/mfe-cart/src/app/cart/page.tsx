@@ -7,6 +7,15 @@ import Link from 'next/link';
 import { formatVND } from '@lishop/shared';
 import { cartApi, CartItemData } from '../../lib/cart-api';
 
+const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
+
+function useAuthGuard() {
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
+    if (!match) window.location.replace(`${AUTH_URL}/login`);
+  }, []);
+}
+
 function CartItemRow({
   item,
   onUpdateQuantity,
@@ -71,6 +80,7 @@ function CartItemRow({
 }
 
 export default function CartPage() {
+  useAuthGuard();
   const qc = useQueryClient();
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');

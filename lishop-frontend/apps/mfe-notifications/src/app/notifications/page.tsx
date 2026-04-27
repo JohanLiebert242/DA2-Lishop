@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   notificationsApi,
@@ -10,6 +10,8 @@ import {
   EVENT_LABELS,
 } from '../../lib/notifications-api';
 import { AccountSidebar } from '../../components/account-sidebar';
+
+const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
 
 // ─── Feed ───────────────────────────────────────────────────────────────────
 
@@ -236,6 +238,11 @@ function PreferencesTab() {
 type Tab = 'feed' | 'preferences';
 
 export default function NotificationsPage() {
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
+    if (!match) window.location.replace(`${AUTH_URL}/login`);
+  }, []);
+
   const [activeTab, setActiveTab] = useState<Tab>('feed');
 
   return (

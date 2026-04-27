@@ -31,6 +31,18 @@ export interface FlashSaleInfo {
   items: FlashSaleItemInfo[];
 }
 
+export interface PublicCoupon {
+  id: string;
+  code: string;
+  type: 'PERCENT' | 'FIXED' | 'FREE_SHIPPING';
+  value: number;
+  minOrderVnd: number;
+  maxUses: number | null;
+  usedCount: number;
+  expiresAt: string | null;
+}
+
 export const promotionsApi = {
   getActiveFlashSales: () => apiFetch<FlashSaleInfo[]>('/promotions/flash-sales/active'),
+  getPublicCoupons: () => apiFetch<PublicCoupon[]>('/promotions/coupons'),
 };

@@ -1,6 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const AUTH_URL  = process.env['NEXT_PUBLIC_MFE_AUTH_URL']  ?? 'http://localhost:3001';
+const SHELL_URL = process.env['NEXT_PUBLIC_SHELL_URL']      ?? 'http://localhost:3010';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -1284,6 +1287,16 @@ function FlashSaleItemsPanel({ sale }: { sale: AdminFlashSale }) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboardPage() {
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
+    if (!match) { window.location.replace(`${AUTH_URL}/login`); return; }
+    // Decode JWT payload (no verification — server enforces RBAC)
+    try {
+      const payload = JSON.parse(atob(match[1].split('.')[1]!));
+      if (payload.role !== 'ADMIN') window.location.replace(SHELL_URL);
+    } catch { window.location.replace(SHELL_URL); }
+  }, []);
+
   const [tab, setTab] = useState<Tab>('orders');
   const [showCreateCoupon, setShowCreateCoupon] = useState(false);
   const [adjustingProductId, setAdjustingProductId] = useState<string | null>(null);

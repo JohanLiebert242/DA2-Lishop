@@ -40,6 +40,10 @@ export class CouponsService {
     return { coupon, discountVnd };
   }
 
+  listPublic() {
+    return this.repo.findPublic();
+  }
+
   async tryValidate(
     code: string,
     userId: string,
