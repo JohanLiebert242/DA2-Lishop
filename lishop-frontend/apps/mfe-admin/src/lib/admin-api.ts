@@ -239,6 +239,22 @@ export const adminApi = {
     apiFetch<void>(`/products/${id}`, { method: 'DELETE' }),
   listCategories: () =>
     apiFetch<AdminCategory[]>('/categories'),
+
+  // Wallets
+  getWallets: () => apiFetch<AdminWallet[]>('/admin/wallets'),
+
+  // Invoices
+  getInvoices: () => apiFetch<AdminInvoice[]>('/admin/invoices'),
+  generateInvoice: (orderId: string) =>
+    apiFetch<AdminInvoice>(`/admin/invoices/${orderId}/generate`, { method: 'POST' }),
+
+  // Refunds
+  getRefunds: () => apiFetch<AdminRefund[]>('/admin/refunds'),
+  processRefund: (id: string, adminNote?: string) =>
+    apiFetch<AdminRefund>(`/admin/refunds/${id}/process`, {
+      method: 'POST',
+      body: JSON.stringify({ adminNote }),
+    }),
 };
 
 // ─── Support / FAQ types ──────────────────────────────────────────────────────
@@ -364,4 +380,51 @@ export interface AdminFlashSale {
   endAt: string;
   isActive: boolean;
   items: FlashSaleItem[];
+}
+
+// ─── Wallet admin ────────────────────────────────────────────────────────────
+export interface AdminWallet {
+  id: string;
+  userId: string;
+  balanceVnd: number;
+  createdAt: string;
+  updatedAt: string;
+  user: { email: string; firstName: string; lastName: string };
+}
+
+// ─── Invoice admin ───────────────────────────────────────────────────────────
+export interface AdminInvoice {
+  id: string;
+  orderId: string;
+  invoiceNo: string;
+  billingName: string;
+  billingEmail: string;
+  billingAddress: string;
+  billingPhone: string;
+  subtotalVnd: number;
+  discountVnd: number;
+  shippingFeeVnd: number;
+  vatPercent: number;
+  vatVnd: number;
+  totalVnd: number;
+  issuedAt: string;
+}
+
+// ─── Refund admin ────────────────────────────────────────────────────────────
+export type RefundStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+export type RefundMethod = 'ORIGINAL_PAYMENT' | 'WALLET' | 'MANUAL';
+
+export interface AdminRefund {
+  id: string;
+  orderId: string;
+  userId: string;
+  amountVnd: number;
+  method: RefundMethod;
+  status: RefundStatus;
+  reason: string | null;
+  adminNote: string | null;
+  processedAt: string | null;
+  createdAt: string;
+  order: { orderNumber: string };
+  user: { email: string; firstName: string; lastName: string };
 }

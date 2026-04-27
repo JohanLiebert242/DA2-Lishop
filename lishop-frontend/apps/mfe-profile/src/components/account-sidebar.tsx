@@ -8,12 +8,13 @@ const NAV = [
   { icon: '📦', label: 'Đơn hàng của tôi', href: `${MFE_ORDERS}/orders`,        key: 'orders' },
   { icon: '👤', label: 'Trang cá nhân',    href: `${MFE_PROFILE}/profile`,       key: 'profile' },
   { icon: '📍', label: 'Địa chỉ',          href: `${MFE_PROFILE}/addresses`,     key: 'addresses' },
+  { icon: '💰', label: 'Ví Lishop',        href: `${MFE_PROFILE}/wallet`,        key: 'wallet' },
   { icon: '♡',  label: 'Yêu thích',        href: `${MFE_PROFILE}/wishlist`,      key: 'wishlist' },
   { icon: '🔔', label: 'Thông báo',         href: `${MFE_NOTIF}/notifications`,  key: 'notifications' },
   { icon: '🎧', label: 'Hỗ trợ',           href: `${MFE_PROFILE}/support`,       key: 'support' },
 ];
 
-export function AccountSidebar({ activeSection }: { activeSection: 'orders' | 'profile' | 'addresses' | 'notifications' | 'wishlist' | 'support' }) {
+export function AccountSidebar({ activeSection }: { activeSection: 'orders' | 'profile' | 'addresses' | 'wallet' | 'notifications' | 'wishlist' | 'support' }) {
   return (
     <aside className="w-56 shrink-0">
       <div className="rounded-2xl bg-white border border-warm shadow-sm overflow-hidden">

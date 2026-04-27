@@ -5,9 +5,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { prisma, OrderStatus, ReturnStatus } from '@lishop/database';
+import { prisma, OrderStatus, ReturnStatus, PaymentMethod, RefundMethod } from '@lishop/database';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { ReturnsRepository, ReturnRequestDetail } from './returns.repository';
+import { RefundsService } from '../refunds/refunds.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { UpdateReturnStatusDto } from './dto/update-return-status.dto';
 
@@ -18,6 +19,7 @@ export class ReturnsService {
   constructor(
     private readonly repo: ReturnsRepository,
     private readonly notifRepo: NotificationsRepository,
+    private readonly refundsService: RefundsService,
   ) {}
 
   async createReturn(userId: string, dto: CreateReturnDto): Promise<ReturnRequestDetail> {
@@ -106,6 +108,27 @@ export class ReturnsService {
     }
 
     const updated = await this.repo.updateStatus(id, dto.status, dto.adminNote);
+
+    // Auto-create refund when return is completed
+    if (dto.status === ReturnStatus.COMPLETED) {
+      const order = await prisma.order.findUnique({
+        where: { id: returnRequest.orderId },
+        include: { payment: true },
+      });
+      if (order?.payment) {
+        const refundMethod = order.payment.method === PaymentMethod.WALLET
+          ? RefundMethod.WALLET
+          : RefundMethod.ORIGINAL_PAYMENT;
+        await this.refundsService.createRefund(
+          returnRequest.orderId,
+          returnRequest.userId,
+          order.payment.amountVnd,
+          refundMethod,
+          id,
+          'Hoàn tiền tự động sau đổi trả',
+        );
+      }
+    }
 
     // Fire notification (fire-and-forget)
     const notifData = this.getNotificationData(dto.status, dto.adminNote);

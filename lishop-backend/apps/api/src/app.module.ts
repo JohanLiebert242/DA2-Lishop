@@ -24,6 +24,9 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { ReturnsModule } from './modules/returns/returns.module';
 import { SupportModule } from './modules/support/support.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { InvoicesModule } from './modules/invoices/invoices.module';
+import { WalletModule } from './modules/wallet/wallet.module';
+import { RefundsModule } from './modules/refunds/refunds.module';
 
 @Module({
   imports: [
@@ -46,6 +49,9 @@ import { PaymentsModule } from './modules/payments/payments.module';
     ReturnsModule,
     SupportModule,
     PaymentsModule,
+    InvoicesModule,
+    WalletModule,
+    RefundsModule,
   ],
   controllers: [HealthController],
   providers: [

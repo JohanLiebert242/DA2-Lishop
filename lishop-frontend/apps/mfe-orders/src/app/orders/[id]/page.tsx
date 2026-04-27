@@ -13,6 +13,7 @@ import {
   ReturnReason,
   ReturnStatus,
   CreateReturnInput,
+  InvoiceData,
 } from '../../../lib/orders-api';
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -169,6 +170,20 @@ export default function OrderDetailPage({ params }: Props) {
     retry: false,
   });
 
+  const { data: invoice } = useQuery({
+    queryKey: ['invoice', id],
+    queryFn: () => ordersApi.getInvoice(id),
+    enabled: order?.status === 'DELIVERED',
+    retry: false,
+  });
+
+  const { data: refunds = [] } = useQuery({
+    queryKey: ['my-refunds'],
+    queryFn: () => ordersApi.getRefunds(),
+    retry: false,
+  });
+  const refund = refunds.find((r) => r.orderId === id);
+
   // Mutations — all declared unconditionally at top
   const cancelMutation = useMutation({
     mutationFn: () => ordersApi.cancelOrder(id),
@@ -201,6 +216,48 @@ export default function OrderDetailPage({ params }: Props) {
 
   const isCancellable = order?.status === 'PENDING' || order?.status === 'PROCESSING';
   const shipment = trackingData?.shipment ?? null;
+
+  function handleDownloadInvoice(inv: InvoiceData) {
+    const html = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Hóa đơn ${inv.invoiceNo}</title>
+  <style>
+    body { font-family: sans-serif; max-width: 640px; margin: 40px auto; color: #111; }
+    h1 { font-size: 1.4rem; margin-bottom: 4px; }
+    .meta { color: #555; font-size: 0.85rem; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    td { padding: 6px 8px; }
+    tr:nth-child(even) { background: #f9f9f9; }
+    .total-row td { font-weight: bold; border-top: 2px solid #333; }
+    @media print { button { display: none; } }
+  </style>
+</head>
+<body>
+  <h1>Hóa đơn ${inv.invoiceNo}</h1>
+  <div class="meta">Ngày xuất: ${new Date(inv.issuedAt).toLocaleDateString('vi-VN')}</div>
+  <table>
+    <tr><td>Khách hàng</td><td>${inv.billingName}</td></tr>
+    <tr><td>Email</td><td>${inv.billingEmail}</td></tr>
+    <tr><td>Điện thoại</td><td>${inv.billingPhone}</td></tr>
+    <tr><td>Địa chỉ</td><td>${inv.billingAddress}</td></tr>
+    <tr><td>Tạm tính</td><td>${inv.subtotalVnd.toLocaleString('vi-VN')}₫</td></tr>
+    <tr><td>Phí vận chuyển</td><td>${inv.shippingFeeVnd.toLocaleString('vi-VN')}₫</td></tr>
+    <tr><td>Giảm giá</td><td>−${inv.discountVnd.toLocaleString('vi-VN')}₫</td></tr>
+    <tr><td>VAT (${inv.vatPercent}%)</td><td>${inv.vatVnd.toLocaleString('vi-VN')}₫</td></tr>
+    <tr class="total-row"><td>Tổng cộng</td><td>${inv.totalVnd.toLocaleString('vi-VN')}₫</td></tr>
+  </table>
+  <br/>
+  <button onclick="window.print()">In hóa đơn</button>
+</body>
+</html>`;
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
+  }
 
   function handleReturnSubmit() {
     if (!order) return;
@@ -420,6 +477,90 @@ export default function OrderDetailPage({ params }: Props) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Invoice card */}
+        {order.status === 'DELIVERED' && invoice && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-gray-900">Hóa đơn</h2>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between text-gray-700">
+                <span className="text-gray-500">Số hóa đơn</span>
+                <span className="font-medium">{invoice.invoiceNo}</span>
+              </div>
+              <div className="flex justify-between text-gray-700">
+                <span className="text-gray-500">Ngày xuất</span>
+                <span>{new Date(invoice.issuedAt).toLocaleDateString('vi-VN')}</span>
+              </div>
+              <div className="flex justify-between text-gray-700">
+                <span className="text-gray-500">VAT ({invoice.vatPercent}%)</span>
+                <span>{formatVND(invoice.vatVnd)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2 font-bold text-gray-900">
+                <span>Tổng có VAT</span>
+                <span className="text-indigo-600">{formatVND(invoice.totalVnd)}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleDownloadInvoice(invoice)}
+              className="mt-3 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+            >
+              Tải hóa đơn
+            </button>
+          </div>
+        )}
+
+        {/* Refund status card */}
+        {refund && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-gray-900">Hoàn tiền</h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    refund.status === 'COMPLETED'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : refund.status === 'PROCESSING'
+                      ? 'bg-blue-100 text-blue-800'
+                      : refund.status === 'FAILED'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {refund.status === 'PENDING'
+                    ? 'Chờ xử lý'
+                    : refund.status === 'PROCESSING'
+                    ? 'Đang xử lý'
+                    : refund.status === 'COMPLETED'
+                    ? 'Hoàn tất'
+                    : 'Thất bại'}
+                </span>
+                <span className="font-semibold text-indigo-600">{formatVND(refund.amountVnd)}</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span className="text-gray-500">Phương thức</span>
+                <span>
+                  {refund.method === 'WALLET'
+                    ? 'Hoàn vào ví'
+                    : refund.method === 'ORIGINAL_PAYMENT'
+                    ? 'Hoàn về phương thức thanh toán'
+                    : 'Chuyển khoản thủ công'}
+                </span>
+              </div>
+              {refund.adminNote && (
+                <div className="rounded-lg bg-gray-50 px-3 py-2 text-gray-700">
+                  <span className="font-medium">Ghi chú admin: </span>
+                  {refund.adminNote}
+                </div>
+              )}
+              {refund.processedAt && (
+                <p className="text-xs text-gray-400">
+                  Xử lý lúc {new Date(refund.processedAt).toLocaleString('vi-VN')}
+                </p>
+              )}
+            </div>
           </div>
         )}
 

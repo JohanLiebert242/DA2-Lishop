@@ -9,8 +9,9 @@ import { AddressesRepository } from '../addresses/addresses.repository';
 import { CartService } from '../cart/cart.service';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { ShippingService } from '../shipping/shipping.service';
+import { WalletService } from '../wallet/wallet.service';
 import { PlaceOrderDto } from './dto/place-order.dto';
-import { OrderStatus, ShippingProvider } from '@lishop/database';
+import { OrderStatus, PaymentMethod, ShippingProvider } from '@lishop/database';
 
 const CANCELLABLE_STATUSES: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.PROCESSING];
 
@@ -22,6 +23,7 @@ export class OrdersService {
     private readonly cartService: CartService,
     private readonly notifRepo: NotificationsRepository,
     private readonly shippingService: ShippingService,
+    private readonly walletService: WalletService,
   ) {}
 
   async placeOrder(userId: string, dto: PlaceOrderDto): Promise<OrderWithDetails> {
@@ -77,6 +79,11 @@ export class OrdersService {
         totalPriceVnd: item.priceVnd * item.quantity,
       })),
     });
+
+    // Deduct wallet if payment method is WALLET
+    if (dto.paymentMethod === PaymentMethod.WALLET) {
+      await this.walletService.deductForOrder(userId, order.id, totalVnd);
+    }
 
     await this.cartService.clearCart(userId);
     this.notifRepo

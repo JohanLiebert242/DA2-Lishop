@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AdminRepository, AdminStats, AdminOrderItem, AdminUserItem, AdminCoupon, AdminAnalytics } from './admin.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { InvoicesService } from '../invoices/invoices.service';
 import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
 import { OrderStatus, prisma } from '@lishop/database';
 
@@ -9,6 +10,7 @@ export class AdminService {
   constructor(
     private readonly repo: AdminRepository,
     private readonly notifRepo: NotificationsRepository,
+    private readonly invoicesService: InvoicesService,
   ) {}
 
   getStats(): Promise<AdminStats> {
@@ -25,6 +27,8 @@ export class AdminService {
 
     if (status === OrderStatus.DELIVERED && order.status !== OrderStatus.DELIVERED) {
       await this.awardLoyalty(orderId, order.userId, order.orderNumber);
+      this.invoicesService.generateForOrder(orderId)
+        .catch((err: unknown) => console.error('[AdminService] invoice generation failed', err));
     }
 
     const updated = await this.repo.updateOrderStatus(orderId, status);

@@ -8,9 +8,12 @@ import { SupportModule } from '../support/support.module';
 import { ReviewsModule } from '../reviews/reviews.module';
 import { PromotionsModule } from '../promotions/promotions.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { InvoicesModule } from '../invoices/invoices.module';
+import { RefundsModule } from '../refunds/refunds.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
-  imports: [NotificationsModule, ReturnsModule, SupportModule, ReviewsModule, PromotionsModule, PaymentsModule],
+  imports: [NotificationsModule, ReturnsModule, SupportModule, ReviewsModule, PromotionsModule, PaymentsModule, InvoicesModule, RefundsModule, WalletModule],
   providers: [AdminRepository, AdminService],
   controllers: [AdminController],
 })

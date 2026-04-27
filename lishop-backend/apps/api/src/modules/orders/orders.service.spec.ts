@@ -6,6 +6,7 @@ import { AddressesRepository } from '../addresses/addresses.repository';
 import { CartService } from '../cart/cart.service';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { ShippingService } from '../shipping/shipping.service';
+import { WalletService } from '../wallet/wallet.service';
 import { PaymentMethod, OrderStatus, ShippingProvider } from '@lishop/database';
 
 const mockCart = {
@@ -78,8 +79,10 @@ describe('OrdersService', () => {
   const cartService = { getCart: jest.fn(), clearCart: jest.fn() };
   const notifRepo = { createNotification: jest.fn() };
   const shippingService = { calculateFee: jest.fn().mockReturnValue(30000) };
+  const walletService = { deductForOrder: jest.fn() };
 
   beforeEach(async () => {
+    walletService.deductForOrder.mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
       providers: [
         OrdersService,
@@ -88,6 +91,7 @@ describe('OrdersService', () => {
         { provide: CartService, useValue: cartService },
         { provide: NotificationsRepository, useValue: notifRepo },
         { provide: ShippingService, useValue: shippingService },
+        { provide: WalletService, useValue: walletService },
       ],
     }).compile();
     service = module.get(OrdersService);

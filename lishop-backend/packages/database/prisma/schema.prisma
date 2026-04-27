@@ -39,7 +39,30 @@ enum PaymentMethod {
   PAYPAL
   VNPAY
   MOMO
+  ZALOPAY
+  WALLET
   COD
+}
+
+enum WalletTxType {
+  TOPUP
+  PAYMENT
+  REFUND
+  WITHDRAW
+  POINTS_CONVERSION
+}
+
+enum RefundMethod {
+  ORIGINAL_PAYMENT
+  WALLET
+  MANUAL
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 enum CouponType {
@@ -121,6 +144,9 @@ model User {
   returnRequests      ReturnRequest[]
   supportTickets      SupportTicket[]
   ticketMessages      TicketMessage[]
+  wallet              Wallet?
+  invoices            Invoice[]
+  refunds             Refund[]
 
   @@index([email])
 }
@@ -256,6 +282,8 @@ model Order {
   payment       Payment?
   shipment      Shipment?
   returnRequest ReturnRequest?
+  invoice       Invoice?
+  refunds       Refund[]
 
   @@index([userId])
   @@index([status])
@@ -344,9 +372,10 @@ model ReturnRequest {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  order Order        @relation(fields: [orderId], references: [id])
-  user  User         @relation(fields: [userId], references: [id])
-  items ReturnItem[]
+  order  Order        @relation(fields: [orderId], references: [id])
+  user   User         @relation(fields: [userId], references: [id])
+  items  ReturnItem[]
+  refund Refund?
 
   @@index([userId])
   @@index([status])
@@ -544,4 +573,86 @@ model FAQ {
 
   @@index([category])
   @@index([isPublished])
+}
+
+// ─── Wallet ──────────────────────────────────────────────────────────────────
+
+model Wallet {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  balanceVnd Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@index([userId])
+}
+
+model WalletTransaction {
+  id           String       @id @default(uuid())
+  walletId     String
+  type         WalletTxType
+  amountVnd    Int
+  balanceAfter Int
+  description  String?
+  referenceId  String?
+  createdAt    DateTime     @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([createdAt])
+}
+
+// ─── Invoice ─────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id             String   @id @default(uuid())
+  orderId        String   @unique
+  userId         String
+  invoiceNo      String   @unique
+  billingName    String
+  billingEmail   String
+  billingAddress String
+  billingPhone   String
+  subtotalVnd    Int
+  discountVnd    Int      @default(0)
+  shippingFeeVnd Int      @default(0)
+  vatPercent     Int      @default(10)
+  vatVnd         Int
+  totalVnd       Int
+  issuedAt       DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([issuedAt])
+}
+
+// ─── Refund ──────────────────────────────────────────────────────────────────
+
+model Refund {
+  id          String       @id @default(uuid())
+  orderId     String
+  returnId    String?      @unique
+  userId      String
+  amountVnd   Int
+  method      RefundMethod
+  status      RefundStatus @default(PENDING)
+  reason      String?
+  adminNote   String?
+  processedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  order         Order          @relation(fields: [orderId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  returnRequest ReturnRequest? @relation(fields: [returnId], references: [id])
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
 }

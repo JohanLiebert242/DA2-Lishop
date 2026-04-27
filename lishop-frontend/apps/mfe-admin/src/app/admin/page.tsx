@@ -12,11 +12,12 @@ import {
   AdminProduct, AdminCategory, CreateProductInput,
   AdminReview, ReviewStatus, AdminFlashSale, FlashSaleItem,
   AdminPayment, PaymentStatus,
+  AdminWallet, AdminInvoice, AdminRefund, RefundStatus, RefundMethod,
 } from '../../lib/admin-api';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-type Tab = 'orders' | 'users' | 'promotions' | 'analytics' | 'inventory' | 'returns' | 'tickets' | 'faq' | 'products' | 'reviews' | 'flashsales' | 'payments';
+type Tab = 'orders' | 'users' | 'promotions' | 'analytics' | 'inventory' | 'returns' | 'tickets' | 'faq' | 'products' | 'reviews' | 'flashsales' | 'payments' | 'refunds' | 'invoices' | 'wallets';
 
 const ORDER_STATUSES: OrderStatus[] = [
   'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED',
@@ -59,6 +60,29 @@ const TAB_LABELS: Record<Tab, string> = {
   reviews: 'Đánh giá',
   flashsales: 'Flash Sale',
   payments: 'Thanh toán',
+  refunds: 'Hoàn tiền',
+  invoices: 'Hóa đơn',
+  wallets: 'Ví người dùng',
+};
+
+const REFUND_STATUS_LABELS: Record<RefundStatus, string> = {
+  PENDING: 'Chờ xử lý',
+  PROCESSING: 'Đang xử lý',
+  COMPLETED: 'Hoàn tất',
+  FAILED: 'Thất bại',
+};
+
+const REFUND_STATUS_COLORS: Record<RefundStatus, string> = {
+  PENDING: 'bg-yellow-100 text-yellow-800',
+  PROCESSING: 'bg-blue-100 text-blue-800',
+  COMPLETED: 'bg-green-100 text-green-800',
+  FAILED: 'bg-red-100 text-red-800',
+};
+
+const REFUND_METHOD_LABELS: Record<RefundMethod, string> = {
+  WALLET: 'Hoàn vào ví',
+  ORIGINAL_PAYMENT: 'Về TT gốc',
+  MANUAL: 'Thủ công',
 };
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -1360,6 +1384,35 @@ export default function AdminDashboardPage() {
     enabled: tab === 'payments',
   });
 
+  const { data: adminRefunds = [], isLoading: refundsLoading } = useQuery({
+    queryKey: ['admin-refunds'],
+    queryFn: () => adminApi.getRefunds(),
+    enabled: tab === 'refunds',
+  });
+
+  const { data: adminInvoices = [], isLoading: invoicesLoading } = useQuery({
+    queryKey: ['admin-invoices'],
+    queryFn: () => adminApi.getInvoices(),
+    enabled: tab === 'invoices',
+  });
+
+  const { data: adminWallets = [], isLoading: walletsLoading } = useQuery({
+    queryKey: ['admin-wallets'],
+    queryFn: () => adminApi.getWallets(),
+    enabled: tab === 'wallets',
+  });
+
+  const processRefundMutation = useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
+      adminApi.processRefund(id, note),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-refunds'] }),
+  });
+
+  const generateInvoiceMutation = useMutation({
+    mutationFn: (orderId: string) => adminApi.generateInvoice(orderId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-invoices'] }),
+  });
+
   const deleteFaqMutation = useMutation({
     mutationFn: (id: string) => adminApi.deleteFaq(id),
     onSuccess: () => {
@@ -2163,6 +2216,174 @@ export default function AdminDashboardPage() {
             </table>
             {!paymentsLoading && payments.length === 0 && (
               <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có giao dịch nào.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Refunds tab */}
+      {tab === 'refunds' && (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b">
+            <h2 className="text-sm font-semibold text-gray-900">
+              {refundsLoading ? 'Đang tải...' : `${adminRefunds.length} yêu cầu hoàn tiền`}
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Đơn hàng</th>
+                  <th className="px-4 py-2 text-left">Khách hàng</th>
+                  <th className="px-4 py-2 text-left">Số tiền</th>
+                  <th className="px-4 py-2 text-left">Phương thức</th>
+                  <th className="px-4 py-2 text-left">Trạng thái</th>
+                  <th className="px-4 py-2 text-left">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adminRefunds.map((refund: AdminRefund) => (
+                  <tr key={refund.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono text-sm text-gray-700">
+                      #{refund.order.orderNumber}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {refund.user.firstName && refund.user.lastName
+                        ? `${refund.user.firstName} ${refund.user.lastName}`
+                        : refund.user.email}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                      {formatVND(refund.amountVnd)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {REFUND_METHOD_LABELS[refund.method] ?? refund.method}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${REFUND_STATUS_COLORS[refund.status] ?? 'bg-gray-100 text-gray-700'}`}>
+                        {REFUND_STATUS_LABELS[refund.status] ?? refund.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {refund.status === 'PENDING' && (
+                        <button
+                          type="button"
+                          onClick={() => processRefundMutation.mutate({ id: refund.id })}
+                          disabled={processRefundMutation.isPending}
+                          className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          {processRefundMutation.isPending ? 'Đang xử lý...' : 'Xử lý'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!refundsLoading && adminRefunds.length === 0 && (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có yêu cầu hoàn tiền.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Invoices tab */}
+      {tab === 'invoices' && (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b">
+            <h2 className="text-sm font-semibold text-gray-900">
+              {invoicesLoading ? 'Đang tải...' : `${adminInvoices.length} hóa đơn`}
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Số hóa đơn</th>
+                  <th className="px-4 py-2 text-left">Đơn hàng</th>
+                  <th className="px-4 py-2 text-left">Khách hàng</th>
+                  <th className="px-4 py-2 text-left">Tổng tiền (có VAT)</th>
+                  <th className="px-4 py-2 text-left">VAT</th>
+                  <th className="px-4 py-2 text-left">Ngày tạo</th>
+                  <th className="px-4 py-2 text-left">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adminInvoices.map((inv: AdminInvoice) => (
+                  <tr key={inv.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono text-sm text-gray-700">{inv.invoiceNo}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-gray-700">
+                      {inv.orderId.slice(0, 8)}…
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{inv.billingName}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                      {formatVND(inv.totalVnd)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {inv.vatPercent}% ({formatVND(inv.vatVnd)})
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {new Date(inv.issuedAt).toLocaleDateString('vi-VN')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => generateInvoiceMutation.mutate(inv.orderId)}
+                        disabled={generateInvoiceMutation.isPending}
+                        className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        {generateInvoiceMutation.isPending ? 'Đang tạo...' : 'Tạo lại'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!invoicesLoading && adminInvoices.length === 0 && (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có hóa đơn nào.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Wallets tab */}
+      {tab === 'wallets' && (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b">
+            <h2 className="text-sm font-semibold text-gray-900">
+              {walletsLoading ? 'Đang tải...' : `${adminWallets.length} ví người dùng`}
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Email khách hàng</th>
+                  <th className="px-4 py-2 text-left">Họ tên</th>
+                  <th className="px-4 py-2 text-left">Số dư (VND)</th>
+                  <th className="px-4 py-2 text-left">Cập nhật lần cuối</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adminWallets.map((wallet: AdminWallet) => (
+                  <tr key={wallet.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-700">{wallet.user.email}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {wallet.user.firstName && wallet.user.lastName
+                        ? `${wallet.user.firstName} ${wallet.user.lastName}`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                      {formatVND(wallet.balanceVnd)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {new Date(wallet.updatedAt).toLocaleDateString('vi-VN')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!walletsLoading && adminWallets.length === 0 && (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có ví nào.</p>
             )}
           </div>
         </div>

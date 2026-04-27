@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminRepository } from './admin.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { InvoicesService } from '../invoices/invoices.service';
 import { OrderStatus } from '@lishop/database';
 
 const mockStats = { orderCount: 10, revenueVnd: 5000000, userCount: 20, productCount: 30 };
@@ -40,17 +41,18 @@ describe('AdminService', () => {
     toggleCoupon: jest.fn(),
     getAnalytics: jest.fn(),
   };
-  const notifRepo = {
-    createNotification: jest.fn(),
-  };
+  const notifRepo = { createNotification: jest.fn() };
+  const invoicesService = { generateForOrder: jest.fn() };
 
   beforeEach(async () => {
     notifRepo.createNotification.mockResolvedValue(undefined);
+    invoicesService.generateForOrder.mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
       providers: [
         AdminService,
         { provide: AdminRepository, useValue: repo },
         { provide: NotificationsRepository, useValue: notifRepo },
+        { provide: InvoicesService, useValue: invoicesService },
       ],
     }).compile();
     service = module.get(AdminService);

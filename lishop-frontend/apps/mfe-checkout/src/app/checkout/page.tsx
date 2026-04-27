@@ -31,6 +31,8 @@ const PAYMENT_OPTIONS = [
   { value: 'COD', label: 'Thanh toán khi nhận hàng', icon: '💵', desc: 'Trả tiền mặt khi nhận hàng' },
   { value: 'VNPAY', label: 'VNPay', icon: '🏦', desc: 'Thanh toán qua cổng VNPay' },
   { value: 'MOMO', label: 'MoMo', icon: '📱', desc: 'Thanh toán qua ví MoMo' },
+  { value: 'ZALOPAY', label: 'ZaloPay', icon: '🟡', desc: 'Thanh toán qua ví ZaloPay' },
+  { value: 'WALLET', label: 'Ví Lishop', icon: '💳', desc: 'Thanh toán bằng số dư ví Lishop' },
 ];
 
 function StepIndicator({ current }: { current: Step }) {
@@ -129,6 +131,8 @@ export default function CheckoutPage() {
     enabled: step >= 2 && !!selectedAddress,
   });
 
+  const ONLINE_PAYMENT_METHODS = ['VNPAY', 'MOMO', 'ZALOPAY'];
+
   const placeOrderMutation = useMutation({
     mutationFn: () => {
       if (!selectedAddressId) throw new Error('Vui lòng chọn địa chỉ giao hàng');
@@ -140,7 +144,30 @@ export default function CheckoutPage() {
         notes: notes.trim() || undefined,
       });
     },
-    onSuccess: () => {
+    onSuccess: async (result) => {
+      if (ONLINE_PAYMENT_METHODS.includes(paymentMethod)) {
+        try {
+          const token = getToken();
+          const res = await fetch(
+            `${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000'}/payments/${result.id}/initiate`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+            },
+          );
+          const json = await res.json();
+          const paymentData = json.data ?? json;
+          if (paymentData.paymentUrl) {
+            window.location.href = paymentData.paymentUrl;
+            return;
+          }
+        } catch {
+          // If initiate fails, fall through to orders page
+        }
+      }
       window.location.href = `${MFE_ORDERS}/orders`;
     },
     onError: (err: Error) => setOrderError(err.message),

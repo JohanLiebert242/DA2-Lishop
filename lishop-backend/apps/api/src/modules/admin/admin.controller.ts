@@ -24,6 +24,9 @@ import { CreateFlashSaleDto } from '../promotions/dto/create-flash-sale.dto';
 import { UpdateFlashSaleDto } from '../promotions/dto/update-flash-sale.dto';
 import { AddFlashSaleItemDto } from '../promotions/dto/add-flash-sale-item.dto';
 import { PaymentsService } from '../payments/payments.service';
+import { RefundsService } from '../refunds/refunds.service';
+import { InvoicesService } from '../invoices/invoices.service';
+import { WalletService } from '../wallet/wallet.service';
 import { ReviewStatus, TicketStatus } from '@lishop/database';
 
 @ApiTags('admin')
@@ -40,6 +43,9 @@ export class AdminController {
     private readonly reviewsService: ReviewsService,
     private readonly flashSalesService: FlashSalesService,
     private readonly paymentsService: PaymentsService,
+    private readonly refundsService: RefundsService,
+    private readonly invoicesService: InvoicesService,
+    private readonly walletService: WalletService,
   ) {}
 
   @Get('stats')
@@ -268,4 +274,36 @@ export class AdminController {
   confirmPayment(@Param('orderId', ParseUUIDPipe) orderId: string) {
     return this.paymentsService.confirmPaymentAdmin(orderId);
   }
+
+  // ---- Refunds ----
+
+  @Get('refunds')
+  @ApiOperation({ summary: 'List all refunds' })
+  getAllRefunds() { return this.refundsService.getAllRefunds(); }
+
+  @Post('refunds/:id/process')
+  @ApiOperation({ summary: 'Process a refund (wallet credit or mark processing)' })
+  processRefund(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('adminNote') adminNote?: string,
+  ) { return this.refundsService.processRefund(id, adminNote); }
+
+  // ---- Invoices ----
+
+  @Get('invoices')
+  @ApiOperation({ summary: 'List all invoices' })
+  getAllInvoices() { return this.invoicesService.getAllInvoices(); }
+
+  @Post('invoices/:orderId/generate')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Manually generate invoice for an order' })
+  generateInvoice(@Param('orderId', ParseUUIDPipe) orderId: string) {
+    return this.invoicesService.generateForOrder(orderId);
+  }
+
+  // ---- Wallet admin ----
+
+  @Get('wallets')
+  @ApiOperation({ summary: 'List all user wallets' })
+  getAllWallets() { return this.walletService.adminGetAll(); }
 }

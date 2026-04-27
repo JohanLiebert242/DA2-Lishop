@@ -107,6 +107,34 @@ export interface ReturnRequest {
   items: { id: string; orderItemId: string; quantity: number }[];
 }
 
+export interface InvoiceData {
+  id: string;
+  invoiceNo: string;
+  billingName: string;
+  billingEmail: string;
+  billingAddress: string;
+  billingPhone: string;
+  subtotalVnd: number;
+  discountVnd: number;
+  shippingFeeVnd: number;
+  vatPercent: number;
+  vatVnd: number;
+  totalVnd: number;
+  issuedAt: string;
+}
+
+export interface RefundData {
+  id: string;
+  orderId: string;
+  amountVnd: number;
+  method: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  reason: string | null;
+  adminNote: string | null;
+  processedAt: string | null;
+  createdAt: string;
+}
+
 export const ordersApi = {
   getOrders: () => apiFetch<OrderSummary[]>('/orders'),
   getOrder: (id: string) => apiFetch<OrderSummary>(`/orders/${id}`),
@@ -116,6 +144,10 @@ export const ordersApi = {
     apiFetch<{ paymentUrl: string | null; status: string }>(`/payments/${orderId}/initiate`, {
       method: 'POST',
     }),
+  getInvoice: (orderId: string) =>
+    apiFetch<InvoiceData>(`/invoices/${orderId}`),
+  getRefunds: () =>
+    apiFetch<RefundData[]>('/refunds'),
 };
 
 export async function getTracking(orderId: string): Promise<TrackingResponse> {
