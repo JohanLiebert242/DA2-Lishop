@@ -14,7 +14,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
     <html lang="vi">
       <body className="flex min-h-screen flex-col bg-warm">
         <Providers>
-          <MiniHeader title="Tài khoản" />
+          <MiniHeader />
           <main className="flex-1">{children}</main>
           <MiniFooter />
         </Providers>
