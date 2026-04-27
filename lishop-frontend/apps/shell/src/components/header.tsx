@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/use-auth';
+import { Button } from '@lishop/ui';
 
 const MFE = {
   auth: 'http://localhost:3001',
@@ -132,27 +133,22 @@ export function Header() {
                 </div>
                 <span className="hidden sm:block">{user?.firstName}</span>
               </Link>
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => void logout()}
-                className="rounded-xl border border-warm px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-warm-100 transition-colors"
               >
                 Đăng xuất
-              </button>
+              </Button>
             </>
           ) : (
             <>
-              <Link
-                href={`${MFE.auth}/login`}
-                className="rounded-xl px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-warm-100 transition-colors"
-              >
-                Đăng nhập
-              </Link>
-              <Link
-                href={`${MFE.auth}/register`}
-                className="btn-primary text-sm"
-              >
-                Đăng ký
-              </Link>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={`${MFE.auth}/login`}>Đăng nhập</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href={`${MFE.auth}/register`}>Đăng ký</Link>
+              </Button>
             </>
           )}
         </div>

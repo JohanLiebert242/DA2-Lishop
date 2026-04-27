@@ -1292,7 +1292,7 @@ export default function AdminDashboardPage() {
     if (!match) { window.location.replace(`${AUTH_URL}/login`); return; }
     // Decode JWT payload (no verification — server enforces RBAC)
     try {
-      const payload = JSON.parse(atob(match[1].split('.')[1]!));
+      const payload = JSON.parse(atob(match[1]!.split('.')[1]!));
       if (payload.role !== 'ADMIN') window.location.replace(SHELL_URL);
     } catch { window.location.replace(SHELL_URL); }
   }, []);

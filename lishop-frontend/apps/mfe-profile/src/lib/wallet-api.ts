@@ -3,7 +3,7 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 function getToken() {
   if (typeof window === 'undefined') return null;
   const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {

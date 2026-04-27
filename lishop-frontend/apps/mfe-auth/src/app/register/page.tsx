@@ -6,6 +6,9 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { authApi } from '../../lib/auth-api';
+import { Button } from '@lishop/ui';
+import { Input } from '@lishop/ui';
+import { Label } from '@lishop/ui';
 
 const SHELL_URL = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
 
@@ -47,13 +50,13 @@ export default function RegisterPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-warm">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 shadow-brand">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-brand">
             <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <p className="text-lg font-bold text-stone-900">Tài khoản đã được tạo!</p>
-          <p className="text-sm text-muted">Đang chuyển hướng về trang chủ...</p>
+          <p className="text-sm text-muted-foreground">Đang chuyển hướng về trang chủ...</p>
         </div>
       </div>
     );
@@ -88,69 +91,93 @@ export default function RegisterPage() {
       <div className="flex flex-1 items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 shadow-brand">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-brand">
               <span className="text-base font-black text-white">Li</span>
             </div>
             <span className="text-xl font-black text-stone-900">Lishop</span>
           </div>
 
           <h1 className="text-3xl font-black text-stone-900 tracking-tight">Tạo tài khoản</h1>
-          <p className="mt-1.5 text-sm text-muted">
+          <p className="mt-1.5 text-sm text-muted-foreground">
             Đã có tài khoản?{' '}
-            <Link href="/login" className="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+            <Link href="/login" className="font-semibold text-primary hover:opacity-80 transition-opacity">
               Đăng nhập
             </Link>
           </p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-4" noValidate>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="lastName" className="block mb-1.5 text-sm font-semibold text-stone-700">Họ</label>
-                <input id="lastName" {...register('lastName')} className="input-field" placeholder="Nguyễn" />
-                {errors.lastName && <p className="mt-1 text-xs font-medium text-red-600">{errors.lastName.message}</p>}
+              <div className="space-y-1.5">
+                <Label htmlFor="lastName">Họ</Label>
+                <Input
+                  id="lastName"
+                  {...register('lastName')}
+                  placeholder="Nguyễn"
+                  className={errors.lastName ? 'border-destructive focus-visible:ring-destructive' : ''}
+                />
+                {errors.lastName && <p className="text-xs font-medium text-destructive">{errors.lastName.message}</p>}
               </div>
-              <div>
-                <label htmlFor="firstName" className="block mb-1.5 text-sm font-semibold text-stone-700">Tên</label>
-                <input id="firstName" {...register('firstName')} className="input-field" placeholder="Văn A" />
-                {errors.firstName && <p className="mt-1 text-xs font-medium text-red-600">{errors.firstName.message}</p>}
+              <div className="space-y-1.5">
+                <Label htmlFor="firstName">Tên</Label>
+                <Input
+                  id="firstName"
+                  {...register('firstName')}
+                  placeholder="Văn A"
+                  className={errors.firstName ? 'border-destructive focus-visible:ring-destructive' : ''}
+                />
+                {errors.firstName && <p className="text-xs font-medium text-destructive">{errors.firstName.message}</p>}
               </div>
             </div>
 
-            <div>
-              <label htmlFor="email" className="block mb-1.5 text-sm font-semibold text-stone-700">Email</label>
-              <input id="email" type="email" autoComplete="email" {...register('email')} className="input-field" placeholder="ten@email.com" />
-              {errors.email && <p className="mt-1 text-xs font-medium text-red-600">{errors.email.message}</p>}
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                {...register('email')}
+                placeholder="ten@email.com"
+                className={errors.email ? 'border-destructive focus-visible:ring-destructive' : ''}
+              />
+              {errors.email && <p className="text-xs font-medium text-destructive">{errors.email.message}</p>}
             </div>
 
-            <div>
-              <label htmlFor="password" className="block mb-1.5 text-sm font-semibold text-stone-700">Mật khẩu</label>
-              <input id="password" type="password" autoComplete="new-password" {...register('password')} className="input-field" placeholder="Tối thiểu 8 ký tự" />
-              {errors.password && <p className="mt-1 text-xs font-medium text-red-600">{errors.password.message}</p>}
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Mật khẩu</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                {...register('password')}
+                placeholder="Tối thiểu 8 ký tự"
+                className={errors.password ? 'border-destructive focus-visible:ring-destructive' : ''}
+              />
+              {errors.password && <p className="text-xs font-medium text-destructive">{errors.password.message}</p>}
             </div>
 
             {serverError && (
-              <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-100 p-3.5">
-                <svg className="h-4 w-4 text-red-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <div className="flex items-start gap-2.5 rounded-xl bg-destructive/10 border border-destructive/20 p-3.5">
+                <svg className="h-4 w-4 text-destructive shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
                 </svg>
-                <p className="text-sm text-red-700 font-medium">{serverError}</p>
+                <p className="text-sm text-destructive font-medium">{serverError}</p>
               </div>
             )}
 
-            <button type="submit" disabled={isSubmitting} className="btn-primary w-full py-3 text-base mt-2">
+            <Button type="submit" disabled={isSubmitting} className="w-full py-3 text-base mt-2 h-auto">
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                   Đang tạo tài khoản...
                 </span>
               ) : 'Tạo tài khoản miễn phí'}
-            </button>
+            </Button>
 
-            <p className="text-center text-xs text-muted">
+            <p className="text-center text-xs text-muted-foreground">
               Bằng cách đăng ký, bạn đồng ý với{' '}
-              <span className="font-semibold text-stone-600">Điều khoản dịch vụ</span>{' '}
+              <span className="font-semibold text-foreground">Điều khoản dịch vụ</span>{' '}
               và{' '}
-              <span className="font-semibold text-stone-600">Chính sách bảo mật</span>
+              <span className="font-semibold text-foreground">Chính sách bảo mật</span>
             </p>
           </form>
         </div>
