@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { formatVND } from '@lishop/shared';
+import { toast } from '@lishop/ui';
 import { catalogApi, ReviewInfo } from '../../../lib/catalog-api';
 import { RelatedProducts } from '../../../components/related-products';
 import { addToCart } from '../../../lib/cart-helper';
@@ -19,7 +20,7 @@ function Stars({ rating, interactive = false, onSelect }: { rating: number; inte
         <span
           key={s}
           onClick={() => interactive && onSelect?.(s)}
-          className={`${s <= rating ? 'text-yellow-400' : 'text-gray-300'} ${interactive ? 'cursor-pointer text-2xl' : 'text-base'}`}
+          className={`${s <= rating ? 'text-yellow-400' : 'text-stone-300'} ${interactive ? 'cursor-pointer text-2xl select-none' : 'text-base'}`}
         >
           ★
         </span>
@@ -49,6 +50,10 @@ function ReviewsSection({ productId }: { productId: string }) {
       setShowForm(false);
       setContent('');
       setRating(5);
+      toast.success('Đánh giá của bạn đã được gửi!');
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Gửi đánh giá thất bại, vui lòng thử lại');
     },
   });
 
@@ -70,14 +75,14 @@ function ReviewsSection({ productId }: { productId: string }) {
   });
 
   return (
-    <div className="mt-8 border-t pt-8">
+    <div className="mt-8 border-t border-warm pt-8">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Đánh giá khách hàng</h2>
+          <h2 className="text-lg font-black text-stone-900 tracking-tight">Đánh giá khách hàng</h2>
           {reviews.length > 0 && (
             <div className="mt-1 flex items-center gap-2">
               <Stars rating={Math.round(avgRating)} />
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-muted">
                 {avgRating.toFixed(1)} ({reviews.length} đánh giá)
               </span>
             </div>
@@ -86,12 +91,12 @@ function ReviewsSection({ productId }: { productId: string }) {
             <div className="mt-3 w-48 space-y-1">
               {starCounts.map(({ star, count, pct }) => (
                 <div key={star} className="flex items-center gap-2 text-xs">
-                  <span className="w-3 text-right text-gray-500">{star}</span>
+                  <span className="w-3 text-right text-muted">{star}</span>
                   <span className="text-yellow-400">★</span>
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-100">
                     <div className="h-full rounded-full bg-yellow-400" style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="w-4 text-right text-gray-400">{count}</span>
+                  <span className="w-4 text-right text-muted">{count}</span>
                 </div>
               ))}
             </div>
@@ -100,49 +105,44 @@ function ReviewsSection({ productId }: { productId: string }) {
         {token && !showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="btn-primary cursor-pointer"
           >
             Viết đánh giá
           </button>
         )}
         {!token && (
-          <a href="http://localhost:3001/login" className="text-sm text-indigo-600 hover:underline">
-            Đăng nhập để đánh giá
+          <a href="http://localhost:3001/login" className="text-sm font-semibold text-indigo-600 hover:opacity-80 transition-opacity">
+            Đăng nhập để đánh giá →
           </a>
         )}
       </div>
 
       {showForm && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4">
-          <p className="mb-2 text-sm font-medium text-gray-700">Đánh giá của bạn</p>
+        <div className="mb-6 rounded-xl border border-warm bg-warm-100 p-4">
+          <p className="mb-2 text-sm font-bold text-stone-700">Đánh giá của bạn</p>
           <Stars rating={rating} interactive onSelect={setRating} />
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Nhận xét của bạn (tùy chọn)..."
             rows={3}
-            className="mt-3 w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="mt-3 w-full resize-none rounded-xl border border-warm px-3 py-2 text-sm bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-colors"
           />
           <div className="mt-3 flex gap-2">
             <button
               onClick={() => submitMutation.mutate()}
               disabled={submitMutation.isPending}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="btn-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitMutation.isPending ? 'Đang gửi...' : 'Gửi đánh giá'}
             </button>
             <button
               onClick={() => setShowForm(false)}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              className="cursor-pointer rounded-xl border border-warm px-4 py-2 text-sm font-semibold text-stone-600 hover:bg-warm-100 transition-colors"
             >
               Hủy
             </button>
           </div>
-          {submitMutation.isError && (
-            <p className="mt-2 text-xs text-red-600">
-              {(submitMutation.error as Error).message}
-            </p>
-          )}
         </div>
       )}
 
@@ -151,7 +151,7 @@ function ReviewsSection({ productId }: { productId: string }) {
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
-            className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 focus:outline-none"
+            className="cursor-pointer rounded-lg border border-warm px-3 py-1.5 text-xs text-stone-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-colors"
           >
             <option value="newest">Mới nhất</option>
             <option value="highest">Đánh giá cao nhất</option>
@@ -161,16 +161,16 @@ function ReviewsSection({ productId }: { productId: string }) {
       )}
 
       {reviews.length === 0 ? (
-        <p className="text-sm text-gray-400">Chưa có đánh giá nào.</p>
+        <p className="text-sm text-muted">Chưa có đánh giá nào. Hãy là người đầu tiên!</p>
       ) : (
         <div className="space-y-4">
           {sortedReviews.map((review: ReviewInfo) => (
-            <div key={review.id} className="rounded-xl border border-gray-100 bg-white p-4">
+            <div key={review.id} className="card p-4">
               <div className="mb-1 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900">{review.userName}</span>
+                  <span className="text-sm font-semibold text-stone-900">{review.userName}</span>
                   {review.verifiedPurchase && (
-                    <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700">
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                       Đã mua
                     </span>
                   )}
@@ -178,9 +178,9 @@ function ReviewsSection({ productId }: { productId: string }) {
                 <Stars rating={review.rating} />
               </div>
               {review.content && (
-                <p className="text-sm text-gray-600">{review.content}</p>
+                <p className="text-sm text-stone-600">{review.content}</p>
               )}
-              <p className="mt-2 text-xs text-gray-400">
+              <p className="mt-2 text-xs text-muted">
                 {new Date(review.createdAt).toLocaleDateString('vi-VN')}
               </p>
             </div>
@@ -199,7 +199,6 @@ export default function ProductDetailPage({ params }: Props) {
   const { slug } = use(params);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [addingToCart, setAddingToCart] = useState(false);
-  const [cartMessage, setCartMessage] = useState('');
   const [qty, setQty] = useState(1);
 
   const queryClient = useQueryClient();
@@ -227,13 +226,29 @@ export default function ProductDetailPage({ params }: Props) {
       window.location.href = 'http://localhost:3001/login';
       return;
     }
-    toggleWishlistMutation.mutate();
+    const wasWishlisted = isWishlisted;
+    toggleWishlistMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast.success(wasWishlisted ? 'Đã bỏ khỏi yêu thích' : 'Đã thêm vào yêu thích ♥');
+      },
+      onError: (err) => {
+        toast.error((err as Error).message || 'Có lỗi xảy ra, vui lòng thử lại');
+      },
+    });
   }
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-16 text-center text-gray-400">
-        Đang tải...
+      <div className="mx-auto max-w-7xl px-4 py-16">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <div className="aspect-square w-full animate-pulse rounded-xl bg-stone-100" />
+          <div className="space-y-4">
+            <div className="h-4 w-24 rounded bg-stone-100 animate-pulse" />
+            <div className="h-8 w-3/4 rounded bg-stone-100 animate-pulse" />
+            <div className="h-10 w-32 rounded bg-stone-100 animate-pulse" />
+            <div className="h-4 w-48 rounded bg-stone-100 animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -241,8 +256,9 @@ export default function ProductDetailPage({ params }: Props) {
   if (isError || !product) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-16 text-center">
-        <p className="text-red-600">Không tìm thấy sản phẩm.</p>
-        <Link href="/products" className="mt-4 inline-block text-sm text-indigo-600 hover:underline">
+        <p className="text-5xl mb-4">🔍</p>
+        <p className="font-bold text-stone-700">Không tìm thấy sản phẩm.</p>
+        <Link href="/products" className="mt-4 inline-block text-sm font-semibold text-indigo-600 hover:opacity-80 transition-opacity">
           ← Quay lại danh sách
         </Link>
       </div>
@@ -252,13 +268,11 @@ export default function ProductDetailPage({ params }: Props) {
   async function handleAddToCart() {
     if (!product) return;
     setAddingToCart(true);
-    setCartMessage('');
     try {
       await addToCart(product.id, qty);
-      setCartMessage('Đã thêm vào giỏ hàng!');
-      setTimeout(() => setCartMessage(''), 3000);
+      toast.success(`Đã thêm ${qty > 1 ? `${qty}x ` : ''}"${product.name}" vào giỏ hàng!`);
     } catch (err: unknown) {
-      setCartMessage(err instanceof Error ? err.message : 'Có lỗi xảy ra');
+      toast.error(err instanceof Error ? err.message : 'Có lỗi xảy ra khi thêm vào giỏ hàng');
     } finally {
       setAddingToCart(false);
     }
@@ -272,22 +286,22 @@ export default function ProductDetailPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       {/* Breadcrumb */}
-      <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-        <Link href="/" className="hover:text-indigo-600">Trang chủ</Link>
-        <span>/</span>
-        <Link href="/products" className="hover:text-indigo-600">Sản phẩm</Link>
-        <span>/</span>
-        <Link href={`/products?categoryId=${product.category.id}`} className="hover:text-indigo-600">
+      <nav className="mb-6 flex items-center gap-2 text-sm text-muted">
+        <Link href="/" className="hover:text-indigo-600 transition-colors">Trang chủ</Link>
+        <span className="text-stone-300">/</span>
+        <Link href="/products" className="hover:text-indigo-600 transition-colors">Sản phẩm</Link>
+        <span className="text-stone-300">/</span>
+        <Link href={`/products?categoryId=${product.category.id}`} className="hover:text-indigo-600 transition-colors">
           {product.category.name}
         </Link>
-        <span>/</span>
-        <span className="text-gray-800">{product.name}</span>
+        <span className="text-stone-300">/</span>
+        <span className="text-stone-800 font-medium">{product.name}</span>
       </nav>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Images */}
         <div>
-          <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
+          <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-stone-100">
             {currentImage ? (
               <Image
                 src={currentImage.url}
@@ -297,19 +311,21 @@ export default function ProductDetailPage({ params }: Props) {
                 priority
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-gray-400">
+              <div className="flex h-full items-center justify-center text-muted">
                 Chưa có ảnh
               </div>
             )}
           </div>
           {images && images.length > 1 && (
-            <div className="mt-3 flex gap-2 overflow-x-auto">
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
               {images.map((img, i) => (
                 <button
                   key={img.id}
                   onClick={() => setSelectedImageIndex(i)}
-                  className={`relative h-16 w-16 shrink-0 overflow-hidden rounded border-2 transition-colors ${
-                    i === selectedImageIndex ? 'border-indigo-500' : 'border-gray-200'
+                  className={`relative h-16 w-16 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 transition-all ${
+                    i === selectedImageIndex
+                      ? 'border-indigo-500 shadow-brand'
+                      : 'border-warm hover:border-indigo-300'
                   }`}
                 >
                   <Image src={img.url} alt={img.alt ?? ''} fill className="object-cover" />
@@ -321,8 +337,8 @@ export default function ProductDetailPage({ params }: Props) {
 
         {/* Info */}
         <div>
-          <p className="text-sm text-indigo-600">{product.category.name}</p>
-          <h1 className="mt-1 text-2xl font-bold text-gray-900">{product.name}</h1>
+          <p className="text-sm font-semibold text-indigo-600">{product.category.name}</p>
+          <h1 className="mt-1 text-2xl font-black text-stone-900 tracking-tight">{product.name}</h1>
 
           {product.averageRating > 0 && (
             <div className="mt-2 flex items-center gap-2">
@@ -330,22 +346,22 @@ export default function ProductDetailPage({ params }: Props) {
                 {'★'.repeat(Math.round(product.averageRating))}
                 {'☆'.repeat(5 - Math.round(product.averageRating))}
               </div>
-              <span className="text-sm text-gray-500">{product.averageRating.toFixed(1)} ({product.reviewCount} đánh giá)</span>
+              <span className="text-sm text-muted">{product.averageRating.toFixed(1)} ({product.reviewCount} đánh giá)</span>
             </div>
           )}
 
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-indigo-600">{formatVND(product.priceVnd)}</span>
+            <span className="text-3xl font-black text-indigo-600">{formatVND(product.priceVnd)}</span>
           </div>
 
           <div className="mt-2">
             {product.stock > 0 ? (
-              <span className="inline-flex items-center gap-1 text-sm text-green-600">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 Còn hàng ({product.stock} sản phẩm)
               </span>
             ) : (
-              <span className="text-sm text-red-600">Hết hàng</span>
+              <span className="text-sm font-medium text-red-600">Hết hàng</span>
             )}
           </div>
 
@@ -358,7 +374,7 @@ export default function ProductDetailPage({ params }: Props) {
           {product.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {product.tags.map(({ tag }) => (
-                <span key={tag.name} className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
+                <span key={tag.name} className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
                   {tag.name}
                 </span>
               ))}
@@ -366,13 +382,13 @@ export default function ProductDetailPage({ params }: Props) {
           )}
 
           {product.stock > 0 && (
-            <div className="mt-4 flex items-center gap-3">
-              <span className="text-sm font-medium text-gray-700">Số lượng:</span>
-              <div className="flex items-center rounded-md border border-gray-300">
+            <div className="mt-5 flex items-center gap-3">
+              <span className="text-sm font-semibold text-stone-700">Số lượng:</span>
+              <div className="flex items-center rounded-xl border border-warm overflow-hidden">
                 <button
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
                   disabled={qty <= 1}
-                  className="flex h-9 w-9 items-center justify-center text-lg font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center text-lg font-bold text-stone-600 hover:bg-warm-100 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
                 >
                   −
                 </button>
@@ -382,14 +398,14 @@ export default function ProductDetailPage({ params }: Props) {
                   onChange={(e) =>
                     setQty(Math.min(product.stock, Math.max(1, parseInt(e.target.value) || 1)))
                   }
-                  className="w-12 border-x border-gray-300 py-1.5 text-center text-sm font-semibold focus:outline-none"
+                  className="w-12 border-x border-warm py-2 text-center text-sm font-bold focus:outline-none bg-white"
                   min={1}
                   max={product.stock}
                 />
                 <button
                   onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
                   disabled={qty >= product.stock}
-                  className="flex h-9 w-9 items-center justify-center text-lg font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center text-lg font-bold text-stone-600 hover:bg-warm-100 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
                 >
                   +
                 </button>
@@ -397,42 +413,40 @@ export default function ProductDetailPage({ params }: Props) {
             </div>
           )}
 
-          <div className="mt-6">
-            <div className="mt-4 flex gap-3">
-              <button
-                disabled={product.stock === 0 || addingToCart}
-                onClick={handleAddToCart}
-                className="flex-1 rounded-md bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {addingToCart ? 'Đang thêm...' : product.stock > 0 ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
-              </button>
-              <button
-                onClick={handleToggleWishlist}
-                disabled={toggleWishlistMutation.isPending}
-                className={`rounded-md border px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${
-                  isWishlisted
-                    ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
-                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                {isWishlisted ? '♥ Đã lưu' : '♡ Lưu'}
-              </button>
-            </div>
-            {cartMessage && (
-              <p className={`mt-2 text-sm text-center ${cartMessage.includes('Đã') ? 'text-green-600' : 'text-red-600'}`}>
-                {cartMessage}
-              </p>
-            )}
+          <div className="mt-6 flex gap-3">
+            <button
+              disabled={product.stock === 0 || addingToCart}
+              onClick={handleAddToCart}
+              className="btn-primary flex-1 cursor-pointer py-3 text-base disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none disabled:shadow-none"
+            >
+              {addingToCart
+                ? 'Đang thêm...'
+                : product.stock > 0
+                ? '🛒 Thêm vào giỏ hàng'
+                : 'Hết hàng'}
+            </button>
+            <button
+              onClick={handleToggleWishlist}
+              disabled={toggleWishlistMutation.isPending}
+              className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                isWishlisted
+                  ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
+                  : 'border-warm bg-white text-stone-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700'
+              }`}
+            >
+              {isWishlisted ? '♥ Đã lưu' : '♡ Lưu'}
+            </button>
           </div>
 
-          <div className="mt-6 border-t pt-6">
-            <h2 className="text-sm font-semibold text-gray-900">Mô tả sản phẩm</h2>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600 whitespace-pre-line">
+          <div className="mt-6 border-t border-warm pt-6">
+            <h2 className="text-sm font-black text-stone-900 uppercase tracking-wider">Mô tả sản phẩm</h2>
+            <p className="mt-2 text-sm leading-relaxed text-stone-600 whitespace-pre-line">
               {product.description}
             </p>
           </div>
         </div>
       </div>
+
       <ReviewsSection productId={product.id} />
       <RelatedProducts slug={slug} />
       <ChatWidget />
