@@ -291,6 +291,7 @@ export interface AdminProduct {
   id: string;
   name: string;
   slug: string;
+  sku: string | null;
   description: string;
   priceVnd: number;
   priceUsd: number;
@@ -313,6 +314,7 @@ export interface AdminCategory {
 
 export interface CreateProductInput {
   name: string;
+  sku?: string;
   description: string;
   priceVnd: number;
   priceUsd: number;

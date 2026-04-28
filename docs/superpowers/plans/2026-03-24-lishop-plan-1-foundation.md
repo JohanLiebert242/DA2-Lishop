@@ -324,7 +324,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - '6379:6379'
+      - '6380:6379'
     volumes:
       - redis_data:/data
 
@@ -350,7 +350,7 @@ NODE_ENV=development
 PORT=4000
 
 DATABASE_URL=postgresql://lishop:lishop@localhost:5432/lishop
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://localhost:6380
 MEILISEARCH_URL=http://localhost:7700
 MEILISEARCH_MASTER_KEY=masterKey
 
@@ -2499,7 +2499,7 @@ The e2e test starts the full NestJS app, which requires `DATABASE_URL` and `REDI
 cp .env.example .env
 # DATABASE_URL and REDIS_URL in .env must point to running Docker containers:
 # DATABASE_URL=postgresql://lishop:lishop@localhost:5432/lishop
-# REDIS_URL=redis://localhost:6379
+# REDIS_URL=redis://localhost:6380
 pnpm --filter @lishop/api test:e2e
 ```
 Expected: `GET /health returns 200 with status ok` — PASS.
@@ -3057,10 +3057,10 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
       redis:
         image: redis:7-alpine
-        ports: ['6379:6379']
+        ports: ['6380:6379']
     env:
       DATABASE_URL: postgresql://lishop:lishop@localhost:5432/lishop_test
-      REDIS_URL: redis://localhost:6379
+      REDIS_URL: redis://localhost:6380
       JWT_ACCESS_SECRET: test-access-secret
       JWT_REFRESH_SECRET: test-refresh-secret
       NODE_ENV: test

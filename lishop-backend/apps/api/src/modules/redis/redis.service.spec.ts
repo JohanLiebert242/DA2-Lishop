@@ -11,7 +11,7 @@ describe('RedisService', () => {
         RedisService,
         {
           provide: ConfigService,
-          useValue: { get: (key: string) => key === 'REDIS_URL' ? 'redis://localhost:6379' : undefined },
+          useValue: { get: (key: string) => key === 'REDIS_URL' ? 'redis://localhost:6380' : undefined },
         },
       ],
     }).compile();

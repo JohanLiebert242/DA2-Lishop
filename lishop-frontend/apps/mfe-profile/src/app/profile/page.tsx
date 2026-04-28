@@ -98,7 +98,11 @@ export default function ProfilePage() {
       : profile?.email ?? '';
 
   function handleEdit() {
-    setForm({ firstName: profile?.firstName ?? '', lastName: profile?.lastName ?? '' });
+    setForm({
+      firstName: profile?.firstName ?? '',
+      lastName: profile?.lastName ?? '',
+      avatarUrl: profile?.avatarUrl ?? '',
+    });
     setEditing(true);
   }
 
@@ -139,6 +143,26 @@ export default function ProfilePage() {
 
             {editing ? (
               <div className="space-y-4">
+                {/* Avatar preview + URL input */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1.5">Ảnh đại diện (URL)</label>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-600 text-lg font-bold text-white shadow-brand">
+                      {form.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={form.avatarUrl} alt="preview" className="h-14 w-14 object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                      ) : (
+                        initials
+                      )}
+                    </div>
+                    <input
+                      value={form.avatarUrl ?? ''}
+                      onChange={(e) => setForm((f) => ({ ...f, avatarUrl: e.target.value }))}
+                      className="input-field"
+                      placeholder="https://example.com/avatar.jpg"
+                    />
+                  </div>
+                </div>
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1.5">Họ</label>
                   <input

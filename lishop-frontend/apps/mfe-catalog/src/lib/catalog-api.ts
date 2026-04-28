@@ -44,6 +44,7 @@ export interface ProductSummary {
   id: string;
   name: string;
   slug: string;
+  sku: string | null;
   priceVnd: number;
   priceUsd: number;
   stock: number;

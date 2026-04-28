@@ -10,6 +10,7 @@ export class ProductImageInputDto {
 
 export class CreateProductDto {
   @ApiProperty() @IsString() @MinLength(1) @MaxLength(255) name!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) sku?: string;
   @ApiProperty() @IsString() @MinLength(1) description!: string;
   @ApiProperty() @IsInt() @Min(0) @Type(() => Number) priceVnd!: number;
   @ApiProperty() @IsInt() @Min(0) @Type(() => Number) priceUsd!: number;

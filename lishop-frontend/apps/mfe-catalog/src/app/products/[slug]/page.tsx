@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -9,7 +9,7 @@ import { formatVND } from '@lishop/shared';
 import { toast } from '@lishop/ui';
 import { catalogApi, ReviewInfo } from '../../../lib/catalog-api';
 import { RelatedProducts } from '../../../components/related-products';
-import { addToCart } from '../../../lib/cart-helper';
+import { addToCart, flyToCart } from '../../../lib/cart-helper';
 import { getWishlist, addToWishlist, removeFromWishlist, isLoggedIn } from '../../../lib/wishlist-api';
 import { ChatWidget } from '../../../components/chat-widget';
 
@@ -200,6 +200,7 @@ export default function ProductDetailPage({ params }: Props) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [addingToCart, setAddingToCart] = useState(false);
   const [qty, setQty] = useState(1);
+  const addToCartBtnRef = useRef<HTMLButtonElement>(null);
 
   const queryClient = useQueryClient();
 
@@ -270,6 +271,9 @@ export default function ProductDetailPage({ params }: Props) {
     setAddingToCart(true);
     try {
       await addToCart(product.id, qty);
+      if (addToCartBtnRef.current) {
+        flyToCart(addToCartBtnRef.current.getBoundingClientRect());
+      }
       toast.success(`Đã thêm ${qty > 1 ? `${qty}x ` : ''}"${product.name}" vào giỏ hàng!`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Có lỗi xảy ra khi thêm vào giỏ hàng');
@@ -339,6 +343,9 @@ export default function ProductDetailPage({ params }: Props) {
         <div>
           <p className="text-sm font-semibold text-indigo-600">{product.category.name}</p>
           <h1 className="mt-1 text-2xl font-black text-stone-900 tracking-tight">{product.name}</h1>
+          {product.sku && (
+            <p className="mt-1 text-xs text-muted">SKU: <span className="font-mono">{product.sku}</span></p>
+          )}
 
           {product.averageRating > 0 && (
             <div className="mt-2 flex items-center gap-2">
@@ -415,6 +422,7 @@ export default function ProductDetailPage({ params }: Props) {
 
           <div className="mt-6 flex gap-3">
             <button
+              ref={addToCartBtnRef}
               disabled={product.stock === 0 || addingToCart}
               onClick={handleAddToCart}
               className="btn-primary flex-1 cursor-pointer py-3 text-base disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none disabled:shadow-none"
