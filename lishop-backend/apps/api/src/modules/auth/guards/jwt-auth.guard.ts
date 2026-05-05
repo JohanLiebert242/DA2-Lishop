@@ -48,7 +48,8 @@ export class JwtAuthGuard implements CanActivate {
 
   private extractBearerToken(request: FastifyRequest): string | null {
     const auth = request.headers.authorization;
-    if (!auth?.startsWith('Bearer ')) return null;
-    return auth.slice(7);
+    if (auth?.startsWith('Bearer ')) return auth.slice(7);
+    // Fall back to httpOnly cookie for browser clients
+    return (request.cookies as Record<string, string>)?.['lishop_at'] ?? null;
   }
 }

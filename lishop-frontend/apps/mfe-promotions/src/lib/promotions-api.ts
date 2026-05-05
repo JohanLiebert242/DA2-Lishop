@@ -2,6 +2,7 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
   });
   const json = await res.json();

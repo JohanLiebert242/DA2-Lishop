@@ -26,20 +26,19 @@ export function useAuth() {
     const meData = await meRes.json();
     const userProfile = meData.data ?? meData;
 
-    document.cookie = `lishop_at=${encodeURIComponent(token)}; path=/; SameSite=Lax`;
+    // lishop_at is now an httpOnly cookie set by the backend — no client write needed
     setAuth(userProfile, token);
     eventBus.emit(LishopEvent.AUTH_LOGIN, { userId: userProfile.id, role: userProfile.role });
   }, [setAuth]);
 
   const logout = useCallback(async () => {
-    if (accessToken) {
-      await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }).catch(() => {});
-    }
-    document.cookie = 'lishop_at=; path=/; SameSite=Lax; max-age=0';
+    await fetch(`${API_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      // Include in-memory Bearer token if available; backend also reads httpOnly cookie
+      ...(accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : {}),
+    }).catch(() => {});
+    // Backend clears lishop_at and lishop_session cookies
     clearAuth();
     eventBus.emit(LishopEvent.AUTH_LOGOUT, undefined);
   }, [accessToken, clearAuth]);

@@ -128,11 +128,21 @@ describe('AuthService — credentials', () => {
       await expect(service.refresh('bad-token')).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should return new accessToken', async () => {
-      jwtService.verifyRefreshToken.mockResolvedValue({ sub: 'user-1', jti: 'jti-xyz' });
+    it('should throw UnauthorizedException when refresh token is blacklisted', async () => {
+      jwtService.verifyRefreshToken.mockResolvedValue({ sub: 'user-1', jti: 'jti-revoked', exp: 9999999999 });
+      redisService.get.mockResolvedValue('1'); // blacklisted
+      await expect(service.refresh('revoked-token')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should rotate tokens and blacklist the consumed refresh token', async () => {
+      const exp = Math.floor(Date.now() / 1000) + 3600;
+      jwtService.verifyRefreshToken.mockResolvedValue({ sub: 'user-1', jti: 'jti-xyz', exp });
+      redisService.get.mockResolvedValue(null); // not blacklisted
       usersService.findById.mockResolvedValue(mockUser);
       const result = await service.refresh('valid-refresh-token');
       expect(result).toHaveProperty('accessToken');
+      expect(result).toHaveProperty('refreshToken');
+      expect(redisService.setex).toHaveBeenCalledWith('blacklist:refresh:jti-xyz', expect.any(Number), '1');
     });
   });
 

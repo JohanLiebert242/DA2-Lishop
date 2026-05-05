@@ -1,19 +1,10 @@
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
-
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
+﻿const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
   const res = await fetch(`${API_URL}${path}`, {
+    credentials: 'include',
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { 'Content-Type': 'application/json', ...(init.headers as Record<string, string>) },
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.message ?? 'Request failed');

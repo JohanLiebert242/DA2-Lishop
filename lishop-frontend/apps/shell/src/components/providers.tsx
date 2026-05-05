@@ -7,48 +7,27 @@ import { useAuthStore } from '../stores/auth.store';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
-function getTokenFromCookie(): string | null {
-  const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 function AuthInitializer() {
   const { setAuth, clearAuth } = useAuthStore();
 
   useEffect(() => {
-    const token = getTokenFromCookie();
-    if (!token) return;
-
-    fetch(`${API_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    // lishop_at is httpOnly — the browser sends it automatically via credentials: 'include'
+    fetch(`${API_URL}/auth/me`, { credentials: 'include' })
       .then(async (res) => {
         if (!res.ok) throw new Error('invalid');
         const json = await res.json();
-        setAuth(json.data ?? json, token);
+        setAuth(json.data ?? json, null);
       })
       .catch(async () => {
         const res = await fetch(`${API_URL}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
         });
-        if (!res.ok) {
-          clearAuth();
-          document.cookie = 'lishop_at=; path=/; SameSite=Lax; max-age=0';
-          return;
-        }
+        if (!res.ok) { clearAuth(); return; }
         const json = await res.json();
         const newToken: string = json.data?.accessToken ?? json.accessToken;
-        document.cookie = `lishop_at=${encodeURIComponent(newToken)}; path=/; SameSite=Lax`;
-
-        const meRes = await fetch(`${API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${newToken}` },
-        });
-        if (!meRes.ok) {
-          clearAuth();
-          document.cookie = 'lishop_at=; path=/; SameSite=Lax; max-age=0';
-          return;
-        }
+        const meRes = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
+        if (!meRes.ok) { clearAuth(); return; }
         const meJson = await meRes.json();
         setAuth(meJson.data ?? meJson, newToken);
       });

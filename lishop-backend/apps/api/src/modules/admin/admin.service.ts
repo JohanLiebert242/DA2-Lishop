@@ -4,6 +4,7 @@ import { NotificationsRepository } from '../notifications/notifications.reposito
 import { InvoicesService } from '../invoices/invoices.service';
 import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
 import { OrderStatus, prisma } from '@lishop/database';
+import { UserRole } from '@lishop/contracts';
 
 @Injectable()
 export class AdminService {
@@ -152,12 +153,12 @@ export class AdminService {
     return this.repo.getAnalytics();
   }
 
-  async updateUserRole(userId: string, role: string): Promise<AdminUserItem> {
+  async updateUserRole(userId: string, role: UserRole): Promise<AdminUserItem> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Người dùng không tồn tại');
     return prisma.user.update({
       where: { id: userId },
-      data: { role: role as any },
+      data: { role },
       select: {
         id: true,
         email: true,

@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPi
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { ModerateReviewDto } from './dto/moderate-review.dto';
 import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
@@ -89,9 +90,9 @@ export class AdminController {
   @ApiOperation({ summary: 'Change a user role (ADMIN ↔ CUSTOMER)' })
   updateUserRole(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body('role') role: string,
+    @Body() dto: UpdateUserRoleDto,
   ) {
-    return this.adminService.updateUserRole(id, role);
+    return this.adminService.updateUserRole(id, dto.role);
   }
 
   @Get('coupons')

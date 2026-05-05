@@ -1,54 +1,36 @@
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
 
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
 export function isLoggedIn(): boolean {
-  return !!getToken();
+  if (typeof window === 'undefined') return false;
+  return document.cookie.includes('lishop_session=');
 }
 
-async function tryRefreshToken(): Promise<string | null> {
-  try {
-    const res = await fetch(`${API_URL}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const token = (json.data ?? json).accessToken as string | undefined;
-    if (token) {
-      document.cookie = `lishop_at=${encodeURIComponent(token)}; path=/; SameSite=Lax`;
-    }
-    return token ?? null;
-  } catch {
-    return null;
-  }
+async function doRequest(path: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(`${API_URL}${path}`, {
+    credentials: 'include',
+    ...init,
+    headers: {
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.headers as Record<string, string>),
+    },
+  });
 }
 
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const doRequest = (token: string | null) =>
-    fetch(`${API_URL}${path}`, {
-      ...init,
-      headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
+  let res = await doRequest(path, init);
 
-  let res = await doRequest(getToken());
-
-  // Auto-refresh on 401 then retry once
+  // Auto-refresh on 401 then retry once (backend sets new httpOnly cookie)
   if (res.status === 401) {
-    const newToken = await tryRefreshToken();
-    if (!newToken) {
+    const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (!refreshRes.ok) {
       window.location.href = `${AUTH_URL}/login`;
       throw new Error('Session expired');
     }
-    res = await doRequest(newToken);
+    res = await doRequest(path, init);
   }
 
   if (res.status === 204) return undefined as T;

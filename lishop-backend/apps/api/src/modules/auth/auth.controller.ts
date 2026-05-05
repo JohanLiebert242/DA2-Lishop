@@ -29,7 +29,25 @@ const REFRESH_COOKIE_OPTIONS = {
   secure: process.env['NODE_ENV'] === 'production',
   sameSite: 'lax' as const,
   path: '/auth/refresh',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+// httpOnly — JS cannot read the raw token value
+const ACCESS_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env['NODE_ENV'] === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 15 * 60 * 1000, // 15 minutes, matches token TTL
+};
+
+// Plain cookie — only signals "logged in", contains no sensitive data
+const SESSION_COOKIE_OPTIONS = {
+  httpOnly: false,
+  secure: process.env['NODE_ENV'] === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 15 * 60 * 1000,
 };
 
 @ApiTags('auth')
@@ -44,6 +62,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new account' })
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: FastifyReply) {
     const { accessToken, refreshToken } = await this.authService.register(dto);
+    res.setCookie('lishop_at', accessToken, ACCESS_COOKIE_OPTIONS);
+    res.setCookie('lishop_session', '1', SESSION_COOKIE_OPTIONS);
     res.setCookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
     return { accessToken };
   }
@@ -54,6 +74,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Login with email and password' })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: FastifyReply) {
     const { accessToken, refreshToken } = await this.authService.login(dto);
+    res.setCookie('lishop_at', accessToken, ACCESS_COOKIE_OPTIONS);
+    res.setCookie('lishop_session', '1', SESSION_COOKIE_OPTIONS);
     res.setCookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
     return { accessToken };
   }
@@ -63,8 +85,12 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout and revoke tokens' })
   async logout(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
-    const token = req.headers.authorization?.slice(7) ?? '';
-    await this.authService.logout(token);
+    const cookies = req.cookies as Record<string, string>;
+    const accessToken = req.headers.authorization?.slice(7) ?? cookies['lishop_at'] ?? '';
+    const refreshToken = cookies['refresh_token'];
+    await this.authService.logout(accessToken, refreshToken);
+    res.clearCookie('lishop_at', { path: '/' });
+    res.clearCookie('lishop_session', { path: '/' });
     res.clearCookie('refresh_token', { path: '/auth/refresh' });
   }
 
@@ -73,9 +99,13 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token using httpOnly cookie' })
-  async refresh(@Req() req: FastifyRequest) {
+  async refresh(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
     const refreshToken = (req as any).refreshToken as string;
-    return this.authService.refresh(refreshToken);
+    const { accessToken, refreshToken: newRefreshToken } = await this.authService.refresh(refreshToken);
+    res.setCookie('lishop_at', accessToken, ACCESS_COOKIE_OPTIONS);
+    res.setCookie('lishop_session', '1', SESSION_COOKIE_OPTIONS);
+    res.setCookie('refresh_token', newRefreshToken, REFRESH_COOKIE_OPTIONS);
+    return { accessToken };
   }
 
   @Get('me')
@@ -116,9 +146,11 @@ export class AuthController {
   async googleCallback(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
     const oauthUser = (req as any).oauthUser;
     const { accessToken, refreshToken } = await this.authService.findOrCreateOAuthUser(oauthUser);
+    res.setCookie('lishop_at', accessToken, ACCESS_COOKIE_OPTIONS);
+    res.setCookie('lishop_session', '1', SESSION_COOKIE_OPTIONS);
     res.setCookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
-    const clientUrl = process.env['CLIENT_URL'] ?? 'http://localhost:3000';
-    res.redirect(`${clientUrl}/?token=${accessToken}`);
+    // Token is in the httpOnly cookie — no sensitive data in the redirect URL
+    res.redirect(process.env['CLIENT_URL'] ?? 'http://localhost:3000');
   }
 
   @Public()
@@ -128,8 +160,9 @@ export class AuthController {
   async facebookCallback(@Req() req: FastifyRequest, @Res({ passthrough: true }) res: FastifyReply) {
     const oauthUser = (req as any).oauthUser;
     const { accessToken, refreshToken } = await this.authService.findOrCreateOAuthUser(oauthUser);
+    res.setCookie('lishop_at', accessToken, ACCESS_COOKIE_OPTIONS);
+    res.setCookie('lishop_session', '1', SESSION_COOKIE_OPTIONS);
     res.setCookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
-    const clientUrl = process.env['CLIENT_URL'] ?? 'http://localhost:3000';
-    res.redirect(`${clientUrl}/?token=${accessToken}`);
+    res.redirect(process.env['CLIENT_URL'] ?? 'http://localhost:3000');
   }
 }

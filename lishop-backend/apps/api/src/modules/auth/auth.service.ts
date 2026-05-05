@@ -61,21 +61,27 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  async logout(accessToken: string): Promise<void> {
+  async logout(accessToken: string, refreshToken?: string): Promise<void> {
     try {
       const payload = await this.jwtService.verifyAccessToken(accessToken);
       if (payload.jti && payload.exp) {
         const ttl = this.jwtService.getRemainingTtl(payload.exp);
-        if (ttl > 0) {
-          await this.redisService.setex(`blacklist:token:${payload.jti}`, ttl, '1');
-        }
+        if (ttl > 0) await this.redisService.setex(`blacklist:token:${payload.jti}`, ttl, '1');
       }
-    } catch {
-      // Token already invalid — nothing to blacklist
+    } catch { /* Already invalid */ }
+
+    if (refreshToken) {
+      try {
+        const payload = await this.jwtService.verifyRefreshToken(refreshToken);
+        if (payload.jti && payload.exp) {
+          const ttl = this.jwtService.getRemainingTtl(payload.exp);
+          if (ttl > 0) await this.redisService.setex(`blacklist:refresh:${payload.jti}`, ttl, '1');
+        }
+      } catch { /* Already invalid */ }
     }
   }
 
-  async refresh(refreshToken: string): Promise<{ accessToken: string }> {
+  async refresh(refreshToken: string): Promise<AuthTokens> {
     let payload;
     try {
       payload = await this.jwtService.verifyRefreshToken(refreshToken);
@@ -83,15 +89,22 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
+    // Reject if this refresh token was already rotated or revoked
+    if (payload.jti) {
+      const revoked = await this.redisService.get(`blacklist:refresh:${payload.jti}`);
+      if (revoked) throw new UnauthorizedException('Refresh token has been revoked');
+    }
+
     const user = await this.usersService.findById(payload.sub!);
     if (!user) throw new UnauthorizedException('User not found');
 
-    const accessToken = await this.jwtService.signAccessToken({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    });
-    return { accessToken };
+    // Blacklist the consumed refresh token (prevents replay)
+    if (payload.jti && payload.exp) {
+      const ttl = this.jwtService.getRemainingTtl(payload.exp);
+      if (ttl > 0) await this.redisService.setex(`blacklist:refresh:${payload.jti}`, ttl, '1');
+    }
+
+    return this.issueTokens(user);
   }
 
   async me(userId: string): Promise<Omit<User, 'passwordHash'>> {

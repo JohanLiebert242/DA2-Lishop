@@ -147,15 +147,12 @@ export default function CheckoutPage() {
     onSuccess: async (result) => {
       if (ONLINE_PAYMENT_METHODS.includes(paymentMethod)) {
         try {
-          const token = getToken();
           const res = await fetch(
             `${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000'}/payments/${result.id}/initiate`,
             {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
             },
           );
           const json = await res.json();
