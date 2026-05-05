@@ -13,7 +13,7 @@ export interface AuthUser {
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
-  setAuth: (user: AuthUser, accessToken: string) => void;
+  setAuth: (user: AuthUser, accessToken: string | null) => void;
   clearAuth: () => void;
 }
 

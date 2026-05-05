@@ -5,13 +5,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatVND } from '@lishop/shared';
+import { eventBus, LishopEvent } from '@lishop/event-bus';
 import { cartApi, CartItemData } from '../../lib/cart-api';
 
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
+const CHECKOUT_URL = process.env['NEXT_PUBLIC_MFE_CHECKOUT_URL'] ?? 'http://localhost:3004';
 
 function useAuthGuard() {
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
+    const match = document.cookie.match(/(?:^|;\s*)lishop_session=([^;]*)/);
     if (!match) window.location.replace(`${AUTH_URL}/login`);
   }, []);
 }
@@ -91,10 +93,12 @@ export default function CartPage() {
     retry: false,
   });
 
-  // Sync item count to localStorage for the shell cart badge
+  // Sync item count to localStorage + broadcast so the shell badge updates immediately
   useEffect(() => {
     if (cart && typeof window !== 'undefined') {
-      window.localStorage.setItem('lishop_cart_count', String(cart.items.length));
+      const itemCount = cart.items.reduce((sum, i) => sum + i.quantity, 0);
+      window.localStorage.setItem('lishop_cart_count', String(itemCount));
+      eventBus.emit(LishopEvent.CART_UPDATED, { itemCount });
     }
   }, [cart]);
 
@@ -232,7 +236,7 @@ export default function CartPage() {
               </div>
             </div>
             <Link
-              href="http://localhost:3005/checkout"
+              href={`${CHECKOUT_URL}/checkout`}
               className="mt-4 block w-full rounded-md bg-indigo-600 py-2 text-center text-sm font-semibold text-white hover:bg-indigo-700"
             >
               Tiến hành thanh toán

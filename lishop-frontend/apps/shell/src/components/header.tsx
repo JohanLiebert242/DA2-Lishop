@@ -6,14 +6,14 @@ import { useAuth } from '../hooks/use-auth';
 import { Button } from '@lishop/ui';
 
 const MFE = {
-  auth: 'http://localhost:3001',
-  catalog: 'http://localhost:3002',
-  cart: 'http://localhost:3003',
-  orders: 'http://localhost:3005',
-  profile: 'http://localhost:3006',
-  promotions: 'http://localhost:3007',
-  notifications: 'http://localhost:3008',
-  admin: 'http://localhost:3009',
+  auth: process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001',
+  catalog: process.env['NEXT_PUBLIC_MFE_CATALOG_URL'] ?? 'http://localhost:3002',
+  cart: process.env['NEXT_PUBLIC_MFE_CART_URL'] ?? 'http://localhost:3003',
+  orders: process.env['NEXT_PUBLIC_MFE_ORDERS_URL'] ?? 'http://localhost:3005',
+  profile: process.env['NEXT_PUBLIC_MFE_PROFILE_URL'] ?? 'http://localhost:3006',
+  promotions: process.env['NEXT_PUBLIC_MFE_PROMOTIONS_URL'] ?? 'http://localhost:3007',
+  notifications: process.env['NEXT_PUBLIC_MFE_NOTIFICATIONS_URL'] ?? 'http://localhost:3008',
+  admin: process.env['NEXT_PUBLIC_MFE_ADMIN_URL'] ?? 'http://localhost:3009',
 } as const;
 
 function useCartCount() {
@@ -24,8 +24,19 @@ function useCartCount() {
       setCount(raw ? parseInt(raw, 10) : 0);
     };
     read();
+    // Cross-tab: storage event fires when another tab writes localStorage
     window.addEventListener('storage', read);
-    return () => window.removeEventListener('storage', read);
+    // Same-tab and cross-tab: BroadcastChannel for CART_UPDATED events
+    const ch = new BroadcastChannel('lishop-events');
+    ch.onmessage = ({ data }: MessageEvent<{ event?: string; payload?: { itemCount: number } }>) => {
+      if (data?.event === 'CART_UPDATED' && data.payload != null) {
+        setCount(data.payload.itemCount);
+      }
+    };
+    return () => {
+      window.removeEventListener('storage', read);
+      ch.close();
+    };
   }, []);
   return count;
 }

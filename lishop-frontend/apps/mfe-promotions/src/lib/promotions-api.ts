@@ -1,14 +1,9 @@
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+import { createApiFetch } from '@lishop/shared';
 
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.message ?? 'Request failed');
-  return (json.data ?? json) as T;
-}
+const apiFetch = createApiFetch(
+  process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000',
+  process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001',
+);
 
 export interface FlashSaleProductInfo {
   id: string;
