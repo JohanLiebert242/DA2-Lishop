@@ -49,6 +49,13 @@ export class AdminService {
     if (!full) return;
     const points = Math.floor(full.totalVnd / 1000);
     if (points <= 0) return;
+
+    // Idempotency guard: skip if loyalty was already awarded for this order
+    const alreadyAwarded = await prisma.loyaltyPoint.findFirst({
+      where: { userId, description: `Tích điểm đơn hàng #${orderNumber}` },
+    });
+    if (alreadyAwarded) return;
+
     await prisma.$transaction([
       prisma.loyaltyPoint.create({
         data: { userId, points, description: `Tích điểm đơn hàng #${orderNumber}` },

@@ -7,6 +7,7 @@ import {
 import { OrdersRepository, OrderWithDetails, ShipmentWithEvents } from './orders.repository';
 import { AddressesRepository } from '../addresses/addresses.repository';
 import { CartService } from '../cart/cart.service';
+import { CouponsService } from '../promotions/coupons.service';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { ShippingService } from '../shipping/shipping.service';
 import { WalletService } from '../wallet/wallet.service';
@@ -21,6 +22,7 @@ export class OrdersService {
     private readonly repo: OrdersRepository,
     private readonly addressRepo: AddressesRepository,
     private readonly cartService: CartService,
+    private readonly couponsService: CouponsService,
     private readonly notifRepo: NotificationsRepository,
     private readonly shippingService: ShippingService,
     private readonly walletService: WalletService,
@@ -58,8 +60,9 @@ export class OrdersService {
     );
 
     const subtotalVnd = cart.subtotalVnd;
-    const discountVnd = cart.discountVnd;
-    const totalVnd = subtotalVnd + shippingFeeVnd - discountVnd;
+    // FREE_SHIPPING coupons waive the shipping fee; add it to the discount amount
+    const discountVnd = cart.discountVnd + (cart.isFreeShipping ? shippingFeeVnd : 0);
+    const totalVnd = Math.max(0, subtotalVnd + shippingFeeVnd - discountVnd);
 
     const order = await this.repo.create({
       userId,
@@ -83,6 +86,11 @@ export class OrdersService {
     // Deduct wallet if payment method is WALLET
     if (dto.paymentMethod === PaymentMethod.WALLET) {
       await this.walletService.deductForOrder(userId, order.id, totalVnd);
+    }
+
+    // Record coupon usage so it cannot be reused
+    if (cart.couponCode) {
+      await this.couponsService.recordUsage(cart.couponCode, userId);
     }
 
     await this.cartService.clearCart(userId);

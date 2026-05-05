@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { CouponType } from '@lishop/database';
 import { CartRepository } from './cart.repository';
 import { CouponsService } from '../promotions/coupons.service';
 import { RedisService } from '../redis/redis.service';
@@ -24,6 +25,7 @@ export interface CartDto {
   subtotalUsd: number;
   couponCode: string | null;
   discountVnd: number;
+  isFreeShipping: boolean;
   totalVnd: number;
 }
 
@@ -104,12 +106,14 @@ export class CartService {
 
     const couponCode = couponOverride ?? (await this.redis.get(`cart:coupon:${userId}`));
     let discountVnd = 0;
+    let isFreeShipping = false;
     let resolvedCouponCode: string | null = null;
 
     if (couponCode) {
       const result = await this.couponsService.tryValidate(couponCode, userId, subtotalVnd);
       if (result) {
         discountVnd = result.discountVnd;
+        isFreeShipping = result.coupon.type === CouponType.FREE_SHIPPING;
         resolvedCouponCode = couponCode;
       } else {
         await this.redis.del(`cart:coupon:${userId}`);
@@ -122,6 +126,7 @@ export class CartService {
       subtotalUsd,
       couponCode: resolvedCouponCode,
       discountVnd,
+      isFreeShipping,
       totalVnd: Math.max(0, subtotalVnd - discountVnd),
     };
   }

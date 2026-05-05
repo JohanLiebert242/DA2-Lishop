@@ -4,6 +4,7 @@ import { OrdersService } from './orders.service';
 import { OrdersRepository } from './orders.repository';
 import { AddressesRepository } from '../addresses/addresses.repository';
 import { CartService } from '../cart/cart.service';
+import { CouponsService } from '../promotions/coupons.service';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { ShippingService } from '../shipping/shipping.service';
 import { WalletService } from '../wallet/wallet.service';
@@ -28,6 +29,7 @@ const mockCart = {
   subtotalUsd: 1600,
   couponCode: null,
   discountVnd: 0,
+  isFreeShipping: false,
   totalVnd: 40000000,
 };
 
@@ -77,18 +79,21 @@ describe('OrdersService', () => {
   };
   const addressRepo = { findById: jest.fn() };
   const cartService = { getCart: jest.fn(), clearCart: jest.fn() };
+  const couponsService = { recordUsage: jest.fn() };
   const notifRepo = { createNotification: jest.fn() };
   const shippingService = { calculateFee: jest.fn().mockReturnValue(30000) };
   const walletService = { deductForOrder: jest.fn() };
 
   beforeEach(async () => {
     walletService.deductForOrder.mockResolvedValue(undefined);
+    couponsService.recordUsage.mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
       providers: [
         OrdersService,
         { provide: OrdersRepository, useValue: repo },
         { provide: AddressesRepository, useValue: addressRepo },
         { provide: CartService, useValue: cartService },
+        { provide: CouponsService, useValue: couponsService },
         { provide: NotificationsRepository, useValue: notifRepo },
         { provide: ShippingService, useValue: shippingService },
         { provide: WalletService, useValue: walletService },

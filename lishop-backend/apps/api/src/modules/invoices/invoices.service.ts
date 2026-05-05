@@ -61,8 +61,10 @@ export class InvoicesService {
 
     const subtotalVnd = order.items.reduce((sum, item) => sum + item.totalPriceVnd, 0);
     const vatPercent = 10;
-    const vatVnd = Math.floor(subtotalVnd * (vatPercent / 100));
-    const totalVnd = subtotalVnd + order.shippingFeeVnd - order.discountVnd + vatVnd;
+    // Prices are VAT-inclusive; back-calculate VAT from the actual charged total
+    // so the invoice total matches exactly what the customer paid
+    const totalVnd = order.totalVnd;
+    const vatVnd = Math.floor(totalVnd * vatPercent / (100 + vatPercent));
 
     const billingAddress = [
       order.address.street,

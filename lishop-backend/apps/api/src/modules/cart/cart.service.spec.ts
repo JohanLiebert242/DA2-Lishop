@@ -69,7 +69,7 @@ describe('CartService', () => {
   it('getCart applies stored coupon discount from Redis', async () => {
     repo.findByUserId.mockResolvedValue([makeRow()]);
     redis.get.mockResolvedValue('SAVE10');
-    couponsService.tryValidate.mockResolvedValue({ discountVnd: 4000000 });
+    couponsService.tryValidate.mockResolvedValue({ discountVnd: 4000000, coupon: { id: 'c1', code: 'SAVE10', type: 'PERCENT', value: 10 } });
     const cart = await service.getCart('u1');
     expect(cart.couponCode).toBe('SAVE10');
     expect(cart.discountVnd).toBe(4000000);
@@ -108,9 +108,10 @@ describe('CartService', () => {
   it('applyCoupon stores code in Redis and returns cart with discount', async () => {
     repo.findByUserId.mockResolvedValue([makeRow()]);
     redis.get.mockResolvedValue(null);
+    const validResult = { discountVnd: 4000000, coupon: { id: 'c1', code: 'SAVE10', type: 'PERCENT', value: 10 } };
     couponsService.tryValidate
-      .mockResolvedValueOnce({ discountVnd: 4000000 })
-      .mockResolvedValueOnce({ discountVnd: 4000000 });
+      .mockResolvedValueOnce(validResult)
+      .mockResolvedValueOnce(validResult);
     const cart = await service.applyCoupon('u1', 'SAVE10');
     expect(redis.setex).toHaveBeenCalledWith('cart:coupon:u1', 86400, 'SAVE10');
     expect(cart.discountVnd).toBe(4000000);

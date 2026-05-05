@@ -40,6 +40,11 @@ export class CouponsService {
     return { coupon, discountVnd };
   }
 
+  async recordUsage(code: string, userId: string): Promise<void> {
+    const coupon = await this.repo.findByCode(code);
+    if (coupon) await this.repo.recordUsage(coupon.id, userId);
+  }
+
   listPublic() {
     return this.repo.findPublic();
   }

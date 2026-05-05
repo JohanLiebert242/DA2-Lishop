@@ -5,11 +5,12 @@ import { OrdersController } from './orders.controller';
 import { AddressesModule } from '../addresses/addresses.module';
 import { CartModule } from '../cart/cart.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PromotionsModule } from '../promotions/promotions.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
-  imports: [AddressesModule, CartModule, NotificationsModule, ShippingModule, WalletModule],
+  imports: [AddressesModule, CartModule, NotificationsModule, PromotionsModule, ShippingModule, WalletModule],
   providers: [OrdersRepository, OrdersService],
   controllers: [OrdersController],
   exports: [OrdersService],
