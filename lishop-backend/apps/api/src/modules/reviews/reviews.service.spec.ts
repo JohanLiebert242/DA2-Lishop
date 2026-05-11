@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ConflictException } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { ReviewsRepository } from './reviews.repository';
+import { ReviewStatus } from '@lishop/database';
 
 const mockReview: any = {
   id: 'r1',
@@ -49,6 +50,14 @@ describe('ReviewsService', () => {
     repo.create.mockResolvedValue(mockReview);
     await service.createReview('u1', 'p1', { rating: 5 });
     expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ verifiedPurchase: false }));
+  });
+
+  it('createReview sets status to PENDING (requires moderation)', async () => {
+    repo.findByProductIdAndUserId.mockResolvedValue(null);
+    repo.hasDeliveredOrderWithProduct.mockResolvedValue(false);
+    repo.create.mockResolvedValue(mockReview);
+    await service.createReview('u1', 'p1', { rating: 5 });
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ status: ReviewStatus.PENDING }));
   });
 
   it('createReview sets verifiedPurchase=true when user has delivered order', async () => {

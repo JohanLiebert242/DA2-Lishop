@@ -20,7 +20,7 @@ export class ReviewsService {
     return this.repo.create({
       rating: dto.rating,
       content: dto.content ?? '',
-      status: ReviewStatus.APPROVED,
+      status: ReviewStatus.PENDING,
       verifiedPurchase,
       product: { connect: { id: productId } },
       user: { connect: { id: userId } },
