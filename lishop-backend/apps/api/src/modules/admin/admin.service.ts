@@ -2,9 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { AdminRepository, AdminStats, AdminOrderItem, AdminUserItem, AdminCoupon, AdminAnalytics } from './admin.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { InvoicesService } from '../invoices/invoices.service';
+import { RedisService } from '../redis/redis.service';
 import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
 import { OrderStatus, prisma } from '@lishop/database';
 import { UserRole } from '@lishop/contracts';
+
+const STATS_CACHE_KEY = 'cache:admin:stats';
+const STATS_TTL = 300; // 5 minutes
 
 @Injectable()
 export class AdminService {
@@ -12,10 +16,15 @@ export class AdminService {
     private readonly repo: AdminRepository,
     private readonly notifRepo: NotificationsRepository,
     private readonly invoicesService: InvoicesService,
+    private readonly redis: RedisService,
   ) {}
 
-  getStats(): Promise<AdminStats> {
-    return this.repo.getStats();
+  async getStats(): Promise<AdminStats> {
+    const cached = await this.redis.get(STATS_CACHE_KEY);
+    if (cached) return JSON.parse(cached) as AdminStats;
+    const stats = await this.repo.getStats();
+    await this.redis.setex(STATS_CACHE_KEY, STATS_TTL, JSON.stringify(stats));
+    return stats;
   }
 
   listOrders(): Promise<AdminOrderItem[]> {

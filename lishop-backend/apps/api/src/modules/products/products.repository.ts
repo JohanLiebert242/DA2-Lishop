@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { prisma, Product, Prisma } from '@lishop/database';
 import { ProductListQueryDto, ProductSortOption } from './dto/product-list-query.dto';
 
-const RELATED_CANDIDATE_POOL = 50; // cap for in-memory tag-overlap sort
 
 export interface ProductWithDetails extends Product {
   images: { id: string; url: string; alt: string | null; isPrimary: boolean }[];
@@ -110,27 +109,43 @@ export class ProductsRepository {
     tagIds: string[],
     limit = 6,
   ): Promise<ProductWithDetails[]> {
-    const candidates = await prisma.product.findMany({
-      where: { categoryId, id: { not: productId }, stock: { gt: 0 } },
-      take: RELATED_CANDIDATE_POOL,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        images: true,
-        tags: { include: { tag: true } },
-        category: { select: { id: true, name: true, slug: true } },
-      },
+    const include = {
+      images: true,
+      tags: { include: { tag: true } },
+      category: { select: { id: true, name: true, slug: true } },
+    } as const;
+
+    const baseWhere = { categoryId, id: { not: productId }, stock: { gt: 0 } };
+
+    if (tagIds.length === 0) {
+      return prisma.product.findMany({
+        where: baseWhere,
+        take: limit,
+        orderBy: { averageRating: 'desc' },
+        include,
+      }) as Promise<ProductWithDetails[]>;
+    }
+
+    // Prefer products that share at least one tag, ordered by rating
+    const withTags = await prisma.product.findMany({
+      where: { ...baseWhere, tags: { some: { tagId: { in: tagIds } } } },
+      take: limit,
+      orderBy: { averageRating: 'desc' },
+      include,
     });
 
-    if (tagIds.length === 0) return candidates.slice(0, limit) as ProductWithDetails[];
+    if (withTags.length >= limit) return withTags as ProductWithDetails[];
 
-    const tagIdSet = new Set(tagIds);
-    return candidates
-      .sort((a, b) => {
-        const aOverlap = a.tags.filter((pt) => tagIdSet.has(pt.tagId)).length;
-        const bOverlap = b.tags.filter((pt) => tagIdSet.has(pt.tagId)).length;
-        return bOverlap - aOverlap;
-      })
-      .slice(0, limit) as ProductWithDetails[];
+    // Fill remaining slots from the same category (no tag overlap required)
+    const excludeIds = [productId, ...withTags.map((p) => p.id)];
+    const filler = await prisma.product.findMany({
+      where: { ...baseWhere, id: { notIn: excludeIds } },
+      take: limit - withTags.length,
+      orderBy: { averageRating: 'desc' },
+      include,
+    });
+
+    return [...withTags, ...filler] as ProductWithDetails[];
   }
 
   private getOrderBy(sort?: ProductSortOption): Prisma.ProductOrderByWithRelationInput[] {
