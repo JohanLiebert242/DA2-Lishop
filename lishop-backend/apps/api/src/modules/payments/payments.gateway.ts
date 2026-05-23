@@ -32,7 +32,7 @@ export class PaymentsGatewayService {
       vnp_TmnCode: tmnCode,
       vnp_Locale: 'vn',
       vnp_CurrCode: 'VND',
-      vnp_TxnRef: orderId.slice(0, 8) + Date.now().toString().slice(-6),
+      vnp_TxnRef: orderId.replace(/-/g, ''),
       vnp_OrderInfo: orderInfo.slice(0, 255),
       vnp_OrderType: '190000',
       vnp_Amount: String(amountVnd * 100),

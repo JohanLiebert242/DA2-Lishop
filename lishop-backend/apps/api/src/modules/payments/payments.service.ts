@@ -70,13 +70,13 @@ export class PaymentsService {
     const valid = this.gateway.verifyVNPayReturn(query);
     const success = valid && query['vnp_ResponseCode'] === '00';
 
-    // vnp_TxnRef = first 8 chars of orderId + 6-digit timestamp suffix
+    // vnp_TxnRef is UUID with hyphens removed (32 hex chars); restore hyphens to recover orderId
     const txnRef = query['vnp_TxnRef'] ?? '';
-    const orderId = txnRef.slice(0, 8);
+    const orderId = txnRef.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
 
     if (success) {
       const payment = await prisma.payment.findFirst({
-        where: { orderId: { startsWith: orderId } },
+        where: { orderId },
         select: { orderId: true },
       });
 
@@ -105,7 +105,7 @@ export class PaymentsService {
     if (Number(body['resultCode']) === 0) {
       // orderId in MoMo body is the requestId we set: `${originalOrderId}-${timestamp}`
       const momoOrderId = String(body['orderId'] ?? '');
-      const originalOrderId = momoOrderId.split('-')[0];
+      const originalOrderId = momoOrderId.replace(/-\d+$/, '');
 
       if (originalOrderId) {
         await prisma.$transaction([
