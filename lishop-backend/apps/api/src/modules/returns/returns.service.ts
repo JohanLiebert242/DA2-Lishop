@@ -116,17 +116,30 @@ export class ReturnsService {
         include: { payment: true },
       });
       if (order?.payment) {
-        const refundMethod = order.payment.method === PaymentMethod.WALLET
-          ? RefundMethod.WALLET
-          : RefundMethod.ORIGINAL_PAYMENT;
-        await this.refundsService.createRefund(
-          returnRequest.orderId,
-          returnRequest.userId,
-          order.payment.amountVnd,
-          refundMethod,
-          id,
-          'Hoàn tiền tự động sau đổi trả',
-        );
+        // Calculate refund based on returned items only, not the full order amount
+        const returnedItemIds = returnRequest.items.map((i) => i.orderItemId);
+        const orderItems = await prisma.orderItem.findMany({
+          where: { id: { in: returnedItemIds }, orderId: returnRequest.orderId },
+          select: { id: true, unitPriceVnd: true },
+        });
+        const priceMap = new Map(orderItems.map((i) => [i.id, i.unitPriceVnd]));
+        const refundAmountVnd = returnRequest.items.reduce((sum, item) => {
+          return sum + (priceMap.get(item.orderItemId) ?? 0) * item.quantity;
+        }, 0);
+
+        if (refundAmountVnd > 0) {
+          const refundMethod = order.payment.method === PaymentMethod.WALLET
+            ? RefundMethod.WALLET
+            : RefundMethod.ORIGINAL_PAYMENT;
+          await this.refundsService.createRefund(
+            returnRequest.orderId,
+            returnRequest.userId,
+            refundAmountVnd,
+            refundMethod,
+            id,
+            'Hoàn tiền tự động sau đổi trả',
+          );
+        }
       }
     }
 

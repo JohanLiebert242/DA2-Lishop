@@ -46,6 +46,13 @@ export class RefundsRepository {
     }) as Promise<RefundData | null>;
   }
 
+  async findByReturnId(returnId: string): Promise<RefundData | null> {
+    return prisma.refund.findFirst({
+      where: { returnId },
+      include: REFUND_INCLUDE,
+    }) as Promise<RefundData | null>;
+  }
+
   async findAll(): Promise<RefundData[]> {
     return prisma.refund.findMany({
       orderBy: { createdAt: 'desc' },

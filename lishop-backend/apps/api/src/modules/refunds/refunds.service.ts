@@ -42,6 +42,10 @@ export class RefundsService {
     returnId?: string,
     reason?: string,
   ): Promise<RefundData> {
+    if (returnId) {
+      const existing = await this.repo.findByReturnId(returnId);
+      if (existing) return existing;
+    }
     return this.repo.create({ orderId, returnId, userId, amountVnd, method, reason });
   }
 
