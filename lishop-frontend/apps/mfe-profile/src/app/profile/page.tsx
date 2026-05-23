@@ -9,8 +9,7 @@ const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:30
 
 export default function ProfilePage() {
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
-    if (!match) window.location.replace(`${AUTH_URL}/login`);
+    if (!localStorage.getItem('lishop_at')) window.location.replace(`${AUTH_URL}/login`);
   }, []);
 
   const queryClient = useQueryClient();
@@ -79,7 +78,7 @@ export default function ProfilePage() {
                 <p className="mt-1 text-sm text-muted">Bạn cần đăng nhập để xem trang cá nhân.</p>
               </div>
               <a
-                href="http://localhost:3001/login"
+                href={`${AUTH_URL}/login`}
                 className="btn-primary mt-2"
               >
                 Đăng nhập
@@ -166,8 +165,8 @@ export default function ProfilePage() {
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1.5">Họ</label>
                   <input
-                    value={form.firstName ?? ''}
-                    onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
+                    value={form.lastName ?? ''}
+                    onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
                     className="input-field"
                     placeholder="Nhập họ của bạn"
                   />
@@ -175,8 +174,8 @@ export default function ProfilePage() {
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1.5">Tên</label>
                   <input
-                    value={form.lastName ?? ''}
-                    onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
+                    value={form.firstName ?? ''}
+                    onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
                     className="input-field"
                     placeholder="Nhập tên của bạn"
                   />

@@ -26,8 +26,7 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
-    if (match) window.location.replace(SHELL_URL);
+    if (localStorage.getItem('lishop_at')) window.location.replace(SHELL_URL);
   }, []);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterForm>({
@@ -38,7 +37,7 @@ export default function RegisterPage() {
     setServerError(null);
     try {
       const result = await authApi.register(data);
-      document.cookie = `lishop_at=${encodeURIComponent(result.accessToken)}; path=/; SameSite=Lax`;
+      localStorage.setItem('lishop_at', result.accessToken);
       setSuccess(true);
       setTimeout(() => { window.location.href = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010'; }, 500);
     } catch (e) {

@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 
+const CART_URL = process.env['NEXT_PUBLIC_MFE_CART_URL'] ?? 'http://localhost:3003';
+
 async function applyToCart(code: string): Promise<string> {
-  const m = typeof window !== 'undefined' ? document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/) : null;
-  const token = m?.[1] ? decodeURIComponent(m[1]) : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('lishop_at') : null;
   if (!token) return 'Vui lòng đăng nhập để sử dụng mã giảm giá';
 
   const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
@@ -67,7 +68,7 @@ export function CouponWidget() {
       )}
       {status === 'success' && (
         <a
-          href="http://localhost:3003/cart"
+          href={`${CART_URL}/cart`}
           className="mt-2 block text-xs text-indigo-600 hover:underline"
         >
           Xem giỏ hàng →

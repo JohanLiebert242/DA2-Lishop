@@ -189,7 +189,7 @@ export default function OrderDetailPage({ params }: Props) {
     mutationFn: () => ordersApi.cancelOrder(id),
     onSuccess: (updated) => {
       queryClient.setQueryData(['order', id], updated);
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['my-orders'] });
     },
   });
 

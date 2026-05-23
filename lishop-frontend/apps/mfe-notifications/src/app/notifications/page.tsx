@@ -239,8 +239,7 @@ type Tab = 'feed' | 'preferences';
 
 export default function NotificationsPage() {
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
-    if (!match) window.location.replace(`${AUTH_URL}/login`);
+    if (!localStorage.getItem('lishop_at')) window.location.replace(`${AUTH_URL}/login`);
   }, []);
 
   const [activeTab, setActiveTab] = useState<Tab>('feed');

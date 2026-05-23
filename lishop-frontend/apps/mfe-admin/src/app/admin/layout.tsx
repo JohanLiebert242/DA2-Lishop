@@ -30,10 +30,10 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
-    if (!match) { window.location.replace(`${AUTH_URL}/login`); return; }
+    const token = localStorage.getItem('lishop_at');
+    if (!token) { window.location.replace(`${AUTH_URL}/login`); return; }
     try {
-      const payload = JSON.parse(atob(match[1]!.split('.')[1]!));
+      const payload = JSON.parse(atob(token.split('.')[1]!));
       if (payload.role !== 'ADMIN') window.location.replace(SHELL_URL);
     } catch { window.location.replace(SHELL_URL); }
   }, []);

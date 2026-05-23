@@ -33,8 +33,7 @@ function SkeletonCard() {
 
 export default function OrdersPage() {
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
-    if (!match) window.location.replace(`${AUTH_URL}/login`);
+    if (!localStorage.getItem('lishop_at')) window.location.replace(`${AUTH_URL}/login`);
   }, []);
 
   const { data: orders = [], isLoading } = useQuery({

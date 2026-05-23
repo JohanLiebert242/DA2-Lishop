@@ -24,8 +24,7 @@ export default function LoginPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|;\s*)lishop_at=([^;]*)/);
-    if (match) window.location.replace(SHELL_URL);
+    if (localStorage.getItem('lishop_at')) window.location.replace(SHELL_URL);
   }, []);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
@@ -36,7 +35,7 @@ export default function LoginPage() {
     setServerError(null);
     try {
       const result = await authApi.login(data);
-      document.cookie = `lishop_at=${encodeURIComponent(result.accessToken)}; path=/; SameSite=Lax`;
+      localStorage.setItem('lishop_at', result.accessToken);
       setSuccess(true);
       const shellUrl = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
       setTimeout(() => { window.location.href = shellUrl; }, 500);
@@ -169,7 +168,7 @@ export default function LoginPage() {
             {['Google', 'Facebook'].map(provider => (
               <a
                 key={provider}
-                href={`${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000'}/auth/oauth/${provider.toLowerCase()}/callback`}
+                href={`${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000'}/auth/oauth/${provider.toLowerCase()}/initiate`}
                 className="flex items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:border-stone-300 transition-all shadow-sm"
               >
                 {provider}
