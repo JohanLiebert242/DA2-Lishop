@@ -62,7 +62,10 @@ export class AdminRepository {
   async getStats(): Promise<AdminStats> {
     const [orderCount, revenueResult, userCount, productCount] = await Promise.all([
       prisma.order.count(),
-      prisma.order.aggregate({ _sum: { totalVnd: true } }),
+      prisma.order.aggregate({
+        where: { status: { in: [OrderStatus.PROCESSING, OrderStatus.SHIPPED, OrderStatus.DELIVERED] } },
+        _sum: { totalVnd: true },
+      }),
       prisma.user.count(),
       prisma.product.count(),
     ]);
@@ -74,24 +77,31 @@ export class AdminRepository {
     };
   }
 
-  async findAllOrders(limit = 50): Promise<AdminOrderItem[]> {
-    const orders = await prisma.order.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      include: {
-        user: { select: { email: true, firstName: true, lastName: true } },
-        _count: { select: { items: true } },
-      },
-    });
-    return orders.map((o) => ({
-      id: o.id,
-      orderNumber: o.orderNumber,
-      status: o.status,
-      totalVnd: o.totalVnd,
-      createdAt: o.createdAt,
-      itemCount: o._count.items,
-      user: o.user,
-    }));
+  async findAllOrders(page = 1, limit = 50): Promise<{ orders: AdminOrderItem[]; total: number }> {
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          user: { select: { email: true, firstName: true, lastName: true } },
+          _count: { select: { items: true } },
+        },
+      }),
+      prisma.order.count(),
+    ]);
+    return {
+      orders: orders.map((o) => ({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        status: o.status,
+        totalVnd: o.totalVnd,
+        createdAt: o.createdAt,
+        itemCount: o._count.items,
+        user: o.user,
+      })),
+      total,
+    };
   }
 
   findOrderById(id: string): Promise<{ id: string; status: OrderStatus; userId: string; orderNumber: string } | null> {

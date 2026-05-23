@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AdminRepository, AdminStats, AdminOrderItem, AdminUserItem, AdminCoupon, AdminAnalytics } from './admin.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { InvoicesService } from '../invoices/invoices.service';
@@ -9,6 +9,15 @@ import { UserRole } from '@lishop/contracts';
 
 const STATS_CACHE_KEY = 'cache:admin:stats';
 const STATS_TTL = 300; // 5 minutes
+
+const VALID_ORDER_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
+  [OrderStatus.PENDING]:    [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+  [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+  [OrderStatus.SHIPPED]:    [OrderStatus.DELIVERED],
+  [OrderStatus.DELIVERED]:  [OrderStatus.REFUNDED],
+  [OrderStatus.CANCELLED]:  [],
+  [OrderStatus.REFUNDED]:   [],
+};
 
 @Injectable()
 export class AdminService {
@@ -27,21 +36,28 @@ export class AdminService {
     return stats;
   }
 
-  listOrders(): Promise<AdminOrderItem[]> {
-    return this.repo.findAllOrders();
+  listOrders(page = 1, limit = 50): Promise<{ orders: AdminOrderItem[]; total: number }> {
+    return this.repo.findAllOrders(page, limit);
   }
 
   async updateOrderStatus(orderId: string, status: OrderStatus): Promise<AdminOrderItem> {
     const order = await this.repo.findOrderById(orderId);
     if (!order) throw new NotFoundException('Đơn hàng không tồn tại');
 
+    const validNext = VALID_ORDER_TRANSITIONS[order.status] ?? [];
+    if (!validNext.includes(status)) {
+      throw new BadRequestException(
+        `Không thể chuyển trạng thái từ ${order.status} sang ${status}`,
+      );
+    }
+
+    const updated = await this.repo.updateOrderStatus(orderId, status);
+
     if (status === OrderStatus.DELIVERED && order.status !== OrderStatus.DELIVERED) {
       await this.awardLoyalty(orderId, order.userId, order.orderNumber);
       this.invoicesService.generateForOrder(orderId)
         .catch((err: unknown) => console.error('[AdminService] invoice generation failed', err));
     }
-
-    const updated = await this.repo.updateOrderStatus(orderId, status);
     this.notifRepo
       .createNotification(
         order.userId,

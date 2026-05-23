@@ -57,8 +57,11 @@ export class AdminController {
 
   @Get('orders')
   @ApiOperation({ summary: 'List all orders' })
-  listOrders() {
-    return this.adminService.listOrders();
+  listOrders(
+    @Query('page') page = 1,
+    @Query('limit') limit = 50,
+  ) {
+    return this.adminService.listOrders(Number(page), Number(limit));
   }
 
   @Patch('orders/:id/status')

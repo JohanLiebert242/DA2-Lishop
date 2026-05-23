@@ -6,14 +6,17 @@ import { formatVND } from '@lishop/shared';
 import { adminApi, OrderStatus, AdminOrderItem } from '../../../lib/admin-api';
 import { ORDER_STATUSES, STATUS_LABELS, STATUS_COLORS } from '../_constants';
 
+const PAGE_SIZE = 50;
+
 function OrderRow({ order }: { order: AdminOrderItem }) {
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<OrderStatus>(order.status);
 
   const mutation = useMutation({
     mutationFn: (s: OrderStatus) => adminApi.updateOrderStatus(order.id, s),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] }),
   });
+
+  const displayStatus: OrderStatus = mutation.isPending ? mutation.variables! : order.status;
 
   const userName =
     order.user.firstName && order.user.lastName
@@ -30,14 +33,10 @@ function OrderRow({ order }: { order: AdminOrderItem }) {
       </td>
       <td className="px-4 py-3">
         <select
-          value={status}
-          onChange={(e) => {
-            const s = e.target.value as OrderStatus;
-            setStatus(s);
-            mutation.mutate(s);
-          }}
+          value={displayStatus}
+          onChange={(e) => mutation.mutate(e.target.value as OrderStatus)}
           disabled={mutation.isPending}
-          className={`cursor-pointer rounded-full border-0 px-2 py-1 text-xs font-medium disabled:opacity-50 ${STATUS_COLORS[status]}`}
+          className={`cursor-pointer rounded-full border-0 px-2 py-1 text-xs font-medium disabled:opacity-50 ${STATUS_COLORS[displayStatus]}`}
         >
           {ORDER_STATUSES.map((s) => (
             <option key={s} value={s}>{STATUS_LABELS[s]}</option>
@@ -50,17 +49,44 @@ function OrderRow({ order }: { order: AdminOrderItem }) {
 }
 
 export default function OrdersPage() {
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ['admin-orders'],
-    queryFn: () => adminApi.listOrders(),
+  const [page, setPage] = useState(1);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-orders', page],
+    queryFn: () => adminApi.listOrders(page, PAGE_SIZE),
   });
+
+  const orders: AdminOrderItem[] = data?.orders ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b">
+      <div className="px-4 py-3 border-b flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">
-          {isLoading ? 'Đang tải...' : `${orders.length} đơn hàng gần nhất`}
+          {isLoading ? 'Đang tải...' : `${total} đơn hàng`}
         </h2>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="rounded border border-gray-200 px-2 py-1 disabled:opacity-40 hover:bg-gray-50"
+            >
+              ←
+            </button>
+            <span>{page} / {totalPages}</span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="rounded border border-gray-200 px-2 py-1 disabled:opacity-40 hover:bg-gray-50"
+            >
+              →
+            </button>
+          </div>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">

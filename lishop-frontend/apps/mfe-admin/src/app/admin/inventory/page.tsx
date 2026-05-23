@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, ProductStock } from '../../../lib/admin-api';
 
@@ -153,9 +153,8 @@ export default function InventoryPage() {
           </thead>
           <tbody>
             {inventory.map((product) => (
-              <>
+              <React.Fragment key={product.id}>
                 <InventoryRow
-                  key={product.id}
                   product={product}
                   isAdjusting={adjustingProductId === product.id}
                   onAdjustClick={() =>
@@ -164,12 +163,11 @@ export default function InventoryPage() {
                 />
                 {adjustingProductId === product.id && (
                   <AdjustStockForm
-                    key={`adjust-${product.id}`}
                     product={product}
                     onClose={() => setAdjustingProductId(null)}
                   />
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

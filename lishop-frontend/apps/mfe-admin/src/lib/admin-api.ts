@@ -113,7 +113,8 @@ export interface AdminReturn {
 
 export const adminApi = {
   getStats: () => apiFetch<AdminStats>('/admin/stats'),
-  listOrders: () => apiFetch<AdminOrderItem[]>('/admin/orders'),
+  listOrders: (page = 1, limit = 50) =>
+    apiFetch<{ orders: AdminOrderItem[]; total: number }>(`/admin/orders?page=${page}&limit=${limit}`),
   updateOrderStatus: (id: string, status: OrderStatus) =>
     apiFetch<AdminOrderItem>(`/admin/orders/${id}/status`, {
       method: 'PATCH',

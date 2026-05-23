@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, AdminFlashSale, FlashSaleItem } from '../../../lib/admin-api';
 
@@ -229,8 +229,8 @@ export default function FlashSalesPage() {
           </thead>
           <tbody>
             {flashSales.map((sale) => (
-              <>
-                <tr key={sale.id} className="border-b last:border-0 hover:bg-gray-50">
+              <React.Fragment key={sale.id}>
+                <tr className="border-b last:border-0 hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {new Date(sale.startAt).toLocaleString('vi-VN')}
                   </td>
@@ -281,9 +281,9 @@ export default function FlashSalesPage() {
                   </td>
                 </tr>
                 {expandedFlashSaleId === sale.id && (
-                  <FlashSaleItemsPanel key={`items-${sale.id}`} sale={sale} />
+                  <FlashSaleItemsPanel sale={sale} />
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
