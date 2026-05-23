@@ -101,7 +101,7 @@ const ESTIMATED_DAYS: Record<ShippingProvider, number> = {
 @Injectable()
 export class OrdersRepository {
   async create(input: CreateOrderInput): Promise<OrderWithDetails> {
-    const orderNumber = `LS-${Date.now()}`;
+    const orderNumber = `LS-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
     const estimatedAt = new Date();
     estimatedAt.setDate(estimatedAt.getDate() + ESTIMATED_DAYS[input.shippingProvider]);
 

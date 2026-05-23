@@ -83,9 +83,14 @@ export class OrdersService {
       })),
     });
 
-    // Deduct wallet if payment method is WALLET
+    // Deduct wallet if payment method is WALLET; cancel order if deduction fails
     if (dto.paymentMethod === PaymentMethod.WALLET) {
-      await this.walletService.deductForOrder(userId, order.id, totalVnd);
+      try {
+        await this.walletService.deductForOrder(userId, order.id, totalVnd);
+      } catch (err) {
+        await this.repo.cancelOrder(order.id);
+        throw err;
+      }
     }
 
     // Record coupon usage so it cannot be reused
@@ -136,6 +141,11 @@ export class OrdersService {
       throw new BadRequestException('Đơn hàng không thể hủy ở trạng thái hiện tại');
     }
     const cancelled = await this.repo.cancelOrder(orderId);
+
+    if (order.payment?.method === PaymentMethod.WALLET) {
+      await this.walletService.refundToWallet(userId, orderId, order.payment.amountVnd);
+    }
+
     this.notifRepo
       .createNotification(
         userId,

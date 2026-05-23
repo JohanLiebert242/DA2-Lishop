@@ -107,12 +107,15 @@ export class WalletRepository {
     description: string,
     referenceId?: string,
   ): Promise<WalletInfo> {
-    const current = await this.findByUserId(userId);
-    if (!current || current.balanceVnd < amountVnd) {
-      throw new BadRequestException('Insufficient wallet balance');
-    }
-
     return prisma.$transaction(async (tx) => {
+      const current = await tx.wallet.findFirst({
+        where: { userId },
+        select: { id: true, balanceVnd: true },
+      });
+      if (!current || current.balanceVnd < amountVnd) {
+        throw new BadRequestException('Insufficient wallet balance');
+      }
+
       const wallet = await tx.wallet.update({
         where: { userId },
         data: { balanceVnd: { decrement: amountVnd } },
