@@ -219,13 +219,14 @@ function priceUsd(priceVnd: number) {
   return Math.max(1, Math.round(priceVnd / 25000));
 }
 
-function uniqueProductImageUrl(slug: string, imageIndex: number) {
-  const role = imageIndex === 0 ? 'primary' : `gallery-${imageIndex}`;
-  return `https://picsum.photos/seed/lishop-${slug}-${role}/900/900`;
+function uniqueProductImageUrl(slug: string, imageIndex: number, baseUrl: string) {
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}auto=format&fit=crop&q=82&crop=entropy&lishop=${slug}-${imageIndex}`;
 }
 
-function uniqueVariantImageUrl(productSlug: string, variantSlug: string) {
-  return `https://picsum.photos/seed/lishop-${productSlug}-variant-${variantSlug}/900/900`;
+function uniqueVariantImageUrl(productSlug: string, variantSlug: string, baseUrl: string) {
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}auto=format&fit=crop&q=82&crop=entropy&lishop=${productSlug}-variant-${variantSlug}`;
 }
 
 function pick<T>(items: T[], index: number) {
@@ -399,6 +400,9 @@ async function createTags() {
 function buildVariants(seed: ProductSeed) {
   const productSlug = slugify(seed.name);
   const slug = slugify(seed.name).toUpperCase();
+  const imagePool = [...IMAGE_POOLS[seed.imageKey]];
+  const variantImage = (variantSlug: string, index: number) =>
+    uniqueVariantImageUrl(productSlug, variantSlug, pick(imagePool, index));
 
   if (seed.variantKind === 'tech') {
     return [
@@ -410,7 +414,7 @@ function buildVariants(seed: ProductSeed) {
         stock: Math.max(1, Math.floor(seed.stock * 0.6)),
         weightGrams: seed.categorySlug === 'laptops' ? 1600 : 450,
         attributes: { color: 'Graphite', storage: seed.categorySlug === 'phones' ? '256GB' : '512GB' },
-        imageUrl: uniqueVariantImageUrl(productSlug, 'standard'),
+        imageUrl: variantImage('standard', 0),
         isDefault: true,
         isActive: true,
       },
@@ -422,7 +426,7 @@ function buildVariants(seed: ProductSeed) {
         stock: Math.max(1, Math.floor(seed.stock * 0.4)),
         weightGrams: seed.categorySlug === 'laptops' ? 1700 : 470,
         attributes: { color: 'Silver', storage: seed.categorySlug === 'phones' ? '512GB' : '1TB' },
-        imageUrl: uniqueVariantImageUrl(productSlug, 'plus'),
+        imageUrl: variantImage('plus', 1),
         isDefault: false,
         isActive: true,
       },
@@ -438,7 +442,7 @@ function buildVariants(seed: ProductSeed) {
       stock: Math.max(1, Math.floor(seed.stock / 3)),
       weightGrams: 350,
       attributes: { color: pick(['Black', 'White', 'Navy'], sizeIndex), size },
-      imageUrl: uniqueVariantImageUrl(productSlug, slugify(`${pick(['Black', 'White', 'Navy'], sizeIndex)}-${size}`)),
+      imageUrl: variantImage(slugify(`${pick(['Black', 'White', 'Navy'], sizeIndex)}-${size}`), sizeIndex),
       isDefault: sizeIndex === 0,
       isActive: true,
     }));
@@ -453,7 +457,7 @@ function buildVariants(seed: ProductSeed) {
       stock: Math.max(1, Math.floor(seed.stock / 3)),
       weightGrams: 800,
       attributes: { color: pick(['White', 'Black', 'Red'], sizeIndex), size },
-      imageUrl: uniqueVariantImageUrl(productSlug, slugify(`${pick(['White', 'Black', 'Red'], sizeIndex)}-${size}`)),
+      imageUrl: variantImage(slugify(`${pick(['White', 'Black', 'Red'], sizeIndex)}-${size}`), sizeIndex),
       isDefault: sizeIndex === 0,
       isActive: true,
     }));
@@ -469,7 +473,7 @@ function buildVariants(seed: ProductSeed) {
         stock: seed.stock,
         weightGrams: 320,
         attributes: { format: 'Paperback', language: 'Vietnamese' },
-        imageUrl: uniqueVariantImageUrl(productSlug, 'paperback'),
+        imageUrl: variantImage('paperback', 0),
         isDefault: true,
         isActive: true,
       },
@@ -488,8 +492,9 @@ async function createProducts(categories: Map<string, string>, tags: Map<string,
     if (!categoryId) throw new Error(`Missing category ${seed.categorySlug}`);
 
     const slug = slugify(seed.name);
-    const images = IMAGE_POOLS[seed.imageKey].map((_url, imageIndex) => ({
-      url: uniqueProductImageUrl(slug, imageIndex),
+    const imagePool = IMAGE_POOLS[seed.imageKey];
+    const images = Array.from({ length: 4 }, (_, imageIndex) => ({
+      url: uniqueProductImageUrl(slug, imageIndex, pick([...imagePool], imageIndex)),
       alt: `${seed.name} image ${imageIndex + 1}`,
       isPrimary: imageIndex === 0,
     }));
@@ -802,7 +807,8 @@ async function createOrders(
 }
 
 async function createReturnsAndRefunds(orders: Array<{ order: CreatedOrder; items: CreatedOrderItem[] }>) {
-  const eligibleOrders = orders.filter(({ order }) => [OrderStatus.DELIVERED, OrderStatus.REFUNDED].includes(order.status));
+  const returnableStatuses: OrderStatus[] = [OrderStatus.DELIVERED, OrderStatus.REFUNDED];
+  const eligibleOrders = orders.filter(({ order }) => returnableStatuses.includes(order.status));
 
   for (let index = 0; index < 6; index++) {
     const { order, items } = eligibleOrders[index];
