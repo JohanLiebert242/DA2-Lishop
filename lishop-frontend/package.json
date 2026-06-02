@@ -7,6 +7,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "type-check": "turbo run type-check",
+    "e2e:checkout": "pnpm dlx @playwright/test test -c playwright.config.ts tests/e2e/checkout.spec.ts",
     "clean": "turbo run clean"
   },
   "devDependencies": {
