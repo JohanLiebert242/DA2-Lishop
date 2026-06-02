@@ -229,6 +229,7 @@ export function Header() {
                       {[
                         { label: 'Trang cá nhân', href: `${MFE.profile}/profile` },
                         { label: 'Đơn hàng của tôi', href: `${MFE.orders}/orders` },
+                        { label: 'Yêu thích', href: `${MFE.profile}/wishlist` },
                         { label: 'Thông báo', href: `${MFE.notifications}/notifications` },
                         { label: 'Ưu đãi & coupon', href: `${MFE.promotions}/promotions` },
                       ].map((item) => (

@@ -10,7 +10,6 @@ const PROFILE_SECTIONS: Array<{ icon: string; label: string; href: string; key: 
   { icon: '•', label: 'Thông tin cá nhân', href: `${MFE_PROFILE}/profile`, key: 'profile' },
   { icon: '•', label: 'Địa chỉ', href: `${MFE_PROFILE}/addresses`, key: 'addresses' },
   { icon: '•', label: 'Ví Lishop', href: `${MFE_PROFILE}/wallet`, key: 'wallet' },
-  { icon: '•', label: 'Yêu thích', href: `${MFE_PROFILE}/wishlist`, key: 'wishlist' },
   { icon: '•', label: 'Hỗ trợ', href: `${MFE_PROFILE}/support`, key: 'support' },
 ];
 
