@@ -22,11 +22,45 @@ export interface WalletTx {
   createdAt: string;
 }
 
+export type WalletTopupStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface WalletTopupRequest {
+  id: string;
+  userId: string;
+  walletId: string;
+  amountVnd: number;
+  status: WalletTopupStatus;
+  transferCode: string;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  adminNote: string | null;
+  reviewedById: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BankTransferInfo {
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  transferCode: string;
+  amountVnd: number;
+}
+
+export interface TopupResponse {
+  request: WalletTopupRequest;
+  bankTransfer: BankTransferInfo;
+  paymentUrl: null;
+}
+
 export const walletApi = {
   getWallet: () => apiFetch<WalletInfo>('/wallet'),
   getTransactions: () => apiFetch<WalletTx[]>('/wallet/transactions'),
+  getTopupRequests: () => apiFetch<WalletTopupRequest[]>('/wallet/topup-requests'),
   topUp: (amountVnd: number) =>
-    apiFetch<{ wallet: WalletInfo; paymentUrl: string | null }>('/wallet/topup', {
+    apiFetch<TopupResponse>('/wallet/topup', {
       method: 'POST',
       body: JSON.stringify({ amountVnd }),
     }),
