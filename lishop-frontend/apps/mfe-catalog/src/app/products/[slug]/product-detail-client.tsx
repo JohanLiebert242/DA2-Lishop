@@ -195,6 +195,7 @@ interface Props {
 
 export function ProductDetailClient({ slug, initialProduct }: Props) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(() => new Set());
   const [addingToCart, setAddingToCart] = useState(false);
   const [qty, setQty] = useState(1);
@@ -265,11 +266,19 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     );
   }
 
+  const variants = product.variants ?? [];
+  const defaultVariant = variants.find((variant) => variant.isDefault) ?? variants[0] ?? null;
+  const selectedVariant =
+    variants.find((variant) => variant.id === selectedVariantId) ?? defaultVariant;
+  const effectivePriceVnd = selectedVariant?.priceVnd ?? product.priceVnd;
+  const effectiveStock = selectedVariant?.stock ?? product.stock;
+  const effectiveSku = selectedVariant?.sku ?? product.sku;
+
   async function handleAddToCart() {
     if (!product) return;
     setAddingToCart(true);
     try {
-      await addToCart(product.id, qty);
+      await addToCart(product.id, qty, selectedVariant?.id);
       if (addToCartBtnRef.current) {
         flyToCart(addToCartBtnRef.current.getBoundingClientRect());
       }
@@ -359,8 +368,8 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
         <div>
           <p className="text-sm font-semibold text-indigo-600">{product.category.name}</p>
           <h1 className="mt-1 text-2xl font-black text-stone-900 tracking-tight">{product.name}</h1>
-          {product.sku && (
-            <p className="mt-1 text-xs text-muted">SKU: <span className="font-mono">{product.sku}</span></p>
+          {effectiveSku && (
+            <p className="mt-1 text-xs text-muted">SKU: <span className="font-mono">{effectiveSku}</span></p>
           )}
 
           {product.averageRating > 0 && (
@@ -374,23 +383,23 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
           )}
 
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-indigo-600">{formatVND(product.priceVnd)}</span>
+            <span className="text-3xl font-black text-indigo-600">{formatVND(effectivePriceVnd)}</span>
           </div>
 
           <div className="mt-2">
-            {product.stock > 0 ? (
+            {effectiveStock > 0 ? (
               <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                Còn hàng ({product.stock} sản phẩm)
+                Còn hàng ({effectiveStock} sản phẩm)
               </span>
             ) : (
               <span className="text-sm font-medium text-red-600">Hết hàng</span>
             )}
           </div>
 
-          {product.stock > 0 && product.stock <= 10 && (
+          {effectiveStock > 0 && effectiveStock <= 10 && (
             <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
-              ⚠️ Chỉ còn {product.stock} sản phẩm
+              ⚠️ Chỉ còn {effectiveStock} sản phẩm
             </div>
           )}
 
@@ -404,7 +413,44 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
             </div>
           )}
 
-          {product.stock > 0 && (
+          {variants.length > 0 && (
+            <div className="mt-5 space-y-2">
+              <p className="text-sm font-semibold text-stone-700">Phiên bản:</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {variants.map((variant) => {
+                  const isSelected = selectedVariant?.id === variant.id;
+                  const attrs = Object.entries(variant.attributes ?? {})
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join(' · ');
+
+                  return (
+                    <button
+                      key={variant.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedVariantId(variant.id);
+                        setQty(1);
+                      }}
+                      disabled={variant.stock === 0}
+                      className={`rounded-xl border px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                        isSelected
+                          ? 'border-indigo-500 bg-indigo-50 shadow-sm'
+                          : 'border-warm bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
+                      }`}
+                    >
+                      <span className="block text-sm font-bold text-stone-800">{variant.name}</span>
+                      {attrs && <span className="mt-0.5 block text-xs text-muted">{attrs}</span>}
+                      <span className="mt-1 block text-sm font-black text-indigo-600">
+                        {formatVND(variant.priceVnd)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {effectiveStock > 0 && (
             <div className="mt-5 flex items-center gap-3">
               <span className="text-sm font-semibold text-stone-700">Số lượng:</span>
               <div className="flex items-center rounded-xl border border-warm overflow-hidden">
@@ -419,15 +465,15 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                   type="number"
                   value={qty}
                   onChange={(e) =>
-                    setQty(Math.min(product.stock, Math.max(1, parseInt(e.target.value) || 1)))
+                    setQty(Math.min(effectiveStock, Math.max(1, parseInt(e.target.value) || 1)))
                   }
                   className="w-12 border-x border-warm py-2 text-center text-sm font-bold focus:outline-none bg-white"
                   min={1}
-                  max={product.stock}
+                  max={effectiveStock}
                 />
                 <button
-                  onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
-                  disabled={qty >= product.stock}
+                  onClick={() => setQty((q) => Math.min(effectiveStock, q + 1))}
+                  disabled={qty >= effectiveStock}
                   className="flex h-10 w-10 cursor-pointer items-center justify-center text-lg font-bold text-stone-600 hover:bg-warm-100 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
                 >
                   +
@@ -439,13 +485,13 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
           <div className="mt-6 flex gap-3">
             <button
               ref={addToCartBtnRef}
-              disabled={product.stock === 0 || addingToCart}
+              disabled={effectiveStock === 0 || addingToCart}
               onClick={handleAddToCart}
               className="btn-primary flex-1 cursor-pointer py-3 text-base disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none disabled:shadow-none"
             >
               {addingToCart
                 ? 'Đang thêm...'
-                : product.stock > 0
+                : effectiveStock > 0
                 ? '🛒 Thêm vào giỏ hàng'
                 : 'Hết hàng'}
             </button>

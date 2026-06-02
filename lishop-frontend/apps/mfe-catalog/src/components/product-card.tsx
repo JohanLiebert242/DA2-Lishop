@@ -33,6 +33,10 @@ export function ProductCard({ product }: { product: ProductSummary }) {
   const [imageFailed, setImageFailed] = useState(false);
   const primaryImage = product.images.find((img) => img.isPrimary) ?? product.images[0];
   const availableImage = primaryImage && !imageFailed ? primaryImage : null;
+  const defaultVariant =
+    product.variants?.find((variant) => variant.isDefault) ?? product.variants?.[0] ?? null;
+  const displayPriceVnd = defaultVariant?.priceVnd ?? product.priceVnd;
+  const displayStock = defaultVariant?.stock ?? product.stock;
 
   const { data: wishlistIds = [] } = useQuery({
     queryKey: ['wishlist'],
@@ -95,7 +99,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
             </span>
           </button>
 
-          {product.stock === 0 && (
+          {displayStock === 0 && (
             <div className="absolute inset-0 flex items-center justify-center bg-stone-900/50 backdrop-blur-[1px]">
               <span className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-stone-700">
                 Hết hàng
@@ -116,7 +120,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
             <Stars rating={product.averageRating} count={product.reviewCount} />
           )}
           <p className="mt-auto text-base font-black text-indigo-600">
-            {formatVND(product.priceVnd)}
+            {formatVND(displayPriceVnd)}
           </p>
         </div>
       </div>

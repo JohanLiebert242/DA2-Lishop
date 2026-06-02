@@ -18,6 +18,21 @@ export interface CategoryInfo {
   slug: string;
 }
 
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  sku: string;
+  name: string;
+  priceVnd: number;
+  priceUsd: number;
+  stock: number;
+  weightGrams: number;
+  attributes: Record<string, string>;
+  imageUrl: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+}
+
 export interface CategoryItem extends CategoryInfo {
   imageUrl: string | null;
   parentId: string | null;
@@ -36,6 +51,7 @@ export interface ProductSummary {
   reviewCount: number;
   categoryId: string;
   images: ProductImage[];
+  variants: ProductVariant[];
   tags: { tag: { name: string } }[];
   category: CategoryInfo;
   createdAt: string;
