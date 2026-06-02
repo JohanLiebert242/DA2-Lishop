@@ -1,10 +1,20 @@
 'use client';
 
 import { useEffect } from 'react';
+import { hasSessionCookie } from '../api/fetch';
 
-export function useAuthSync(loginUrl: string) {
+interface AuthSyncOptions {
+  requireAuth?: boolean;
+}
+
+export function useAuthSync(loginUrl: string, options: AuthSyncOptions = {}) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (options.requireAuth && !hasSessionCookie()) {
+      window.location.replace(loginUrl);
+      return;
+    }
+
     const ch = new BroadcastChannel('lishop-events');
     ch.onmessage = ({ data }: MessageEvent<{ event?: string }>) => {
       if (data?.event === 'AUTH_LOGOUT') {
@@ -12,5 +22,5 @@ export function useAuthSync(loginUrl: string) {
       }
     };
     return () => ch.close();
-  }, [loginUrl]);
+  }, [loginUrl, options.requireAuth]);
 }

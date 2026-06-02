@@ -7,7 +7,7 @@ import { useAuthSync } from '@lishop/shared';
 const LOGIN_URL = `${process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001'}/login`;
 
 function AuthSync() {
-  useAuthSync(LOGIN_URL);
+  useAuthSync(LOGIN_URL, { requireAuth: true });
   return null;
 }
 
