@@ -50,10 +50,21 @@ export class CartRepository {
   }
 
   async addOrUpdate(userId: string, productId: string, quantity: number): Promise<void> {
-    await prisma.cartItem.upsert({
-      where: { userId_productId: { userId, productId } },
-      create: { userId, productId, quantity },
-      update: { quantity },
+    const existing = await prisma.cartItem.findFirst({
+      where: { userId, productId, variantId: null },
+      select: { id: true },
+    });
+
+    if (existing) {
+      await prisma.cartItem.update({
+        where: { id: existing.id },
+        data: { quantity },
+      });
+      return;
+    }
+
+    await prisma.cartItem.create({
+      data: { userId, productId, quantity },
     });
   }
 

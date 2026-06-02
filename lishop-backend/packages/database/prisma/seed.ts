@@ -244,6 +244,32 @@ async function main() {
         { url: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600', alt: 'iPhone 15 Pro Max', isPrimary: true },
         { url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600', alt: 'iPhone 15 Pro Max back', isPrimary: false },
       ],
+      variants: [
+        {
+          sku: 'IPHONE15PM-256-TITAN',
+          name: 'Titanium 256GB',
+          priceVnd: 34_990_000,
+          priceUsd: 1399,
+          stock: 15,
+          weightGrams: 240,
+          attributes: { color: 'Titanium', storage: '256GB' },
+          imageUrl: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600',
+          isDefault: true,
+          isActive: true,
+        },
+        {
+          sku: 'IPHONE15PM-512-BLUE',
+          name: 'Blue Titanium 512GB',
+          priceVnd: 39_990_000,
+          priceUsd: 1599,
+          stock: 10,
+          weightGrams: 240,
+          attributes: { color: 'Blue Titanium', storage: '512GB' },
+          imageUrl: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600',
+          isDefault: false,
+          isActive: true,
+        },
+      ],
       tags: [tagHot.id, tagBestSeller.id],
     },
     {
@@ -291,6 +317,32 @@ async function main() {
         { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600', alt: 'MacBook Pro 14', isPrimary: true },
         { url: 'https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=600', alt: 'MacBook Pro 14 side', isPrimary: false },
       ],
+      variants: [
+        {
+          sku: 'MBP14-M3PRO-18-512-SILVER',
+          name: 'Silver 18GB / 512GB',
+          priceVnd: 52_990_000,
+          priceUsd: 1999,
+          stock: 7,
+          weightGrams: 1600,
+          attributes: { color: 'Silver', memory: '18GB', storage: '512GB' },
+          imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600',
+          isDefault: true,
+          isActive: true,
+        },
+        {
+          sku: 'MBP14-M3PRO-36-1TB-BLACK',
+          name: 'Space Black 36GB / 1TB',
+          priceVnd: 66_990_000,
+          priceUsd: 2599,
+          stock: 5,
+          weightGrams: 1600,
+          attributes: { color: 'Space Black', memory: '36GB', storage: '1TB' },
+          imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600',
+          isDefault: false,
+          isActive: true,
+        },
+      ],
       tags: [tagBestSeller.id, tagHot.id],
     },
     {
@@ -336,6 +388,32 @@ async function main() {
       reviewCount: 312,
       images: [
         { url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600', alt: 'Áo Polo Lacoste', isPrimary: true },
+      ],
+      variants: [
+        {
+          sku: 'LACOSTE-POLO-NAVY-M',
+          name: 'Navy / M',
+          priceVnd: 1_890_000,
+          priceUsd: 75,
+          stock: 30,
+          weightGrams: 300,
+          attributes: { color: 'Navy', size: 'M' },
+          imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600',
+          isDefault: true,
+          isActive: true,
+        },
+        {
+          sku: 'LACOSTE-POLO-WHITE-L',
+          name: 'White / L',
+          priceVnd: 1_990_000,
+          priceUsd: 79,
+          stock: 25,
+          weightGrams: 300,
+          attributes: { color: 'White', size: 'L' },
+          imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600',
+          isDefault: false,
+          isActive: true,
+        },
       ],
       tags: [tagBestSeller.id],
     },
@@ -431,6 +509,32 @@ async function main() {
         { url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600', alt: 'Nike Pegasus 40', isPrimary: true },
         { url: 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=600', alt: 'Nike Pegasus 40 side', isPrimary: false },
       ],
+      variants: [
+        {
+          sku: 'NIKE-PEGASUS40-BLACK-42',
+          name: 'Black / EU 42',
+          priceVnd: 3_390_000,
+          priceUsd: 130,
+          stock: 18,
+          weightGrams: 700,
+          attributes: { color: 'Black', size: 'EU 42' },
+          imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600',
+          isDefault: true,
+          isActive: true,
+        },
+        {
+          sku: 'NIKE-PEGASUS40-RED-43',
+          name: 'Red / EU 43',
+          priceVnd: 3_490_000,
+          priceUsd: 135,
+          stock: 15,
+          weightGrams: 700,
+          attributes: { color: 'Red', size: 'EU 43' },
+          imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600',
+          isDefault: false,
+          isActive: true,
+        },
+      ],
       tags: [tagBestSeller.id, tagHot.id],
     },
     {
@@ -469,13 +573,14 @@ async function main() {
   const createdProducts: Record<string, string> = {};
 
   for (const p of productsData) {
-    const { images, tags, ...productData } = p;
+    const { images, tags, variants, ...productData } = p;
     const product = await prisma.product.upsert({
       where: { slug: p.slug },
       update: {},
       create: {
         ...productData,
         images: { create: images },
+        ...(variants?.length ? { variants: { create: variants } } : {}),
       },
     });
     createdProducts[p.slug] = product.id;
