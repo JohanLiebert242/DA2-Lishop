@@ -219,6 +219,15 @@ function priceUsd(priceVnd: number) {
   return Math.max(1, Math.round(priceVnd / 25000));
 }
 
+function uniqueProductImageUrl(slug: string, imageIndex: number) {
+  const role = imageIndex === 0 ? 'primary' : `gallery-${imageIndex}`;
+  return `https://picsum.photos/seed/lishop-${slug}-${role}/900/900`;
+}
+
+function uniqueVariantImageUrl(productSlug: string, variantSlug: string) {
+  return `https://picsum.photos/seed/lishop-${productSlug}-variant-${variantSlug}/900/900`;
+}
+
 function pick<T>(items: T[], index: number) {
   return items[index % items.length];
 }
@@ -387,8 +396,8 @@ async function createTags() {
   return tags;
 }
 
-function buildVariants(seed: ProductSeed, index: number) {
-  const imageUrl = pick(IMAGE_POOLS[seed.imageKey], index);
+function buildVariants(seed: ProductSeed) {
+  const productSlug = slugify(seed.name);
   const slug = slugify(seed.name).toUpperCase();
 
   if (seed.variantKind === 'tech') {
@@ -401,7 +410,7 @@ function buildVariants(seed: ProductSeed, index: number) {
         stock: Math.max(1, Math.floor(seed.stock * 0.6)),
         weightGrams: seed.categorySlug === 'laptops' ? 1600 : 450,
         attributes: { color: 'Graphite', storage: seed.categorySlug === 'phones' ? '256GB' : '512GB' },
-        imageUrl,
+        imageUrl: uniqueVariantImageUrl(productSlug, 'standard'),
         isDefault: true,
         isActive: true,
       },
@@ -413,7 +422,7 @@ function buildVariants(seed: ProductSeed, index: number) {
         stock: Math.max(1, Math.floor(seed.stock * 0.4)),
         weightGrams: seed.categorySlug === 'laptops' ? 1700 : 470,
         attributes: { color: 'Silver', storage: seed.categorySlug === 'phones' ? '512GB' : '1TB' },
-        imageUrl,
+        imageUrl: uniqueVariantImageUrl(productSlug, 'plus'),
         isDefault: false,
         isActive: true,
       },
@@ -429,7 +438,7 @@ function buildVariants(seed: ProductSeed, index: number) {
       stock: Math.max(1, Math.floor(seed.stock / 3)),
       weightGrams: 350,
       attributes: { color: pick(['Black', 'White', 'Navy'], sizeIndex), size },
-      imageUrl,
+      imageUrl: uniqueVariantImageUrl(productSlug, slugify(`${pick(['Black', 'White', 'Navy'], sizeIndex)}-${size}`)),
       isDefault: sizeIndex === 0,
       isActive: true,
     }));
@@ -444,7 +453,7 @@ function buildVariants(seed: ProductSeed, index: number) {
       stock: Math.max(1, Math.floor(seed.stock / 3)),
       weightGrams: 800,
       attributes: { color: pick(['White', 'Black', 'Red'], sizeIndex), size },
-      imageUrl,
+      imageUrl: uniqueVariantImageUrl(productSlug, slugify(`${pick(['White', 'Black', 'Red'], sizeIndex)}-${size}`)),
       isDefault: sizeIndex === 0,
       isActive: true,
     }));
@@ -460,7 +469,7 @@ function buildVariants(seed: ProductSeed, index: number) {
         stock: seed.stock,
         weightGrams: 320,
         attributes: { format: 'Paperback', language: 'Vietnamese' },
-        imageUrl,
+        imageUrl: uniqueVariantImageUrl(productSlug, 'paperback'),
         isDefault: true,
         isActive: true,
       },
@@ -479,8 +488,8 @@ async function createProducts(categories: Map<string, string>, tags: Map<string,
     if (!categoryId) throw new Error(`Missing category ${seed.categorySlug}`);
 
     const slug = slugify(seed.name);
-    const images = IMAGE_POOLS[seed.imageKey].map((url, imageIndex) => ({
-      url,
+    const images = IMAGE_POOLS[seed.imageKey].map((_url, imageIndex) => ({
+      url: uniqueProductImageUrl(slug, imageIndex),
       alt: `${seed.name} image ${imageIndex + 1}`,
       isPrimary: imageIndex === 0,
     }));
@@ -503,7 +512,7 @@ async function createProducts(categories: Map<string, string>, tags: Map<string,
     products.push(product);
     variants.set(slug, []);
 
-    for (const variantData of buildVariants(seed, index)) {
+    for (const variantData of buildVariants(seed)) {
       const variant = await prisma.productVariant.create({
         data: {
           ...variantData,
