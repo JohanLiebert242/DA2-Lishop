@@ -29,8 +29,8 @@ export function MiniHeader({ title }: { title?: string }) {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4">
         {/* Logo */}
         <Link href={SHELL} className="flex items-center gap-2 shrink-0">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 shadow-brand">
-            <span className="text-sm font-black text-white leading-none">Li</span>
+          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white shadow-brand">
+            <img src="/lishop-logo.png" alt="Lishop logo" className="h-full w-full object-contain p-1" />
           </div>
           <span className="text-base font-black text-stone-900 hidden sm:block">Lishop</span>
         </Link>

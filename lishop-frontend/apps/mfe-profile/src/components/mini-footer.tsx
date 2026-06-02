@@ -11,8 +11,8 @@ export function MiniFooter() {
         <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
           {/* Brand */}
           <a href={SHELL} className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600">
-              <span className="text-sm font-black text-white">Li</span>
+            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+              <img src="/lishop-logo.png" alt="Lishop logo" className="h-full w-full object-contain p-1" />
             </div>
             <span className="text-base font-black text-stone-900">Lishop</span>
           </a>

@@ -71,7 +71,7 @@ export default function LoginPage() {
         <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full opacity-15" style={{ background: 'radial-gradient(circle, #c084fc, transparent)' }} />
         <div className="relative z-10 text-center">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-            <span className="text-3xl font-black">Li</span>
+            <img src="/lishop-logo.png" alt="Lishop logo" className="h-14 w-14 object-contain" />
           </div>
           <h2 className="text-3xl font-black tracking-tight">Chào mừng trở lại</h2>
           <p className="mt-3 text-white/70 leading-relaxed max-w-xs mx-auto">
@@ -91,7 +91,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-brand">
-              <span className="text-base font-black text-white">Li</span>
+              <img src="/lishop-logo.png" alt="Lishop logo" className="h-8 w-8 object-contain" />
             </div>
             <span className="text-xl font-black text-stone-900">Lishop</span>
           </div>
