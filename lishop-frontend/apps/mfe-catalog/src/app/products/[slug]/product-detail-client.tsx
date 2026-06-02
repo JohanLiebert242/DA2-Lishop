@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -36,7 +36,11 @@ function ReviewsSection({ productId }: { productId: string }) {
   const [content, setContent] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'highest' | 'lowest'>('newest');
-  const isLoggedInNow = typeof window !== 'undefined' && isLoggedIn();
+  const [isLoggedInNow, setIsLoggedInNow] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedInNow(isLoggedIn());
+  }, []);
 
   const { data: reviews = [] } = useQuery({
     queryKey: ['reviews', productId],
