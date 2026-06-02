@@ -107,7 +107,10 @@ export default function OrdersPage() {
                       <div className="mt-4 flex items-center justify-between border-t border-warm pt-4">
                         <p className="text-xs text-muted line-clamp-1 flex-1 mr-4">
                           <span className="font-semibold text-stone-600">{order.items.length} sản phẩm: </span>
-                          {order.items.slice(0, 2).map(i => i.productName).join(', ')}
+                          {order.items
+                            .slice(0, 2)
+                            .map((i) => `${i.productName}${i.variantName ? ` - ${i.variantName}` : ''}`)
+                            .join(', ')}
                           {order.items.length > 2 && ` +${order.items.length - 2} khác`}
                         </p>
                         <span className="shrink-0 text-xs font-semibold text-indigo-600 group-hover:text-indigo-800 transition-colors">

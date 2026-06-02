@@ -11,6 +11,12 @@ import { cartApi, CartItemData } from '../../lib/cart-api';
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
 const CHECKOUT_URL = process.env['NEXT_PUBLIC_MFE_CHECKOUT_URL'] ?? 'http://localhost:3004';
 
+function formatVariantAttributes(attributes: Record<string, string> | null): string {
+  return Object.entries(attributes ?? {})
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(' · ');
+}
+
 function useAuthGuard() {
   useEffect(() => {
     const match = document.cookie.match(/(?:^|;\s*)lishop_session=([^;]*)/);
@@ -25,10 +31,12 @@ function CartItemRow({
   isPending,
 }: {
   item: CartItemData;
-  onUpdateQuantity: (productId: string, qty: number) => void;
-  onRemove: (productId: string) => void;
+  onUpdateQuantity: (productId: string, variantId: string | null, qty: number) => void;
+  onRemove: (productId: string, variantId: string | null) => void;
   isPending: boolean;
 }) {
+  const variantAttributes = formatVariantAttributes(item.variantAttributes);
+
   return (
     <div className="flex items-center gap-4 py-4 border-b border-gray-100 last:border-0">
       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gray-100">
@@ -46,13 +54,26 @@ function CartItemRow({
         >
           {item.productName}
         </Link>
+        {(item.variantName || variantAttributes || item.variantSku) && (
+          <div className="mt-1 space-y-0.5">
+            {item.variantName && (
+              <p className="text-xs font-medium text-gray-600">{item.variantName}</p>
+            )}
+            {variantAttributes && (
+              <p className="text-xs text-gray-500">{variantAttributes}</p>
+            )}
+            {item.variantSku && (
+              <p className="text-[11px] text-gray-400">SKU: {item.variantSku}</p>
+            )}
+          </div>
+        )}
         <p className="mt-1 text-sm font-bold text-indigo-600">{formatVND(item.priceVnd)}</p>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
         <button
           disabled={isPending || item.quantity <= 1}
-          onClick={() => onUpdateQuantity(item.productId, item.quantity - 1)}
+          onClick={() => onUpdateQuantity(item.productId, item.variantId, item.quantity - 1)}
           className="h-7 w-7 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 flex items-center justify-center text-lg leading-none"
         >
           −
@@ -60,7 +81,7 @@ function CartItemRow({
         <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
         <button
           disabled={isPending || item.quantity >= item.stock}
-          onClick={() => onUpdateQuantity(item.productId, item.quantity + 1)}
+          onClick={() => onUpdateQuantity(item.productId, item.variantId, item.quantity + 1)}
           className="h-7 w-7 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 flex items-center justify-center text-lg leading-none"
         >
           +
@@ -71,7 +92,7 @@ function CartItemRow({
         <p className="text-sm font-bold text-gray-900">{formatVND(item.priceVnd * item.quantity)}</p>
         <button
           disabled={isPending}
-          onClick={() => onRemove(item.productId)}
+          onClick={() => onRemove(item.productId, item.variantId)}
           className="mt-1 text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
         >
           Xóa
@@ -103,13 +124,14 @@ export default function CartPage() {
   }, [cart]);
 
   const updateMutation = useMutation({
-    mutationFn: ({ productId, quantity }: { productId: string; quantity: number }) =>
-      cartApi.updateItem(productId, quantity),
+    mutationFn: ({ productId, variantId, quantity }: { productId: string; variantId: string | null; quantity: number }) =>
+      cartApi.updateItem(productId, quantity, variantId),
     onSuccess: (data) => qc.setQueryData(['cart'], data),
   });
 
   const removeMutation = useMutation({
-    mutationFn: (productId: string) => cartApi.removeItem(productId),
+    mutationFn: ({ productId, variantId }: { productId: string; variantId: string | null }) =>
+      cartApi.removeItem(productId, variantId),
     onSuccess: (data) => qc.setQueryData(['cart'], data),
   });
 
@@ -164,10 +186,12 @@ export default function CartPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             {cart.items.map((item) => (
               <CartItemRow
-                key={item.productId}
+                key={`${item.productId}:${item.variantId ?? 'base'}`}
                 item={item}
-                onUpdateQuantity={(pid, qty) => updateMutation.mutate({ productId: pid, quantity: qty })}
-                onRemove={(pid) => removeMutation.mutate(pid)}
+                onUpdateQuantity={(pid, variantId, qty) =>
+                  updateMutation.mutate({ productId: pid, variantId, quantity: qty })
+                }
+                onRemove={(pid, variantId) => removeMutation.mutate({ productId: pid, variantId })}
                 isPending={isPending}
               />
             ))}

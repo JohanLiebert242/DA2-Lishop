@@ -11,6 +11,10 @@ export interface CartItemData {
   productName: string;
   productSlug: string;
   imageUrl: string | null;
+  variantId: string | null;
+  variantName: string | null;
+  variantSku: string | null;
+  variantAttributes: Record<string, string> | null;
   quantity: number;
   priceVnd: number;
   priceUsd: number;
@@ -29,20 +33,22 @@ export interface CartData {
 export const cartApi = {
   getCart: () => apiFetch<CartData>('/cart'),
 
-  addItem: (productId: string, quantity: number) =>
+  addItem: (productId: string, quantity: number, variantId?: string | null) =>
     apiFetch<CartData>('/cart/items', {
       method: 'POST',
-      body: JSON.stringify({ productId, quantity }),
+      body: JSON.stringify({ productId, quantity, ...(variantId && { variantId }) }),
     }),
 
-  updateItem: (productId: string, quantity: number) =>
+  updateItem: (productId: string, quantity: number, variantId?: string | null) =>
     apiFetch<CartData>(`/cart/items/${productId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ quantity }),
+      body: JSON.stringify({ quantity, ...(variantId && { variantId }) }),
     }),
 
-  removeItem: (productId: string) =>
-    apiFetch<CartData>(`/cart/items/${productId}`, { method: 'DELETE' }),
+  removeItem: (productId: string, variantId?: string | null) => {
+    const qs = variantId ? `?${new URLSearchParams({ variantId }).toString()}` : '';
+    return apiFetch<CartData>(`/cart/items/${productId}${qs}`, { method: 'DELETE' });
+  },
 
   applyCoupon: (code: string) =>
     apiFetch<CartData>('/cart/coupon', {

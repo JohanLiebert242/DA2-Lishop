@@ -11,6 +11,10 @@ export interface OrderItemInfo {
   id: string;
   productId: string;
   productName: string;
+  variantId: string | null;
+  variantName: string | null;
+  variantSku: string | null;
+  variantAttributes: Record<string, string> | null;
   quantity: number;
   unitPriceVnd: number;
   totalPriceVnd: number;

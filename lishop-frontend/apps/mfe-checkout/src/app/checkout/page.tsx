@@ -21,6 +21,12 @@ const MFE_AUTH = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:30
 
 type Step = 1 | 2 | 3;
 
+function formatVariantAttributes(attributes: Record<string, string> | null): string {
+  return Object.entries(attributes ?? {})
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(' · ');
+}
+
 const STEP_LABELS: Record<Step, string> = {
   1: 'Giỏ hàng',
   2: 'Vận chuyển',
@@ -238,8 +244,11 @@ export default function CheckoutPage() {
             Sản phẩm ({cartData.items.length})
           </h2>
           <div className="divide-y divide-gray-100">
-            {cartData.items.map((item) => (
-              <div key={item.productId} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+            {cartData.items.map((item) => {
+              const variantAttributes = formatVariantAttributes(item.variantAttributes);
+
+              return (
+              <div key={`${item.productId}:${item.variantId ?? 'base'}`} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-50">
                   {item.imageUrl ? (
                     <img
@@ -257,6 +266,19 @@ export default function CheckoutPage() {
                   <p className="line-clamp-2 text-sm font-medium text-gray-900">
                     {item.productName}
                   </p>
+                  {(item.variantName || variantAttributes || item.variantSku) && (
+                    <div className="mt-0.5 space-y-0.5">
+                      {item.variantName && (
+                        <p className="text-xs font-medium text-gray-600">{item.variantName}</p>
+                      )}
+                      {variantAttributes && (
+                        <p className="text-xs text-gray-500">{variantAttributes}</p>
+                      )}
+                      {item.variantSku && (
+                        <p className="text-[11px] text-gray-400">SKU: {item.variantSku}</p>
+                      )}
+                    </div>
+                  )}
                   <p className="mt-0.5 text-xs text-gray-500">
                     {formatVND(item.priceVnd)} × {item.quantity}
                   </p>
@@ -265,7 +287,8 @@ export default function CheckoutPage() {
                   {formatVND(item.priceVnd * item.quantity)}
                 </p>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -460,8 +483,13 @@ export default function CheckoutPage() {
 
             <div className="max-h-40 space-y-1.5 overflow-y-auto">
               {cartData.items.map((item) => (
-                <div key={item.productId} className="flex justify-between text-xs text-gray-600">
-                  <span className="line-clamp-1 flex-1">{item.productName} × {item.quantity}</span>
+                <div key={`${item.productId}:${item.variantId ?? 'base'}`} className="flex justify-between text-xs text-gray-600">
+                  <span className="line-clamp-1 flex-1">
+                    {item.productName}
+                    {item.variantName ? ` - ${item.variantName}` : ''}
+                    {' × '}
+                    {item.quantity}
+                  </span>
                   <span className="ml-2 shrink-0 font-medium">
                     {formatVND(item.priceVnd * item.quantity)}
                   </span>

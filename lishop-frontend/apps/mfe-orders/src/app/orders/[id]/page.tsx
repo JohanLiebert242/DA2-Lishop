@@ -89,6 +89,12 @@ function getEventDotColor(status: string): string {
   return 'bg-indigo-500';
 }
 
+function formatVariantAttributes(attributes: Record<string, string> | null): string {
+  return Object.entries(attributes ?? {})
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(' · ');
+}
+
 function StatusTimeline({ status }: { status: OrderStatus }) {
   const isCancelled = status === 'CANCELLED' || status === 'REFUNDED';
   const currentIndex = TIMELINE_STEPS.indexOf(status);
@@ -344,17 +350,34 @@ export default function OrderDetailPage({ params }: Props) {
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="mb-3 text-sm font-semibold text-gray-900">Sản phẩm</h2>
           <div className="space-y-3">
-            {order.items.map((item) => (
+            {order.items.map((item) => {
+              const variantAttributes = formatVariantAttributes(item.variantAttributes);
+
+              return (
               <div key={item.id} className="flex justify-between text-sm">
                 <div>
                   <p className="font-medium text-gray-900">{item.productName}</p>
+                  {(item.variantName || variantAttributes || item.variantSku) && (
+                    <div className="mt-0.5 space-y-0.5">
+                      {item.variantName && (
+                        <p className="text-xs font-medium text-gray-600">{item.variantName}</p>
+                      )}
+                      {variantAttributes && (
+                        <p className="text-xs text-gray-500">{variantAttributes}</p>
+                      )}
+                      {item.variantSku && (
+                        <p className="text-[11px] text-gray-400">SKU: {item.variantSku}</p>
+                      )}
+                    </div>
+                  )}
                   <p className="text-xs text-gray-500">
                     {formatVND(item.unitPriceVnd)} × {item.quantity}
                   </p>
                 </div>
                 <p className="font-semibold text-gray-900">{formatVND(item.totalPriceVnd)}</p>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-4 border-t pt-3 space-y-1.5 text-sm">
@@ -653,7 +676,10 @@ export default function OrderDetailPage({ params }: Props) {
                   {order.items.map((item) => (
                     <div key={item.id} className="flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm text-gray-900">{item.productName}</p>
+                        <p className="truncate text-sm text-gray-900">
+                          {item.productName}
+                          {item.variantName ? ` - ${item.variantName}` : ''}
+                        </p>
                         <p className="text-xs text-gray-500">Đã mua: {item.quantity}</p>
                       </div>
                       <div className="flex items-center gap-2">

@@ -20,6 +20,10 @@ export interface CartItem {
   productName: string;
   productSlug: string;
   imageUrl: string | null;
+  variantId: string | null;
+  variantName: string | null;
+  variantSku: string | null;
+  variantAttributes: Record<string, string> | null;
   quantity: number;
   priceVnd: number;
   stock: number;
