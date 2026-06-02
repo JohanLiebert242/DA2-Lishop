@@ -140,6 +140,19 @@ export class AuthController {
   }
 
   @Public()
+  @Get('oauth/google/initiate')
+  @ApiOperation({ summary: 'Start Google OAuth login' })
+  googleInitiate(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
+    const redirectUri = `${this.getApiOrigin(req)}/auth/oauth/google/callback`;
+    const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    url.searchParams.set('client_id', process.env['GOOGLE_CLIENT_ID'] ?? '');
+    url.searchParams.set('redirect_uri', redirectUri);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('scope', 'openid email profile');
+    res.redirect(url.toString());
+  }
+
+  @Public()
   @UseGuards(GoogleOAuthGuard)
   @Get('oauth/google/callback')
   @ApiOperation({ summary: 'Google OAuth callback' })
@@ -154,6 +167,19 @@ export class AuthController {
   }
 
   @Public()
+  @Get('oauth/facebook/initiate')
+  @ApiOperation({ summary: 'Start Facebook OAuth login' })
+  facebookInitiate(@Req() req: FastifyRequest, @Res() res: FastifyReply) {
+    const redirectUri = `${this.getApiOrigin(req)}/auth/oauth/facebook/callback`;
+    const url = new URL('https://www.facebook.com/v19.0/dialog/oauth');
+    url.searchParams.set('client_id', process.env['FACEBOOK_CLIENT_ID'] ?? '');
+    url.searchParams.set('redirect_uri', redirectUri);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('scope', 'email,public_profile');
+    res.redirect(url.toString());
+  }
+
+  @Public()
   @UseGuards(FacebookOAuthGuard)
   @Get('oauth/facebook/callback')
   @ApiOperation({ summary: 'Facebook OAuth callback' })
@@ -164,5 +190,14 @@ export class AuthController {
     res.setCookie('lishop_session', '1', SESSION_COOKIE_OPTIONS);
     res.setCookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
     res.redirect(process.env['CLIENT_URL'] ?? 'http://localhost:3000');
+  }
+
+  private getApiOrigin(req: FastifyRequest): string {
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    const proto = Array.isArray(forwardedProto)
+      ? forwardedProto[0]
+      : forwardedProto ?? req.protocol ?? 'http';
+    const host = req.headers['host'] ?? 'localhost:4000';
+    return `${proto}://${host}`;
   }
 }

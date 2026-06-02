@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { WishlistRepository } from './wishlist.repository';
 
 @Injectable()
@@ -16,11 +16,13 @@ export class WishlistService {
 
   async add(userId: string, productId: string): Promise<void> {
     const exists = await this.repo.exists(userId, productId);
-    if (!exists) await this.repo.create(userId, productId);
+    if (exists) throw new ConflictException('Product is already in wishlist');
+    await this.repo.create(userId, productId);
   }
 
   async remove(userId: string, productId: string): Promise<void> {
     const exists = await this.repo.exists(userId, productId);
-    if (exists) await this.repo.delete(userId, productId);
+    if (!exists) throw new NotFoundException('Product is not in wishlist');
+    await this.repo.delete(userId, productId);
   }
 }

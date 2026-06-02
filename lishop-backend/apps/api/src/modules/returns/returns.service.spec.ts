@@ -10,7 +10,7 @@ jest.mock('@lishop/database', () => ({
   prisma: {
     order: { findFirst: jest.fn(), findUnique: jest.fn() },
     returnRequest: { findFirst: jest.fn() },
-    orderItem: { findFirst: jest.fn() },
+    orderItem: { findFirst: jest.fn(), findMany: jest.fn() },
   },
   OrderStatus: {
     PENDING: 'PENDING',
@@ -191,12 +191,19 @@ describe('ReturnsService', () => {
     });
 
     it('creates refund when status is COMPLETED and order has wallet payment', async () => {
-      repo.findById.mockResolvedValue(mockReturn);
-      repo.updateStatus.mockResolvedValue({ ...mockReturn, status: 'COMPLETED' });
+      const returnWithItems = {
+        ...mockReturn,
+        items: [{ id: 'ri1', orderItemId: 'item1', quantity: 1 }],
+      };
+      repo.findById.mockResolvedValue(returnWithItems);
+      repo.updateStatus.mockResolvedValue({ ...returnWithItems, status: 'COMPLETED' });
       (prisma.order.findUnique as jest.Mock).mockResolvedValue({
         id: 'order1',
         payment: { method: 'WALLET', amountVnd: 50000 },
       });
+      (prisma.orderItem.findMany as jest.Mock).mockResolvedValue([
+        { id: 'item1', unitPriceVnd: 50000 },
+      ]);
 
       await service.updateReturnStatus('ret1', { status: ReturnStatus.COMPLETED });
 

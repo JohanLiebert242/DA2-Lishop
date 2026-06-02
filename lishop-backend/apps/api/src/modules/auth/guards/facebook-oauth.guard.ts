@@ -25,7 +25,7 @@ export class FacebookOAuthGuard implements CanActivate {
 
     const clientId = this.config.get<string>('FACEBOOK_CLIENT_ID');
     const clientSecret = this.config.get<string>('FACEBOOK_CLIENT_SECRET');
-    const redirectUri = `${this.config.get<string>('CLIENT_URL')}/auth/oauth/facebook/callback`;
+    const redirectUri = `${this.getApiOrigin(request)}/auth/oauth/facebook/callback`;
 
     const tokenRes = await fetch(
       `https://graph.facebook.com/v19.0/oauth/access_token?` +
@@ -47,5 +47,14 @@ export class FacebookOAuthGuard implements CanActivate {
       avatarUrl: userInfo.picture?.data?.url,
     };
     return true;
+  }
+
+  private getApiOrigin(request: FastifyRequest): string {
+    const forwardedProto = request.headers['x-forwarded-proto'];
+    const proto = Array.isArray(forwardedProto)
+      ? forwardedProto[0]
+      : forwardedProto ?? request.protocol ?? 'http';
+    const host = request.headers['host'] ?? 'localhost:4000';
+    return `${proto}://${host}`;
   }
 }

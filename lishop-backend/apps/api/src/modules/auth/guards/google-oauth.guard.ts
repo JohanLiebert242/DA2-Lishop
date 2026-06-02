@@ -25,7 +25,7 @@ export class GoogleOAuthGuard implements CanActivate {
 
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET');
-    const redirectUri = `${this.config.get<string>('CLIENT_URL')}/auth/oauth/google/callback`;
+    const redirectUri = `${this.getApiOrigin(request)}/auth/oauth/google/callback`;
 
     // Exchange code for tokens
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -56,5 +56,14 @@ export class GoogleOAuthGuard implements CanActivate {
       avatarUrl: userInfo.picture,
     };
     return true;
+  }
+
+  private getApiOrigin(request: FastifyRequest): string {
+    const forwardedProto = request.headers['x-forwarded-proto'];
+    const proto = Array.isArray(forwardedProto)
+      ? forwardedProto[0]
+      : forwardedProto ?? request.protocol ?? 'http';
+    const host = request.headers['host'] ?? 'localhost:4000';
+    return `${proto}://${host}`;
   }
 }
