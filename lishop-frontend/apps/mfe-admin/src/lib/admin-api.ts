@@ -242,6 +242,17 @@ export const adminApi = {
 
   // Wallets
   getWallets: () => apiFetch<AdminWallet[]>('/admin/wallets'),
+  getWalletTopups: () => apiFetch<AdminWalletTopup[]>('/admin/wallet-topups'),
+  approveWalletTopup: (id: string, adminNote?: string) =>
+    apiFetch<AdminWalletTopup>(`/admin/wallet-topups/${id}/approve`, {
+      method: 'PATCH',
+      body: JSON.stringify({ adminNote }),
+    }),
+  rejectWalletTopup: (id: string, adminNote?: string) =>
+    apiFetch<AdminWalletTopup>(`/admin/wallet-topups/${id}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify({ adminNote }),
+    }),
 
   // Invoices
   getInvoices: () => apiFetch<AdminInvoice[]>('/admin/invoices'),
@@ -410,6 +421,26 @@ export interface AdminWallet {
   id: string;
   userId: string;
   balanceVnd: number;
+  createdAt: string;
+  updatedAt: string;
+  user: { email: string; firstName: string; lastName: string };
+}
+
+export type WalletTopupStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface AdminWalletTopup {
+  id: string;
+  userId: string;
+  walletId: string;
+  amountVnd: number;
+  status: WalletTopupStatus;
+  transferCode: string;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  adminNote: string | null;
+  reviewedById: string | null;
+  reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
   user: { email: string; firstName: string; lastName: string };

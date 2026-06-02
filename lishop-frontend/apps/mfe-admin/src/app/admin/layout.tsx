@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { href: '/admin/refunds',    label: 'Hoàn tiền' },
   { href: '/admin/invoices',   label: 'Hóa đơn' },
   { href: '/admin/wallets',    label: 'Ví người dùng' },
+  { href: '/admin/wallet-topups', label: 'Duyệt nạp ví' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
