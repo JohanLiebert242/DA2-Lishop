@@ -3,9 +3,10 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { formatVND } from '@lishop/shared';
 import { useAuthStore } from '../stores/auth.store';
+import { NEWS_ITEMS } from '../lib/news';
 
 const API_URL     = process.env['NEXT_PUBLIC_API_URL']             ?? 'http://localhost:4000';
 const CATALOG_URL = process.env['NEXT_PUBLIC_MFE_CATALOG_URL']     ?? 'http://localhost:3002';
@@ -220,8 +221,42 @@ const BRANDS = [
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+const CUSTOMER_REVIEWS = [
+  {
+    name: 'Minh Anh',
+    role: 'Khách hàng thân thiết',
+    quote: 'Mình thích nhất là vào một nơi có đủ sản phẩm, coupon và theo dõi đơn. Giao diện mới nhìn sáng và dễ mua hơn.',
+    rating: '5.0',
+  },
+  {
+    name: 'Quốc Bảo',
+    role: 'Chủ shop online',
+    quote: 'Tìm sản phẩm nhanh, giá rõ, flash sale dễ theo dõi. Các coupon nhỏ mỗi ngày tạo cảm giác quay lại rất tự nhiên.',
+    rating: '4.9',
+  },
+  {
+    name: 'Hoàng Yến',
+    role: 'Người mua gia đình',
+    quote: 'Mua đơn lớn mà có coupon 10% cho lần sau là điểm cộng lớn. Lishop đang giống một trung tâm mua sắm thật sự.',
+    rating: '5.0',
+  },
+];
+
 export default function HomePage() {
   const { user } = useAuthStore();
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterMessage, setNewsletterMessage] = useState('');
+
+  const handleNewsletterSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const email = newsletterEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setNewsletterMessage('Vui lòng nhập email hợp lệ.');
+      return;
+    }
+    setNewsletterMessage('Đã đăng ký nhận tin Lishop. Ưu đãi mới sẽ được gửi đến email của bạn.');
+    setNewsletterEmail('');
+  };
 
   const { data: featured = [], isLoading: featuredLoading } = useQuery({
     queryKey: ['home-featured'],
@@ -264,7 +299,88 @@ export default function HomePage() {
     <div className="bg-warm min-h-screen">
 
       {/* ── Hero ──────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden bg-stone-950 text-white">
+        <Image
+          src="https://picsum.photos/seed/lishop-shell-commerce-hero/1800/980"
+          alt="Không gian mua sắm Lishop"
+          fill
+          priority
+          className="object-cover opacity-42"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(12,10,9,0.96)_0%,rgba(12,10,9,0.78)_42%,rgba(12,10,9,0.32)_100%)]" />
+        <div className="relative mx-auto grid min-h-[620px] max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.02fr_0.98fr] lg:py-20">
+          <div className="max-w-2xl">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-amber-200 backdrop-blur">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              Coupon mới mỗi ngày
+            </div>
+            <h1 className="text-4xl font-black leading-[1.02] tracking-tight sm:text-6xl">
+              Lishop gom cả hành trình mua sắm vào một nơi.
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-8 text-white/76 sm:text-lg">
+              Tìm sản phẩm nhanh, nhận coupon đúng lúc, theo dõi đơn hàng và săn flash sale trong cùng một hệ sinh thái micro-frontend.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href={`${CATALOG_URL}/products`}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-7 py-3.5 text-sm font-black text-stone-950 shadow-xl shadow-amber-950/30 transition hover:bg-amber-300">
+                Khám phá sản phẩm
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </Link>
+              {user ? (
+                <Link href={`${ORDERS_URL}/orders`}
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/18">
+                  Đơn hàng của tôi
+                </Link>
+              ) : (
+                <Link href={`${AUTH_URL}/register`}
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/18">
+                  Đăng ký miễn phí
+                </Link>
+              )}
+            </div>
+            <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { value: '500+', label: 'Sản phẩm' },
+                { value: '12K+', label: 'Khách hàng' },
+                { value: '4.9★', label: 'Đánh giá' },
+                { value: '1-3', label: 'Ngày giao' },
+              ].map(s => (
+                <div key={s.label} className="rounded-2xl border border-white/12 bg-white/10 px-4 py-3 backdrop-blur">
+                  <p className="text-2xl font-black text-white">{s.value}</p>
+                  <p className="mt-1 text-xs font-semibold text-white/62">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="hidden lg:block">
+            <div className="relative ml-auto max-w-md rounded-[2rem] border border-white/18 bg-white/12 p-4 shadow-2xl shadow-black/30 backdrop-blur-md">
+              <div className="relative aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-stone-900">
+                <Image
+                  src="https://picsum.photos/seed/lishop-hero-product-wall/900/1125"
+                  alt="Sản phẩm nổi bật Lishop"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 0vw, 420px"
+                />
+              </div>
+              <div className="absolute -left-8 top-10 rounded-2xl bg-white px-4 py-3 text-stone-950 shadow-xl">
+                <p className="text-xs font-bold text-stone-500">Coupon hôm nay</p>
+                <p className="text-lg font-black">5K - 50K</p>
+              </div>
+              <div className="absolute -right-8 bottom-10 rounded-2xl bg-emerald-500 px-4 py-3 text-white shadow-xl">
+                <p className="text-xs font-bold text-emerald-100">Đơn lớn</p>
+                <p className="text-lg font-black">+10% lần sau</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="hidden">
         <div className="absolute inset-0" style={{
           background: 'linear-gradient(135deg,#4c1d95 0%,#6d28d9 35%,#7c3aed 60%,#a855f7 85%,#c084fc 100%)',
         }} />
@@ -580,7 +696,92 @@ export default function HomePage() {
       </section>
 
       {/* ── Trust strip ───────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 pb-12">
+      <section className="mx-auto max-w-7xl px-4 py-12">
+        <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Customer review</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-950">Khách hàng nói gì về Lishop</h2>
+          </div>
+          <p className="max-w-xl text-sm leading-6 text-muted">
+            Review được chọn từ nhóm khách hàng mua sắm thường xuyên, ưu tiên trải nghiệm tìm kiếm, coupon và theo dõi đơn hàng.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {CUSTOMER_REVIEWS.map((review) => (
+            <article key={review.name} className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-950 text-sm font-black text-white">
+                    {review.name.split(' ').map((part) => part.charAt(0)).join('').slice(0, 2)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-stone-900">{review.name}</p>
+                    <p className="text-xs font-semibold text-stone-500">{review.role}</p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-700">
+                  {review.rating}★
+                </span>
+              </div>
+              <p className="mt-4 text-sm leading-7 text-stone-600">{review.quote}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="bg-stone-950 py-12 text-white">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">Gmail subscription</p>
+            <h2 className="mt-2 text-3xl font-black tracking-tight">Nhận bảng tin ưu đãi mỗi tuần</h2>
+            <p className="mt-3 max-w-lg text-sm leading-7 text-white/65">
+              Đăng ký bằng email để nhận coupon mới, bản tin flash sale và cập nhật sản phẩm nổi bật.
+            </p>
+            <form onSubmit={handleNewsletterSubmit} className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <input
+                value={newsletterEmail}
+                onChange={(event) => setNewsletterEmail(event.target.value)}
+                type="email"
+                className="h-12 min-w-0 flex-1 rounded-2xl border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white outline-none placeholder:text-white/40 focus:border-amber-300"
+                placeholder="you@gmail.com"
+              />
+              <button type="submit" className="h-12 rounded-2xl bg-amber-400 px-6 text-sm font-black text-stone-950 transition hover:bg-amber-300">
+                Đăng ký
+              </button>
+            </form>
+            {newsletterMessage && (
+              <p className="mt-3 text-sm font-semibold text-amber-200">{newsletterMessage}</p>
+            )}
+          </div>
+
+          <div>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Latest news</p>
+                <h2 className="mt-2 text-2xl font-black tracking-tight">Bảng tin Lishop</h2>
+              </div>
+              <Link href="/news" className="shrink-0 rounded-2xl border border-white/15 px-4 py-2 text-xs font-black text-white transition hover:bg-white/10">
+                Xem bảng tin
+              </Link>
+            </div>
+            <div className="grid gap-3">
+              {NEWS_ITEMS.map((item) => (
+                <Link key={item.id} href={`/news#${item.id}`} className="group rounded-2xl border border-white/12 bg-white/8 p-4 transition hover:border-amber-300/70 hover:bg-white/12">
+                  <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.12em] text-white/45">
+                    <span>{item.tag}</span>
+                    <span>•</span>
+                    <span>{item.date}</span>
+                  </div>
+                  <p className="mt-2 text-base font-black text-white group-hover:text-amber-200">{item.title}</p>
+                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-white/58">{item.summary}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-12 pt-10">
         <div className="rounded-2xl bg-white border border-warm p-6">
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
             {[
