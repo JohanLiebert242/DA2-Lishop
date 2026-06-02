@@ -79,6 +79,15 @@
     color: #1c1917;
   }
 
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
   * {
     scroll-behavior: smooth;
   }
