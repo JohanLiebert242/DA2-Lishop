@@ -13,22 +13,22 @@ const PROFILE_URL = process.env['NEXT_PUBLIC_MFE_PROFILE_URL'] ?? 'http://localh
 const SHOP_NAME = 'Lishop Official Store';
 
 const STATUS_META: Record<OrderStatus, { label: string; color: string; dot: string }> = {
-  PENDING: { label: 'Cho xac nhan', color: 'bg-amber-50 text-amber-700 border border-amber-200', dot: 'bg-amber-400' },
-  PROCESSING: { label: 'Dang xu ly', color: 'bg-blue-50 text-blue-700 border border-blue-200', dot: 'bg-blue-400' },
-  SHIPPED: { label: 'Dang giao', color: 'bg-violet-50 text-violet-700 border border-violet-200', dot: 'bg-violet-400' },
-  DELIVERED: { label: 'Da giao', color: 'bg-emerald-50 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-400' },
-  CANCELLED: { label: 'Da huy', color: 'bg-red-50 text-red-700 border border-red-200', dot: 'bg-red-400' },
-  REFUNDED: { label: 'Da hoan tien', color: 'bg-stone-100 text-stone-600 border border-stone-200', dot: 'bg-stone-400' },
+  PENDING: { label: 'Chờ xác nhận', color: 'bg-amber-50 text-amber-700 border border-amber-200', dot: 'bg-amber-400' },
+  PROCESSING: { label: 'Đang xử lý', color: 'bg-blue-50 text-blue-700 border border-blue-200', dot: 'bg-blue-400' },
+  SHIPPED: { label: 'Đang giao', color: 'bg-violet-50 text-violet-700 border border-violet-200', dot: 'bg-violet-400' },
+  DELIVERED: { label: 'Đã giao', color: 'bg-emerald-50 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-400' },
+  CANCELLED: { label: 'Đã hủy', color: 'bg-red-50 text-red-700 border border-red-200', dot: 'bg-red-400' },
+  REFUNDED: { label: 'Đã hoàn tiền', color: 'bg-stone-100 text-stone-600 border border-stone-200', dot: 'bg-stone-400' },
 };
 
 const STATUS_OPTIONS: Array<{ value: OrderStatus | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'Tat ca' },
-  { value: 'PENDING', label: 'Cho xac nhan' },
-  { value: 'PROCESSING', label: 'Dang xu ly' },
-  { value: 'SHIPPED', label: 'Dang giao' },
-  { value: 'DELIVERED', label: 'Da giao' },
-  { value: 'CANCELLED', label: 'Da huy' },
-  { value: 'REFUNDED', label: 'Da hoan tien' },
+  { value: 'ALL', label: 'Tất cả' },
+  { value: 'PENDING', label: 'Chờ xác nhận' },
+  { value: 'PROCESSING', label: 'Đang xử lý' },
+  { value: 'SHIPPED', label: 'Đang giao' },
+  { value: 'DELIVERED', label: 'Đã giao' },
+  { value: 'CANCELLED', label: 'Đã hủy' },
+  { value: 'REFUNDED', label: 'Đã hoàn tiền' },
 ];
 
 function SkeletonCard() {
@@ -99,12 +99,12 @@ export default function OrdersPage() {
         <div className="min-w-0 flex-1">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-stone-900">Don hang cua toi</h1>
-              <p className="mt-0.5 text-sm text-muted">Theo doi va quan ly cac don hang</p>
+              <h1 className="text-2xl font-black tracking-tight text-stone-900">Đơn hàng của tôi</h1>
+              <p className="mt-0.5 text-sm text-muted">Theo dõi và quản lý các đơn hàng</p>
             </div>
             {!isLoading && orders.length > 0 && (
               <span className="rounded-xl bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-700">
-                {filteredOrders.length}/{orders.length} don hang
+                {filteredOrders.length}/{orders.length} đơn hàng
               </span>
             )}
           </div>
@@ -118,7 +118,7 @@ export default function OrdersPage() {
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Tim theo ma don, ten san pham, SKU..."
+                  placeholder="Tìm theo mã đơn, tên sản phẩm, SKU..."
                   className="input-field w-full py-2.5 pl-9 pr-4 text-sm"
                 />
               </div>
@@ -154,19 +154,19 @@ export default function OrdersPage() {
             <div className="card flex flex-col items-center justify-center gap-4 py-20 text-center">
               <span className="text-6xl">📦</span>
               <div>
-                <p className="text-lg font-bold text-stone-700">Chua co don hang nao</p>
-                <p className="mt-1 text-sm text-muted">Hay bat dau mua sam de tao don hang dau tien.</p>
+                <p className="text-lg font-bold text-stone-700">Chưa có đơn hàng nào</p>
+                <p className="mt-1 text-sm text-muted">Hãy bắt đầu mua sắm để tạo đơn hàng đầu tiên.</p>
               </div>
               <a href={CATALOG_URL} className="btn-primary mt-2">
-                Mua sam ngay
+                Mua sắm ngay
               </a>
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="card flex flex-col items-center justify-center gap-3 py-16 text-center">
               <span className="text-5xl">⌕</span>
               <div>
-                <p className="font-bold text-stone-700">Khong tim thay don hang phu hop</p>
-                <p className="mt-1 text-sm text-muted">Thu doi tu khoa hoac bo loc trang thai.</p>
+                <p className="font-bold text-stone-700">Không tìm thấy đơn hàng phù hợp</p>
+                <p className="mt-1 text-sm text-muted">Thử đổi từ khóa hoặc bộ lọc trạng thái.</p>
               </div>
               <button
                 type="button"
@@ -176,7 +176,7 @@ export default function OrdersPage() {
                 }}
                 className="rounded-xl border border-warm px-4 py-2 text-sm font-bold text-stone-600 transition hover:bg-warm-100"
               >
-                Xoa bo loc
+                Xóa bộ lọc
               </button>
             </div>
           ) : (
@@ -208,25 +208,25 @@ export default function OrdersPage() {
                         </div>
 
                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-                          <span>Dat ngay: {formatOrderDate(order.createdAt)}</span>
+                          <span>Đặt ngày: {formatOrderDate(order.createdAt)}</span>
                           <span className="font-semibold text-stone-600">Shop: {SHOP_NAME}</span>
                           {deliveredAt && (
-                            <span className="font-semibold text-emerald-700">Giao thanh cong: {compactDate(deliveredAt)}</span>
+                            <span className="font-semibold text-emerald-700">Giao thành công: {compactDate(deliveredAt)}</span>
                           )}
                         </div>
                       </div>
 
                       <div className="shrink-0 text-right">
                         <p className="text-lg font-black text-indigo-600">{formatVND(order.totalVnd)}</p>
-                        <p className="mt-0.5 text-xs text-muted">{order.items.length} san pham</p>
+                        <p className="mt-0.5 text-xs text-muted">{order.items.length} sản phẩm</p>
                       </div>
                     </div>
 
                     <div className="mt-4 border-t border-warm pt-4">
                       <p className="text-xs text-muted">
-                        <span className="font-semibold text-stone-600">{order.items.length} san pham: </span>
+                        <span className="font-semibold text-stone-600">{order.items.length} sản phẩm: </span>
                         {productSummary}
-                        {order.items.length > 2 && ` +${order.items.length - 2} khac`}
+                        {order.items.length > 2 && ` +${order.items.length - 2} khác`}
                       </p>
 
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -240,7 +240,7 @@ export default function OrdersPage() {
                             }`}
                             aria-disabled={order.status !== 'DELIVERED'}
                           >
-                            Danh gia
+                            Đánh giá
                           </Link>
                           <Link
                             href={`/orders/${order.id}#return`}
@@ -251,24 +251,24 @@ export default function OrdersPage() {
                             }`}
                             aria-disabled={order.status !== 'DELIVERED' && order.status !== 'REFUNDED'}
                           >
-                            Yeu cau hoan tien
+                            Yêu cầu hoàn tiền
                           </Link>
                           <a
                             href={`${PROFILE_URL}/support?order=${encodeURIComponent(order.orderNumber)}`}
                             className="rounded-xl border border-warm bg-white px-3 py-2 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                           >
-                            Lien he nguoi ban
+                            Liên hệ người bán
                           </a>
                           <a
                             href={buyAgainHref}
                             className="rounded-xl border border-warm bg-white px-3 py-2 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                           >
-                            Mua lai
+                            Mua lại
                           </a>
                         </div>
 
                         <Link href={`/orders/${order.id}`} className="text-xs font-semibold text-indigo-600 transition-colors hover:text-indigo-800">
-                          Xem chi tiet →
+                          Xem chi tiết →
                         </Link>
                       </div>
                     </div>
