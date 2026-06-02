@@ -52,9 +52,31 @@ export interface TopProduct {
   revenue: number;
 }
 
+export interface AnalyticsSummary {
+  revenueVnd: number;
+  orderCount: number;
+  averageOrderValueVnd: number;
+  newUsers: number;
+}
+
+export interface OrderStatusMetric {
+  status: OrderStatus;
+  count: number;
+}
+
+export interface LowStockProduct {
+  id: string;
+  name: string;
+  slug: string;
+  stock: number;
+}
+
 export interface AdminAnalytics {
+  summary: AnalyticsSummary;
   dailyRevenue: DailyRevenue[];
   topProducts: TopProduct[];
+  orderStatusBreakdown: OrderStatusMetric[];
+  lowStockProducts: LowStockProduct[];
 }
 
 @Injectable()
@@ -204,7 +226,7 @@ export class AdminRepository {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [orders, orderItems] = await Promise.all([
+    const [orders, orderItems, newUsers, statusGroups, lowStockProducts] = await Promise.all([
       prisma.order.findMany({
         where: {
           createdAt: { gte: thirtyDaysAgo },
@@ -220,6 +242,17 @@ export class AdminRepository {
           },
         },
         select: { productId: true, productName: true, totalPriceVnd: true },
+      }),
+      prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.order.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      prisma.product.findMany({
+        where: { stock: { lte: 10 } },
+        orderBy: { stock: 'asc' },
+        take: 10,
+        select: { id: true, name: true, slug: true, stock: true },
       }),
     ]);
 
@@ -248,6 +281,19 @@ export class AdminRepository {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
 
-    return { dailyRevenue, topProducts };
+    const revenueVnd = orders.reduce((sum, order) => sum + order.totalVnd, 0);
+    const summary = {
+      revenueVnd,
+      orderCount: orders.length,
+      averageOrderValueVnd: orders.length > 0 ? Math.round(revenueVnd / orders.length) : 0,
+      newUsers,
+    };
+    const statusCounts = new Map(statusGroups.map((row) => [row.status, row._count._all]));
+    const orderStatusBreakdown = Object.values(OrderStatus).map((status) => ({
+      status,
+      count: statusCounts.get(status) ?? 0,
+    }));
+
+    return { summary, dailyRevenue, topProducts, orderStatusBreakdown, lowStockProducts };
   }
 }

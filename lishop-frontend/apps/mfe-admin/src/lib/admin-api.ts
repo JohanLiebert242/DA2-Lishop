@@ -72,8 +72,16 @@ export interface TopProduct {
 }
 
 export interface AdminAnalytics {
+  summary: {
+    revenueVnd: number;
+    orderCount: number;
+    averageOrderValueVnd: number;
+    newUsers: number;
+  };
   dailyRevenue: DailyRevenue[];
   topProducts: TopProduct[];
+  orderStatusBreakdown: { status: OrderStatus; count: number }[];
+  lowStockProducts: { id: string; name: string; slug: string; stock: number }[];
 }
 
 // Inventory types
