@@ -1,18 +1,37 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatVND } from '@lishop/shared';
 import { toast } from '@lishop/ui';
-import { catalogApi, ProductDetail, ReviewInfo } from '../../../lib/catalog-api';
+import { catalogApi, ProductDetail, ProductVariant, ReviewInfo } from '../../../lib/catalog-api';
 import { RelatedProducts } from '../../../components/related-products';
 import { addToCart, flyToCart } from '../../../lib/cart-helper';
 import { getWishlist, addToWishlist, removeFromWishlist, isLoggedIn } from '../../../lib/wishlist-api';
 import { ChatWidget } from '../../../components/chat-widget';
 
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
+
+const ATTRIBUTE_LABELS: Record<string, string> = {
+  color: 'Mau sac',
+  size: 'Kich co',
+  storage: 'Dung luong',
+  format: 'Dinh dang',
+};
+
+function formatAttributeLabel(key: string) {
+  return ATTRIBUTE_LABELS[key.toLowerCase()] ?? key;
+}
+
+function getVariantLabel(variant: ProductVariant) {
+  const attrs = Object.entries(variant.attributes ?? {})
+    .map(([, value]) => value)
+    .filter(Boolean);
+
+  return attrs.length > 0 ? attrs.join(' / ') : variant.name;
+}
 
 function Stars({ rating, interactive = false, onSelect }: { rating: number; interactive?: boolean; onSelect?: (r: number) => void }) {
   return (
@@ -200,10 +219,12 @@ interface Props {
 export function ProductDetailClient({ slug, initialProduct }: Props) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(() => new Set());
   const [addingToCart, setAddingToCart] = useState(false);
   const [qty, setQty] = useState(1);
   const addToCartBtnRef = useRef<HTMLButtonElement>(null);
+  const sizeGuideRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
   const { data: product, isLoading, isError } = useQuery({
@@ -242,6 +263,92 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     });
   }
 
+  const variants = product?.variants ?? [];
+  const defaultVariant = useMemo(
+    () => variants.find((variant) => variant.isDefault) ?? variants[0] ?? null,
+    [variants],
+  );
+  const attributeOptions = useMemo(() => {
+    const options = new Map<string, string[]>();
+
+    for (const variant of variants) {
+      for (const [key, value] of Object.entries(variant.attributes ?? {})) {
+        if (!value) continue;
+        const values = options.get(key) ?? [];
+        if (!values.includes(value)) values.push(value);
+        options.set(key, values);
+      }
+    }
+
+    return Array.from(options.entries()).map(([key, values]) => ({ key, values }));
+  }, [variants]);
+  const attributeKeys = attributeOptions.map(({ key }) => key);
+  const hasSizeGuide = attributeKeys.some((key) => key.toLowerCase() === 'size');
+
+  useEffect(() => {
+    if (!defaultVariant || Object.keys(selectedAttributes).length > 0) return;
+
+    setSelectedAttributes(defaultVariant.attributes ?? {});
+    setSelectedVariantId(defaultVariant.id);
+  }, [defaultVariant, selectedAttributes]);
+
+  const selectedVariant = useMemo(() => {
+    const fullySelected = attributeKeys.every((key) => Boolean(selectedAttributes[key]));
+    const attributeMatch = variants.find((variant) =>
+      attributeKeys.every((key) => !selectedAttributes[key] || variant.attributes?.[key] === selectedAttributes[key]),
+    );
+
+    if (fullySelected && attributeMatch) return attributeMatch;
+    return variants.find((variant) => variant.id === selectedVariantId) ?? attributeMatch ?? defaultVariant;
+  }, [attributeKeys, defaultVariant, selectedAttributes, selectedVariantId, variants]);
+
+  const effectivePriceVnd = selectedVariant?.priceVnd ?? product?.priceVnd ?? 0;
+  const effectiveStock = selectedVariant?.stock ?? product?.stock ?? 0;
+  const effectiveSku = selectedVariant?.sku ?? product?.sku;
+  const likeCount = product ? Math.max(24, product.reviewCount * 7 + Math.round(product.averageRating * 9)) : 0;
+
+  function handleAttributeSelect(key: string, value: string) {
+    const nextAttributes = { ...selectedAttributes, [key]: value };
+    const nextVariant = variants.find((variant) =>
+      attributeKeys.every((attrKey) => !nextAttributes[attrKey] || variant.attributes?.[attrKey] === nextAttributes[attrKey]),
+    );
+
+    setSelectedAttributes(nextAttributes);
+    setSelectedVariantId(nextVariant?.id ?? null);
+    setQty(1);
+  }
+
+  function isAttributeValueAvailable(key: string, value: string) {
+    const nextAttributes = { ...selectedAttributes, [key]: value };
+
+    return variants.some((variant) =>
+      variant.stock > 0 &&
+      attributeKeys.every((attrKey) => !nextAttributes[attrKey] || variant.attributes?.[attrKey] === nextAttributes[attrKey]),
+    );
+  }
+
+  function scrollToSizeGuide() {
+    sizeGuideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function handleShare(channel: 'copy' | 'facebook' | 'messenger') {
+    const url = window.location.href;
+    const encodedUrl = encodeURIComponent(url);
+
+    if (channel === 'facebook') {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    if (channel === 'messenger') {
+      window.open(`https://www.facebook.com/dialog/send?link=${encodedUrl}`, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    await navigator.clipboard.writeText(url);
+    toast.success('Da sao chep lien ket san pham');
+  }
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-16">
@@ -269,14 +376,6 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
       </div>
     );
   }
-
-  const variants = product.variants ?? [];
-  const defaultVariant = variants.find((variant) => variant.isDefault) ?? variants[0] ?? null;
-  const selectedVariant =
-    variants.find((variant) => variant.id === selectedVariantId) ?? defaultVariant;
-  const effectivePriceVnd = selectedVariant?.priceVnd ?? product.priceVnd;
-  const effectiveStock = selectedVariant?.stock ?? product.stock;
-  const effectiveSku = selectedVariant?.sku ?? product.sku;
 
   async function handleAddToCart() {
     if (!product) return;
@@ -366,6 +465,36 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
               ))}
             </div>
           )}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warm bg-white px-4 py-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-stone-700">
+              <span className="text-lg text-red-500">♥</span>
+              {likeCount.toLocaleString('vi-VN')} luot thich
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wide text-muted">Chia se</span>
+              <button
+                type="button"
+                onClick={() => handleShare('facebook')}
+                className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+              >
+                Facebook
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShare('messenger')}
+                className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+              >
+                Messenger
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShare('copy')}
+                className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+              >
+                Copy link
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Info */}
@@ -417,40 +546,60 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
             </div>
           )}
 
-          {variants.length > 0 && (
-            <div className="mt-5 space-y-2">
-              <p className="text-sm font-semibold text-stone-700">Phiên bản:</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {variants.map((variant) => {
-                  const isSelected = selectedVariant?.id === variant.id;
-                  const attrs = Object.entries(variant.attributes ?? {})
-                    .map(([key, value]) => `${key}: ${value}`)
-                    .join(' · ');
-
-                  return (
-                    <button
-                      key={variant.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedVariantId(variant.id);
-                        setQty(1);
-                      }}
-                      disabled={variant.stock === 0}
-                      className={`rounded-xl border px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
-                        isSelected
-                          ? 'border-indigo-500 bg-indigo-50 shadow-sm'
-                          : 'border-warm bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
-                      }`}
-                    >
-                      <span className="block text-sm font-bold text-stone-800">{variant.name}</span>
-                      {attrs && <span className="mt-0.5 block text-xs text-muted">{attrs}</span>}
-                      <span className="mt-1 block text-sm font-black text-indigo-600">
-                        {formatVND(variant.priceVnd)}
-                      </span>
-                    </button>
-                  );
-                })}
+          {attributeOptions.length > 0 && (
+            <div className="mt-5 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-stone-700">Tuy chon san pham</p>
+                {selectedVariant && (
+                  <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-600">
+                    {getVariantLabel(selectedVariant)}
+                  </span>
+                )}
               </div>
+
+              {attributeOptions.map(({ key, values }) => (
+                <div key={key} className="space-y-2">
+                  <p className="text-xs font-black uppercase tracking-wide text-muted">{formatAttributeLabel(key)}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {values.map((value) => {
+                      const isSelected = selectedAttributes[key] === value;
+                      const isAvailable = isAttributeValueAvailable(key, value);
+
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => handleAttributeSelect(key, value)}
+                          disabled={!isAvailable}
+                          className={`min-w-14 rounded-xl border px-4 py-2 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                            isSelected
+                              ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm'
+                              : 'border-warm bg-white text-stone-700 hover:border-indigo-300 hover:bg-indigo-50/50'
+                          }`}
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {!selectedVariant && (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 ring-1 ring-amber-200">
+                  Tuy chon nay hien chua co san. Hay chon to hop khac.
+                </p>
+              )}
+
+              {hasSizeGuide && (
+                <button
+                  type="button"
+                  onClick={scrollToSizeGuide}
+                  className="text-sm font-bold text-indigo-600 transition hover:text-indigo-700"
+                >
+                  Huong dan chon size
+                </button>
+              )}
             </div>
           )}
 
@@ -512,11 +661,82 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
             </button>
           </div>
 
+          <div className="mt-6 rounded-xl border border-warm bg-white p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-muted">Shop</p>
+                <h2 className="mt-1 text-base font-black text-stone-900">Lishop Official Store</h2>
+              </div>
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
+                Mall verified
+              </span>
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-lg bg-warm-100 px-3 py-2">
+                <p className="text-sm font-black text-stone-900">98%</p>
+                <p className="text-xs text-muted">Phan hoi</p>
+              </div>
+              <div className="rounded-lg bg-warm-100 px-3 py-2">
+                <p className="text-sm font-black text-stone-900">24h</p>
+                <p className="text-xs text-muted">Xu ly don</p>
+              </div>
+              <div className="rounded-lg bg-warm-100 px-3 py-2">
+                <p className="text-sm font-black text-stone-900">4.9</p>
+                <p className="text-xs text-muted">Danh gia</p>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-6 border-t border-warm pt-6">
-            <h2 className="text-sm font-black text-stone-900 uppercase tracking-wider">Mô tả sản phẩm</h2>
-            <p className="mt-2 text-sm leading-relaxed text-stone-600 whitespace-pre-line">
-              {product.description}
-            </p>
+            <h2 className="text-sm font-black uppercase tracking-wider text-stone-900">Chi tiet san pham</h2>
+            <div className="mt-4 space-y-5 text-sm leading-relaxed text-stone-600">
+              <section>
+                <h3 className="font-black uppercase tracking-wide text-stone-800">Ten san pham</h3>
+                <p className="mt-1">{product.name}</p>
+              </section>
+
+              <section>
+                <h3 className="font-black uppercase tracking-wide text-stone-800">Thong tin san pham</h3>
+                <p className="mt-1 whitespace-pre-line">{product.description}</p>
+                <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="rounded-lg bg-warm-100 px-3 py-2">
+                    <dt className="text-xs font-bold text-muted">Danh muc</dt>
+                    <dd className="font-semibold text-stone-800">{product.category.name}</dd>
+                  </div>
+                  <div className="rounded-lg bg-warm-100 px-3 py-2">
+                    <dt className="text-xs font-bold text-muted">SKU hien tai</dt>
+                    <dd className="font-mono text-xs font-semibold text-stone-800">{effectiveSku ?? 'Dang cap nhat'}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              {hasSizeGuide && (
+                <section ref={sizeGuideRef} id="size-guide" className="scroll-mt-24">
+                  <h3 className="font-black uppercase tracking-wide text-stone-800">Huong dan size</h3>
+                  <p className="mt-1">
+                    Neu ban phan van giua hai size, hay chon size lon hon de thoai mai hon. Vui long doi chieu
+                    thong so co the voi bang size cua tung mau san pham truoc khi dat hang.
+                  </p>
+                </section>
+              )}
+
+              <section>
+                <h3 className="font-black uppercase tracking-wide text-stone-800">Huong dan bao quan</h3>
+                <p className="mt-1">
+                  Bao quan san pham noi kho thoang, tranh anh nang truc tiep va nhiet do cao. Voi thoi trang,
+                  nen giat mat trai va tach mau; voi thiet bi, tranh am va sac bang phu kien phu hop.
+                </p>
+              </section>
+
+              <section>
+                <h3 className="font-black uppercase tracking-wide text-stone-800">Cam ket khach hang</h3>
+                <ul className="mt-2 space-y-1">
+                  <li>San pham dung mo ta va duoc kiem tra truoc khi giao.</li>
+                  <li>Ho tro doi tra theo chinh sach Lishop neu san pham loi hoac sai phien ban.</li>
+                  <li>Tu van nhanh qua chat va cap nhat trang thai don hang lien tuc.</li>
+                </ul>
+              </section>
+            </div>
           </div>
         </div>
       </div>
