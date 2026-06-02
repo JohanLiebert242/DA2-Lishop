@@ -25,9 +25,15 @@ export class WalletController {
     return this.walletService.getTransactions(userId);
   }
 
+  @Get('topup-requests')
+  @ApiOperation({ summary: 'Get current user wallet top-up requests' })
+  getTopupRequests(@CurrentUser('id') userId: string) {
+    return this.walletService.getTopupRequests(userId);
+  }
+
   @Post('topup')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Top up wallet balance' })
+  @ApiOperation({ summary: 'Create a pending wallet top-up bank transfer request' })
   topUp(@CurrentUser('id') userId: string, @Body() dto: TopUpWalletDto) {
     return this.walletService.topUp(userId, dto.amountVnd);
   }

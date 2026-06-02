@@ -318,4 +318,28 @@ export class AdminController {
   @Get('wallets')
   @ApiOperation({ summary: 'List all user wallets' })
   getAllWallets() { return this.walletService.adminGetAll(); }
+
+  @Get('wallet-topups')
+  @ApiOperation({ summary: 'List wallet top-up bank transfer requests' })
+  getWalletTopups() { return this.walletService.adminGetTopupRequests(); }
+
+  @Patch('wallet-topups/:id/approve')
+  @ApiOperation({ summary: 'Approve a wallet top-up request and credit the wallet' })
+  approveWalletTopup(
+    @CurrentUser('id') adminId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('adminNote') adminNote?: string,
+  ) {
+    return this.walletService.approveTopupRequest(id, adminId, adminNote);
+  }
+
+  @Patch('wallet-topups/:id/reject')
+  @ApiOperation({ summary: 'Reject a wallet top-up request without crediting the wallet' })
+  rejectWalletTopup(
+    @CurrentUser('id') adminId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('adminNote') adminNote?: string,
+  ) {
+    return this.walletService.rejectTopupRequest(id, adminId, adminNote);
+  }
 }

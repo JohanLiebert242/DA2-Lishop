@@ -1,8 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { prisma, WalletTxType } from '@lishop/database';
-import { WalletRepository, WalletInfo, WalletTxItem } from './wallet.repository';
+import { BankTransferInfo, WalletRepository, WalletInfo, WalletTopupRequestItem, WalletTxItem } from './wallet.repository';
 
 const POINTS_TO_VND = 100; // 1 point = 100 VND
+const TOPUP_BANK = {
+  bankName: process.env['WALLET_TOPUP_BANK_NAME'] ?? 'Lishop Demo Bank',
+  bankAccountNumber: process.env['WALLET_TOPUP_BANK_ACCOUNT_NUMBER'] ?? '1900 6868 6868',
+  bankAccountName: process.env['WALLET_TOPUP_BANK_ACCOUNT_NAME'] ?? 'CONG TY TNHH LISHOP',
+};
 
 @Injectable()
 export class WalletService {
@@ -19,15 +24,26 @@ export class WalletService {
   async topUp(
     userId: string,
     amountVnd: number,
-  ): Promise<{ wallet: WalletInfo; paymentUrl: string | null }> {
-    // Direct credit — real integration would create a pending topup and redirect to payment gateway
-    const wallet = await this.repo.credit(
-      userId,
-      amountVnd,
-      WalletTxType.TOPUP,
-      `Top-up ${amountVnd.toLocaleString()} VND`,
-    );
-    return { wallet, paymentUrl: null };
+  ): Promise<{ request: WalletTopupRequestItem; bankTransfer: BankTransferInfo; paymentUrl: null }> {
+    const transferCode = this.generateTransferCode();
+    const request = await this.repo.createTopupRequest(userId, amountVnd, {
+      ...TOPUP_BANK,
+      transferCode,
+    });
+
+    return {
+      request,
+      bankTransfer: {
+        ...TOPUP_BANK,
+        transferCode,
+        amountVnd,
+      },
+      paymentUrl: null,
+    };
+  }
+
+  getTopupRequests(userId: string): Promise<WalletTopupRequestItem[]> {
+    return this.repo.findTopupRequestsByUser(userId);
   }
 
   deductForOrder(userId: string, orderId: string, amountVnd: number): Promise<WalletInfo> {
@@ -52,6 +68,18 @@ export class WalletService {
 
   adminGetAll() {
     return this.repo.adminFindAll();
+  }
+
+  adminGetTopupRequests(): Promise<WalletTopupRequestItem[]> {
+    return this.repo.adminFindTopupRequests();
+  }
+
+  approveTopupRequest(id: string, adminId: string, adminNote?: string): Promise<WalletTopupRequestItem> {
+    return this.repo.approveTopupRequest(id, adminId, adminNote);
+  }
+
+  rejectTopupRequest(id: string, adminId: string, adminNote?: string): Promise<WalletTopupRequestItem> {
+    return this.repo.rejectTopupRequest(id, adminId, adminNote);
   }
 
   async convertPoints(
@@ -108,5 +136,11 @@ export class WalletService {
     });
 
     return { wallet, pointsConverted: points, amountCredited };
+  }
+
+  private generateTransferCode(): string {
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+    return `LSW-${date}-${suffix}`;
   }
 }

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { prisma, WalletTxType } from '@lishop/database';
+import { prisma, WalletTopupStatus, WalletTxType } from '@lishop/database';
 
 export interface WalletInfo {
   id: string;
@@ -19,6 +19,32 @@ export interface WalletTxItem {
   createdAt: Date;
 }
 
+export interface BankTransferInfo {
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  transferCode: string;
+  amountVnd: number;
+}
+
+export interface WalletTopupRequestItem {
+  id: string;
+  userId: string;
+  walletId: string;
+  amountVnd: number;
+  status: WalletTopupStatus;
+  transferCode: string;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  adminNote: string | null;
+  reviewedById: string | null;
+  reviewedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  user?: { email: string; firstName: string; lastName: string };
+}
+
 const WALLET_SELECT = {
   id: true,
   userId: true,
@@ -35,6 +61,23 @@ const TX_SELECT = {
   description: true,
   referenceId: true,
   createdAt: true,
+} as const;
+
+const TOPUP_SELECT = {
+  id: true,
+  userId: true,
+  walletId: true,
+  amountVnd: true,
+  status: true,
+  transferCode: true,
+  bankName: true,
+  bankAccountNumber: true,
+  bankAccountName: true,
+  adminNote: true,
+  reviewedById: true,
+  reviewedAt: true,
+  createdAt: true,
+  updatedAt: true,
 } as const;
 
 @Injectable()
@@ -97,6 +140,109 @@ export class WalletRepository {
       });
 
       return wallet;
+    });
+  }
+
+  async createTopupRequest(
+    userId: string,
+    amountVnd: number,
+    bank: Omit<BankTransferInfo, 'amountVnd'>,
+  ): Promise<WalletTopupRequestItem> {
+    const wallet = await this.findOrCreate(userId);
+
+    return prisma.walletTopupRequest.create({
+      data: {
+        userId,
+        walletId: wallet.id,
+        amountVnd,
+        status: WalletTopupStatus.PENDING,
+        transferCode: bank.transferCode,
+        bankName: bank.bankName,
+        bankAccountNumber: bank.bankAccountNumber,
+        bankAccountName: bank.bankAccountName,
+      },
+      select: TOPUP_SELECT,
+    }) as Promise<WalletTopupRequestItem>;
+  }
+
+  findTopupRequestsByUser(userId: string): Promise<WalletTopupRequestItem[]> {
+    return prisma.walletTopupRequest.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: TOPUP_SELECT,
+    }) as Promise<WalletTopupRequestItem[]>;
+  }
+
+  adminFindTopupRequests(): Promise<WalletTopupRequestItem[]> {
+    return prisma.walletTopupRequest.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        ...TOPUP_SELECT,
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
+    }) as Promise<WalletTopupRequestItem[]>;
+  }
+
+  async approveTopupRequest(id: string, adminId: string, adminNote?: string): Promise<WalletTopupRequestItem> {
+    return prisma.$transaction(async (tx) => {
+      const request = await tx.walletTopupRequest.findUniqueOrThrow({
+        where: { id },
+      });
+
+      if (request.status !== WalletTopupStatus.PENDING) {
+        throw new BadRequestException('Top-up request has already been reviewed');
+      }
+
+      const wallet = await tx.wallet.update({
+        where: { id: request.walletId },
+        data: { balanceVnd: { increment: request.amountVnd } },
+        select: WALLET_SELECT,
+      });
+
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: WalletTxType.TOPUP,
+          amountVnd: request.amountVnd,
+          balanceAfter: wallet.balanceVnd,
+          description: `Bank transfer top-up ${request.transferCode}`,
+          referenceId: request.id,
+        },
+      });
+
+      return tx.walletTopupRequest.update({
+        where: { id },
+        data: {
+          status: WalletTopupStatus.APPROVED,
+          adminNote: adminNote ?? null,
+          reviewedById: adminId,
+          reviewedAt: new Date(),
+        },
+        select: TOPUP_SELECT,
+      }) as Promise<WalletTopupRequestItem>;
+    });
+  }
+
+  async rejectTopupRequest(id: string, adminId: string, adminNote?: string): Promise<WalletTopupRequestItem> {
+    return prisma.$transaction(async (tx) => {
+      const request = await tx.walletTopupRequest.findUniqueOrThrow({
+        where: { id },
+      });
+
+      if (request.status !== WalletTopupStatus.PENDING) {
+        throw new BadRequestException('Top-up request has already been reviewed');
+      }
+
+      return tx.walletTopupRequest.update({
+        where: { id },
+        data: {
+          status: WalletTopupStatus.REJECTED,
+          adminNote: adminNote ?? null,
+          reviewedById: adminId,
+          reviewedAt: new Date(),
+        },
+        select: TOPUP_SELECT,
+      }) as Promise<WalletTopupRequestItem>;
     });
   }
 

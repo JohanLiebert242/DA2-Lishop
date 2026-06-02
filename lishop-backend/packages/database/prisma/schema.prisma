@@ -52,6 +52,12 @@ enum WalletTxType {
   POINTS_CONVERSION
 }
 
+enum WalletTopupStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum RefundMethod {
   ORIGINAL_PAYMENT
   WALLET
@@ -145,6 +151,8 @@ model User {
   supportTickets      SupportTicket[]
   ticketMessages      TicketMessage[]
   wallet              Wallet?
+  walletTopupRequests WalletTopupRequest[] @relation("WalletTopupUser")
+  reviewedTopups      WalletTopupRequest[] @relation("WalletTopupReviewer")
   invoices            Invoice[]
   refunds             Refund[]
 
@@ -621,8 +629,35 @@ model Wallet {
 
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions WalletTransaction[]
+  topupRequests WalletTopupRequest[]
 
   @@index([userId])
+}
+
+model WalletTopupRequest {
+  id                String             @id @default(uuid())
+  userId            String
+  walletId          String
+  amountVnd         Int
+  status            WalletTopupStatus  @default(PENDING)
+  transferCode      String             @unique
+  bankName          String
+  bankAccountNumber String
+  bankAccountName   String
+  adminNote         String?
+  reviewedById      String?
+  reviewedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  user       User  @relation("WalletTopupUser", fields: [userId], references: [id], onDelete: Cascade)
+  wallet     Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("WalletTopupReviewer", fields: [reviewedById], references: [id])
+
+  @@index([userId])
+  @@index([walletId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model WalletTransaction {
