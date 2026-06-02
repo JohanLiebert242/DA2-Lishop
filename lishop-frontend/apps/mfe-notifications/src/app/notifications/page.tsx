@@ -23,6 +23,15 @@ const TYPE_ICONS: Record<string, string> = {
   REVIEWS: '⭐',
 };
 
+function updateUnreadCount(notifications: NotificationItem[]) {
+  const unreadCount = notifications.filter((item) => !item.isRead).length.toString();
+  window.localStorage.setItem('lishop_notification_count', unreadCount);
+  window.dispatchEvent(new StorageEvent('storage', {
+    key: 'lishop_notification_count',
+    newValue: unreadCount,
+  }));
+}
+
 function NotificationRow({ notif }: { notif: NotificationItem }) {
   const queryClient = useQueryClient();
 
@@ -30,7 +39,11 @@ function NotificationRow({ notif }: { notif: NotificationItem }) {
     mutationFn: () => notificationsApi.markAsRead(notif.id),
     onMutate: () => {
       queryClient.setQueryData<NotificationItem[]>(['notification-feed'], (old) =>
-        old?.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)) ?? [],
+        {
+          const next = old?.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)) ?? [];
+          updateUnreadCount(next);
+          return next;
+        },
       );
     },
     onError: () => {
@@ -68,7 +81,7 @@ function NotificationRow({ notif }: { notif: NotificationItem }) {
           aria-label={`Đánh dấu đã đọc: ${notif.title}`}
           onClick={() => markRead.mutate()}
           disabled={markRead.isPending}
-          className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+          className="shrink-0 cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Đã đọc
         </button>
@@ -79,13 +92,18 @@ function NotificationRow({ notif }: { notif: NotificationItem }) {
 
 function FeedTab() {
   const queryClient = useQueryClient();
+  const [streamState, setStreamState] = useState<'connecting' | 'live' | 'fallback'>('connecting');
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notification-feed'],
     queryFn: () => notificationsApi.listFeed(1),
+    refetchInterval: streamState === 'live' ? 60_000 : 15_000,
+    retry: 2,
   });
 
   useEffect(() => {
     const stream = new EventSource(notificationsApi.streamUrl(), { withCredentials: true });
+
+    stream.onopen = () => setStreamState('live');
 
     stream.addEventListener('notification', (event) => {
       try {
@@ -93,12 +111,7 @@ function FeedTab() {
         queryClient.setQueryData<NotificationItem[]>(['notification-feed'], (current = []) => {
           if (current.some((item) => item.id === notification.id)) return current;
           const next = [notification, ...current];
-          const unreadCount = next.filter((item) => !item.isRead).length.toString();
-          window.localStorage.setItem('lishop_notification_count', unreadCount);
-          window.dispatchEvent(new StorageEvent('storage', {
-            key: 'lishop_notification_count',
-            newValue: unreadCount,
-          }));
+          updateUnreadCount(next);
           return next;
         });
       } catch {
@@ -107,6 +120,7 @@ function FeedTab() {
     });
 
     stream.onerror = () => {
+      setStreamState('fallback');
       queryClient.invalidateQueries({ queryKey: ['notification-feed'] });
     };
 
@@ -145,6 +159,15 @@ function FeedTab() {
 
   return (
     <div className="space-y-3">
+      <div className={`rounded-xl border px-4 py-3 text-xs font-semibold ${
+        streamState === 'live'
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+          : 'border-amber-200 bg-amber-50 text-amber-700'
+      }`}>
+        {streamState === 'live'
+          ? 'Realtime đang hoạt động. Thông báo mới sẽ tự xuất hiện.'
+          : 'Đang dùng chế độ tự làm mới. Feed vẫn cập nhật định kỳ khi realtime tạm gián đoạn.'}
+      </div>
       {notifications.map((notif) => (
         <NotificationRow key={notif.id} notif={notif} />
       ))}
@@ -173,7 +196,7 @@ function Toggle({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
+      className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
         checked ? 'bg-indigo-600' : 'bg-stone-200'
       }`}
     >
@@ -292,7 +315,7 @@ export default function NotificationsPage() {
             <button
               type="button"
               onClick={() => setActiveTab('feed')}
-              className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+              className={`flex-1 cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
                 activeTab === 'feed'
                   ? 'bg-white text-indigo-700 shadow-sm'
                   : 'text-stone-500 hover:text-stone-700'
@@ -303,7 +326,7 @@ export default function NotificationsPage() {
             <button
               type="button"
               onClick={() => setActiveTab('preferences')}
-              className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+              className={`flex-1 cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
                 activeTab === 'preferences'
                   ? 'bg-white text-indigo-700 shadow-sm'
                   : 'text-stone-500 hover:text-stone-700'
