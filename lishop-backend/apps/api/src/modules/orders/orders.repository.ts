@@ -81,6 +81,9 @@ export interface OrderWithDetails {
     amountVnd: number;
     status: string;
   } | null;
+  shipment: {
+    deliveredAt: Date | null;
+  } | null;
 }
 
 const ORDER_INCLUDE = {
@@ -97,6 +100,9 @@ const ORDER_INCLUDE = {
   },
   payment: {
     select: { id: true, method: true, amountVnd: true, status: true },
+  },
+  shipment: {
+    select: { deliveredAt: true },
   },
 };
 

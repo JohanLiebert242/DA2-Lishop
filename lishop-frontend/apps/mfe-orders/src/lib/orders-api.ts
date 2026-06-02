@@ -36,6 +36,10 @@ export interface OrderPaymentInfo {
   status: string;
 }
 
+export interface OrderShipmentSummary {
+  deliveredAt: string | null;
+}
+
 export interface OrderSummary {
   id: string;
   orderNumber: string;
@@ -50,6 +54,7 @@ export interface OrderSummary {
   items: OrderItemInfo[];
   address: OrderAddressInfo;
   payment: OrderPaymentInfo | null;
+  shipment: OrderShipmentSummary | null;
 }
 
 // Shipment tracking types
