@@ -23,18 +23,57 @@ const PRODUCT_INCLUDE = {
 @Injectable()
 export class ProductsRepository {
   async findMany(query: ProductListQueryDto): Promise<{ items: ProductWithDetails[]; nextCursor: string | null }> {
-    const { limit, cursor, categoryId, minPriceVnd, maxPriceVnd, q, sort } = query;
+    const {
+      limit,
+      cursor,
+      categoryId,
+      minPriceVnd,
+      maxPriceVnd,
+      q,
+      sort,
+      brand,
+      minRating,
+      inStock,
+      onSale,
+      freeShipping,
+    } = query;
 
-    const where: Prisma.ProductWhereInput = {
-      ...(categoryId && { categoryId }),
-      ...(minPriceVnd !== undefined && { priceVnd: { gte: minPriceVnd } }),
-      ...(maxPriceVnd !== undefined && { priceVnd: { ...((minPriceVnd !== undefined ? { gte: minPriceVnd } : {})), lte: maxPriceVnd } }),
-      ...(q && {
+    const priceFilter: Prisma.IntFilter = {
+      ...(minPriceVnd !== undefined && { gte: minPriceVnd }),
+      ...(maxPriceVnd !== undefined && { lte: maxPriceVnd }),
+    };
+
+    if (freeShipping) {
+      priceFilter.gte = Math.max(priceFilter.gte ?? 0, 500_000);
+    }
+
+    const textFilters: Prisma.ProductWhereInput[] = [];
+
+    if (q) {
+      textFilters.push({
         OR: [
           { name: { contains: q, mode: Prisma.QueryMode.insensitive } },
           { description: { contains: q, mode: Prisma.QueryMode.insensitive } },
         ],
-      }),
+      });
+    }
+
+    if (brand) {
+      textFilters.push({
+        OR: [
+          { name: { contains: brand, mode: Prisma.QueryMode.insensitive } },
+          { description: { contains: brand, mode: Prisma.QueryMode.insensitive } },
+        ],
+      });
+    }
+
+    const where: Prisma.ProductWhereInput = {
+      ...(categoryId && { categoryId }),
+      ...(Object.keys(priceFilter).length > 0 && { priceVnd: priceFilter }),
+      ...(minRating !== undefined && { averageRating: { gte: minRating } }),
+      ...(inStock && { stock: { gt: 0 } }),
+      ...(onSale && { tags: { some: { tag: { name: { equals: 'sale', mode: Prisma.QueryMode.insensitive } } } } }),
+      ...(textFilters.length > 0 && { AND: textFilters }),
     };
 
     const orderBy: Prisma.ProductOrderByWithRelationInput[] = this.getOrderBy(sort);

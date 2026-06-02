@@ -72,6 +72,11 @@ export interface ProductListParams {
   categoryId?: string;
   minPriceVnd?: number;
   maxPriceVnd?: number;
+  brand?: string;
+  minRating?: number;
+  inStock?: boolean;
+  onSale?: boolean;
+  freeShipping?: boolean;
   q?: string;
   sort?: 'price_asc' | 'price_desc' | 'rating_desc' | 'newest';
 }
@@ -97,6 +102,11 @@ export const catalogApi = {
     if (params.categoryId) qs.set('categoryId', params.categoryId);
     if (params.minPriceVnd !== undefined) qs.set('minPriceVnd', String(params.minPriceVnd));
     if (params.maxPriceVnd !== undefined) qs.set('maxPriceVnd', String(params.maxPriceVnd));
+    if (params.brand) qs.set('brand', params.brand);
+    if (params.minRating !== undefined) qs.set('minRating', String(params.minRating));
+    if (params.inStock) qs.set('inStock', 'true');
+    if (params.onSale) qs.set('onSale', 'true');
+    if (params.freeShipping) qs.set('freeShipping', 'true');
     if (params.q) qs.set('q', params.q);
     if (params.sort) qs.set('sort', params.sort);
     return apiFetch<ProductListResponse>(`/products?${qs}`);

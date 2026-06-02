@@ -1,6 +1,6 @@
 import { IsOptional, IsString, IsInt, IsEnum, IsUUID, Min, Max } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export enum ProductSortOption {
   PRICE_ASC = 'price_asc',
@@ -16,5 +16,10 @@ export class ProductListQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) @Type(() => Number) minPriceVnd?: number;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) @Type(() => Number) maxPriceVnd?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() q?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() brand?: string;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(5) @Type(() => Number) minRating?: number;
+  @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => value === true || value === 'true') inStock?: boolean;
+  @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => value === true || value === 'true') onSale?: boolean;
+  @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => value === true || value === 'true') freeShipping?: boolean;
   @ApiPropertyOptional({ enum: ProductSortOption }) @IsOptional() @IsEnum(ProductSortOption) sort?: ProductSortOption;
 }

@@ -17,10 +17,23 @@ export function ProductListClient({ initialCategories, initialProducts }: Props)
   const [categoryId, setCategoryId] = useState<string | undefined>();
   const [sort, setSort] = useState('newest');
   const [q, setQ] = useState('');
+  const [brand, setBrand] = useState('');
+  const [minPriceVnd, setMinPriceVnd] = useState('');
+  const [maxPriceVnd, setMaxPriceVnd] = useState('');
+  const [minRating, setMinRating] = useState('');
+  const [inStock, setInStock] = useState(false);
+  const [onSale, setOnSale] = useState(false);
+  const [freeShipping, setFreeShipping] = useState(false);
   const [cursor, setCursor] = useState<string | undefined>();
   const debouncedQ = useDebounce(q, 400);
+  const debouncedMinPrice = useDebounce(minPriceVnd, 400);
+  const debouncedMaxPrice = useDebounce(maxPriceVnd, 400);
 
-  const isDefaultQuery = !categoryId && sort === 'newest' && !debouncedQ && !cursor;
+  const numericMinPrice = debouncedMinPrice ? Number(debouncedMinPrice) : undefined;
+  const numericMaxPrice = debouncedMaxPrice ? Number(debouncedMaxPrice) : undefined;
+  const numericMinRating = minRating ? Number(minRating) : undefined;
+
+  const isDefaultQuery = !categoryId && sort === 'newest' && !debouncedQ && !brand && !numericMinPrice && !numericMaxPrice && !numericMinRating && !inStock && !onSale && !freeShipping && !cursor;
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -30,14 +43,44 @@ export function ProductListClient({ initialCategories, initialProducts }: Props)
   });
 
   const { data, isFetching } = useQuery({
-    queryKey: ['products', { categoryId, sort, q: debouncedQ, cursor }],
-    queryFn: () => catalogApi.getProducts({ categoryId, sort: sort as ProductListParams['sort'], q: debouncedQ, cursor }),
+    queryKey: ['products', { categoryId, sort, q: debouncedQ, brand, numericMinPrice, numericMaxPrice, numericMinRating, inStock, onSale, freeShipping, cursor }],
+    queryFn: () => catalogApi.getProducts({
+      categoryId,
+      sort: sort as ProductListParams['sort'],
+      q: debouncedQ,
+      brand,
+      minPriceVnd: numericMinPrice,
+      maxPriceVnd: numericMaxPrice,
+      minRating: numericMinRating,
+      inStock,
+      onSale,
+      freeShipping,
+      cursor,
+    }),
     initialData: isDefaultQuery ? initialProducts : undefined,
     staleTime: 60_000,
   });
 
   const handleCategoryChange = useCallback((id: string | undefined) => {
     setCategoryId(id);
+    setCursor(undefined);
+  }, []);
+
+  const handleFilterChange = useCallback(<T,>(setter: (value: T) => void) => (value: T) => {
+    setter(value);
+    setCursor(undefined);
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    setSort('newest');
+    setQ('');
+    setBrand('');
+    setMinPriceVnd('');
+    setMaxPriceVnd('');
+    setMinRating('');
+    setInStock(false);
+    setOnSale(false);
+    setFreeShipping(false);
     setCursor(undefined);
   }, []);
 
@@ -63,7 +106,27 @@ export function ProductListClient({ initialCategories, initialProducts }: Props)
 
           <div className="flex-1 min-w-0">
             <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
-              <ProductFilters sort={sort} q={q} onSortChange={setSort} onQChange={setQ} />
+              <ProductFilters
+                sort={sort}
+                q={q}
+                brand={brand}
+                minPriceVnd={minPriceVnd}
+                maxPriceVnd={maxPriceVnd}
+                minRating={minRating}
+                inStock={inStock}
+                onSale={onSale}
+                freeShipping={freeShipping}
+                onSortChange={handleFilterChange(setSort)}
+                onQChange={handleFilterChange(setQ)}
+                onBrandChange={handleFilterChange(setBrand)}
+                onMinPriceChange={handleFilterChange(setMinPriceVnd)}
+                onMaxPriceChange={handleFilterChange(setMaxPriceVnd)}
+                onMinRatingChange={handleFilterChange(setMinRating)}
+                onInStockChange={handleFilterChange(setInStock)}
+                onOnSaleChange={handleFilterChange(setOnSale)}
+                onFreeShippingChange={handleFilterChange(setFreeShipping)}
+                onReset={handleResetFilters}
+              />
               <div className="flex items-center gap-2">
                 {isFetching && (
                   <div className="flex items-center gap-2 text-xs font-medium text-indigo-600">
