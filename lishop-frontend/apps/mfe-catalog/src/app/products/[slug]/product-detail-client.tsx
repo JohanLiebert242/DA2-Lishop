@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -33,6 +33,17 @@ function getVariantLabel(variant: ProductVariant) {
   return attrs.length > 0 ? attrs.join(' / ') : variant.name;
 }
 
+function parseReviewContent(content: string) {
+  const lines = content.split('\n');
+  const mediaLinks = lines
+    .filter((line) => line.startsWith('Media: '))
+    .map((line) => line.replace('Media: ', '').trim())
+    .filter(Boolean);
+  const body = lines.filter((line) => !line.startsWith('Media: ')).join('\n').trim();
+
+  return { body, mediaLinks };
+}
+
 function Stars({ rating, interactive = false, onSelect }: { rating: number; interactive?: boolean; onSelect?: (r: number) => void }) {
   return (
     <div className="flex gap-0.5">
@@ -55,11 +66,20 @@ function ReviewsSection({ productId }: { productId: string }) {
   const [content, setContent] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'highest' | 'lowest'>('newest');
+  const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all');
+  const [mediaUrlInput, setMediaUrlInput] = useState('');
+  const [mediaPreviews, setMediaPreviews] = useState<Array<{ name: string; type: string; url: string }>>([]);
   const [isLoggedInNow, setIsLoggedInNow] = useState(false);
 
   useEffect(() => {
     setIsLoggedInNow(isLoggedIn());
   }, []);
+
+  useEffect(() => {
+    return () => {
+      mediaPreviews.forEach((media) => URL.revokeObjectURL(media.url));
+    };
+  }, [mediaPreviews]);
 
   const { data: reviews = [] } = useQuery({
     queryKey: ['reviews', productId],
@@ -67,12 +87,26 @@ function ReviewsSection({ productId }: { productId: string }) {
   });
 
   const submitMutation = useMutation({
-    mutationFn: () => catalogApi.createReview(productId, rating, content || undefined),
+    mutationFn: () => {
+      const mediaLines = mediaUrlInput
+        .split('\n')
+        .map((url) => url.trim())
+        .filter(Boolean)
+        .map((url) => `Media: ${url}`);
+      const reviewContent = [content.trim(), ...mediaLines].filter(Boolean).join('\n');
+
+      return catalogApi.createReview(productId, rating, reviewContent || undefined);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
       setShowForm(false);
       setContent('');
       setRating(5);
+      setMediaUrlInput('');
+      setMediaPreviews((previous) => {
+        previous.forEach((media) => URL.revokeObjectURL(media.url));
+        return [];
+      });
       toast.success('Đánh giá của bạn đã được gửi!');
     },
     onError: (err: Error) => {
@@ -91,11 +125,24 @@ function ReviewsSection({ productId }: { productId: string }) {
       : 0,
   }));
 
-  const sortedReviews = [...reviews].sort((a, b) => {
+  const filteredReviews = reviews.filter((review) => ratingFilter === 'all' || review.rating === ratingFilter);
+  const sortedReviews = [...filteredReviews].sort((a, b) => {
     if (sortOrder === 'highest') return b.rating - a.rating;
     if (sortOrder === 'lowest') return a.rating - b.rating;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+
+  function handleMediaFilesChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    setMediaPreviews((previous) => {
+      previous.forEach((media) => URL.revokeObjectURL(media.url));
+      return files.map((file) => ({
+        name: file.name,
+        type: file.type,
+        url: URL.createObjectURL(file),
+      }));
+    });
+  }
 
   return (
     <div className="mt-8 border-t border-warm pt-8">
@@ -148,6 +195,43 @@ function ReviewsSection({ productId }: { productId: string }) {
             rows={3}
             className="mt-3 w-full resize-none rounded-xl border border-warm px-3 py-2 text-sm bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-colors"
           />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wide text-muted">Media URL</span>
+              <textarea
+                value={mediaUrlInput}
+                onChange={(e) => setMediaUrlInput(e.target.value)}
+                placeholder="https://... (moi link mot dong)"
+                rows={2}
+                className="mt-1 w-full resize-none rounded-xl border border-warm bg-white px-3 py-2 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wide text-muted">Anh / video</span>
+              <input
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                onChange={handleMediaFilesChange}
+                className="mt-1 block w-full cursor-pointer rounded-xl border border-dashed border-warm bg-white px-3 py-2 text-sm text-stone-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-indigo-700"
+              />
+              <p className="mt-1 text-xs text-muted">File dang preview tai may, URL se duoc luu cung noi dung review.</p>
+            </label>
+          </div>
+          {mediaPreviews.length > 0 && (
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              {mediaPreviews.map((media) => (
+                <div key={media.url} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-warm bg-white">
+                  {media.type.startsWith('video/') ? (
+                    <video src={media.url} className="h-full w-full object-cover" muted />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={media.url} alt={media.name} className="h-full w-full object-cover" />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="mt-3 flex gap-2">
             <button
               onClick={() => submitMutation.mutate()}
@@ -166,8 +250,29 @@ function ReviewsSection({ productId }: { productId: string }) {
         </div>
       )}
 
-      {reviews.length > 1 && (
-        <div className="mb-3 flex justify-end">
+      {reviews.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {(['all', 5, 4, 3, 2, 1] as const).map((star) => {
+              const isSelected = ratingFilter === star;
+              const label = star === 'all' ? 'Tat ca' : `${star} sao`;
+
+              return (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRatingFilter(star)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                    isSelected
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                      : 'border-warm bg-white text-stone-600 hover:border-indigo-200 hover:bg-indigo-50/60'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
@@ -184,27 +289,51 @@ function ReviewsSection({ productId }: { productId: string }) {
         <p className="text-sm text-muted">Chưa có đánh giá nào. Hãy là người đầu tiên!</p>
       ) : (
         <div className="space-y-4">
-          {sortedReviews.map((review: ReviewInfo) => (
-            <div key={review.id} className="card p-4">
-              <div className="mb-1 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-stone-900">{review.userName}</span>
-                  {review.verifiedPurchase && (
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                      Đã mua
-                    </span>
-                  )}
+          {sortedReviews.length === 0 && (
+            <p className="rounded-xl border border-dashed border-warm px-4 py-6 text-center text-sm text-muted">
+              Khong co danh gia nao khop bo loc nay.
+            </p>
+          )}
+          {sortedReviews.map((review: ReviewInfo) => {
+            const { body, mediaLinks } = parseReviewContent(review.content ?? '');
+
+            return (
+              <div key={review.id} className="card p-4">
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-stone-900">{review.userName}</span>
+                    {review.verifiedPurchase && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                        Đã mua
+                      </span>
+                    )}
+                  </div>
+                  <Stars rating={review.rating} />
                 </div>
-                <Stars rating={review.rating} />
+                {body && (
+                  <p className="whitespace-pre-line text-sm text-stone-600">{body}</p>
+                )}
+                {mediaLinks.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {mediaLinks.map((url) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50"
+                      >
+                        Xem media
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-muted">
+                  {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+                </p>
               </div>
-              {review.content && (
-                <p className="text-sm text-stone-600">{review.content}</p>
-              )}
-              <p className="mt-2 text-xs text-muted">
-                {new Date(review.createdAt).toLocaleDateString('vi-VN')}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
