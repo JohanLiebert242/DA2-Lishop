@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { formatVND } from '@lishop/shared';
 import { useAuthStore } from '../stores/auth.store';
 import { NEWS_ITEMS } from '../lib/news';
@@ -176,7 +176,13 @@ function SkeletonGrid({ cols = 4 }: { cols?: number }) {
 
 // ─── Countdown ────────────────────────────────────────────────────────────────
 function Countdown({ endAt }: { endAt: string }) {
-  const diff = Math.max(0, new Date(endAt).getTime() - Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const diff = Math.max(0, new Date(endAt).getTime() - now);
   const h = Math.floor(diff / 3_600_000);
   const m = Math.floor((diff % 3_600_000) / 60_000);
   const s = Math.floor((diff % 60_000) / 1_000);

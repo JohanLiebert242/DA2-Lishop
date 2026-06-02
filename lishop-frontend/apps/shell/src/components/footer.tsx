@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 const SHELL = 'http://localhost:3010';
 const MFE = {
@@ -47,8 +48,8 @@ export function Footer() {
           {/* Brand column */}
           <div className="lg:col-span-2">
             <Link href={SHELL} className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600">
-                <span className="text-lg font-black text-white leading-none">Li</span>
+              <div className="relative h-11 w-11 overflow-hidden rounded-xl bg-white">
+                <Image src="/lishop-logo.png" alt="Lishop logo" fill className="object-contain p-1.5" sizes="44px" />
               </div>
               <span className="text-xl font-black text-white">Lishop</span>
             </Link>
