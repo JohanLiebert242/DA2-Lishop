@@ -798,7 +798,7 @@ export default function HomePage() {
             </div>
             <div className="grid gap-3">
               {NEWS_ITEMS.map((item) => (
-                <Link key={item.id} href={`/news#${item.id}`} className="group rounded-2xl border border-white/12 bg-white/8 p-4 transition hover:border-amber-300/70 hover:bg-white/12">
+                <Link key={item.id} href={`/news/${item.id}`} className="group rounded-2xl border border-white/12 bg-white/8 p-4 transition hover:border-amber-300/70 hover:bg-white/12">
                   <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.12em] text-white/45">
                     <span>{item.tag}</span>
                     <span>•</span>

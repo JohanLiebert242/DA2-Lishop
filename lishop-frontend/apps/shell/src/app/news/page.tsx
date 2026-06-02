@@ -26,43 +26,23 @@ export default function NewsPage() {
                 Cập nhật những thay đổi quan trọng trong hệ sinh thái Lishop để khách hàng biết cách mua sắm thông minh hơn.
               </p>
             </div>
-            <div className="relative aspect-[16/10] overflow-hidden rounded-3xl bg-stone-100 shadow-xl shadow-stone-900/10">
-              <Image src={lead.imageUrl} alt={lead.title} fill priority className="object-cover" sizes="(max-width: 1024px) 100vw, 520px" />
-            </div>
+            <Link href={`/news/${lead.id}`} className="group relative aspect-[16/10] overflow-hidden rounded-3xl bg-stone-100 shadow-xl shadow-stone-900/10">
+              <Image src={lead.imageUrl} alt={lead.title} fill priority className="object-cover transition duration-500 group-hover:scale-105" sizes="(max-width: 1024px) 100vw, 520px" />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-950/80 to-transparent p-6 text-white">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-300">{lead.tag}</p>
+                <h2 className="mt-2 text-2xl font-black">{lead.title}</h2>
+              </div>
+            </Link>
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-        <article id={lead.id} className="overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
-          <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="relative min-h-80 bg-stone-100">
-              <Image src={lead.imageUrl} alt={lead.title} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 520px" />
-            </div>
-            <div className="p-6 sm:p-8">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-black uppercase tracking-[0.14em] text-stone-400">
-                <span>{lead.tag}</span>
-                <span>•</span>
-                <span>{lead.date}</span>
-                <span>•</span>
-                <span>{lead.readTime}</span>
-              </div>
-              <h2 className="mt-4 text-3xl font-black leading-tight text-stone-950">{lead.title}</h2>
-              <p className="mt-3 text-base leading-8 text-stone-600">{lead.summary}</p>
-              <div className="mt-6 space-y-4">
-                {lead.content.map((paragraph) => (
-                  <p key={paragraph} className="text-sm leading-7 text-stone-600">{paragraph}</p>
-                ))}
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
-          {rest.map((item) => (
-            <article id={item.id} key={item.id} className="overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
+        <div className="grid gap-5 lg:grid-cols-3">
+          {NEWS_ITEMS.map((item) => (
+            <Link key={item.id} href={`/news/${item.id}`} className="group overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-stone-900/10">
               <div className="relative aspect-[16/9] bg-stone-100">
-                <Image src={item.imageUrl} alt={item.title} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 520px" />
+                <Image src={item.imageUrl} alt={item.title} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(max-width: 1024px) 100vw, 380px" />
               </div>
               <div className="p-6">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-black uppercase tracking-[0.14em] text-stone-400">
@@ -74,13 +54,12 @@ export default function NewsPage() {
                 </div>
                 <h2 className="mt-4 text-2xl font-black leading-tight text-stone-950">{item.title}</h2>
                 <p className="mt-3 text-sm leading-7 text-stone-600">{item.summary}</p>
-                <div className="mt-5 space-y-3">
-                  {item.content.map((paragraph) => (
-                    <p key={paragraph} className="text-sm leading-7 text-stone-600">{paragraph}</p>
-                  ))}
-                </div>
+                <span className="mt-5 inline-flex text-sm font-black text-amber-700">
+                  Đọc chi tiết
+                  <span className="ml-1 transition group-hover:translate-x-1">→</span>
+                </span>
               </div>
-            </article>
+            </Link>
           ))}
         </div>
       </section>
