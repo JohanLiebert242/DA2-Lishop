@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { prisma } from '@lishop/database';
+import { Prisma, prisma } from '@lishop/database';
 
 export interface CartRow {
   id: string;
   productId: string;
+  variantId: string | null;
   quantity: number;
   product: {
     id: string;
@@ -15,11 +16,39 @@ export interface CartRow {
     weightGrams: number;
     images: { url: string }[];
   };
+  variant: {
+    id: string;
+    productId: string;
+    sku: string;
+    name: string;
+    priceVnd: number;
+    priceUsd: number;
+    stock: number;
+    weightGrams: number;
+    attributes: Prisma.JsonValue;
+    imageUrl: string | null;
+    isDefault: boolean;
+    isActive: boolean;
+  } | null;
 }
 
 export interface ProductStockInfo {
   id: string;
   stock: number;
+  variants: {
+    id: string;
+    productId: string;
+    sku: string;
+    name: string;
+    priceVnd: number;
+    priceUsd: number;
+    stock: number;
+    weightGrams: number;
+    attributes: Prisma.JsonValue;
+    imageUrl: string | null;
+    isDefault: boolean;
+    isActive: boolean;
+  }[];
 }
 
 @Injectable()
@@ -44,14 +73,30 @@ export class CartRepository {
             },
           },
         },
+        variant: {
+          select: {
+            id: true,
+            productId: true,
+            sku: true,
+            name: true,
+            priceVnd: true,
+            priceUsd: true,
+            stock: true,
+            weightGrams: true,
+            attributes: true,
+            imageUrl: true,
+            isDefault: true,
+            isActive: true,
+          },
+        },
       },
       orderBy: { createdAt: 'asc' },
     }) as Promise<CartRow[]>;
   }
 
-  async addOrUpdate(userId: string, productId: string, quantity: number): Promise<void> {
+  async addOrUpdate(userId: string, productId: string, variantId: string | null, quantity: number): Promise<void> {
     const existing = await prisma.cartItem.findFirst({
-      where: { userId, productId, variantId: null },
+      where: { userId, productId, variantId },
       select: { id: true },
     });
 
@@ -64,12 +109,12 @@ export class CartRepository {
     }
 
     await prisma.cartItem.create({
-      data: { userId, productId, quantity },
+      data: { userId, productId, variantId, quantity },
     });
   }
 
-  async remove(userId: string, productId: string): Promise<void> {
-    await prisma.cartItem.deleteMany({ where: { userId, productId } });
+  async remove(userId: string, productId: string, variantId: string | null): Promise<void> {
+    await prisma.cartItem.deleteMany({ where: { userId, productId, variantId } });
   }
 
   async clear(userId: string): Promise<void> {
@@ -79,7 +124,27 @@ export class CartRepository {
   async findProduct(productId: string): Promise<ProductStockInfo | null> {
     return prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true, stock: true },
+      select: {
+        id: true,
+        stock: true,
+        variants: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            productId: true,
+            sku: true,
+            name: true,
+            priceVnd: true,
+            priceUsd: true,
+            stock: true,
+            weightGrams: true,
+            attributes: true,
+            imageUrl: true,
+            isDefault: true,
+            isActive: true,
+          },
+        },
+      },
     });
   }
 }

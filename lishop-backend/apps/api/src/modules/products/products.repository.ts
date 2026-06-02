@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { prisma, Product, Prisma } from '@lishop/database';
+import { prisma, Product, ProductVariant, Prisma } from '@lishop/database';
 import { ProductListQueryDto, ProductSortOption } from './dto/product-list-query.dto';
 
 
@@ -7,7 +7,18 @@ export interface ProductWithDetails extends Product {
   images: { id: string; url: string; alt: string | null; isPrimary: boolean }[];
   tags: { tagId: string; tag: { name: string } }[];
   category: { id: string; name: string; slug: string };
+  variants: ProductVariant[];
 }
+
+const PRODUCT_INCLUDE = {
+  images: true,
+  tags: { include: { tag: true } },
+  category: { select: { id: true, name: true, slug: true } },
+  variants: {
+    where: { isActive: true },
+    orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+  },
+} satisfies Prisma.ProductInclude;
 
 @Injectable()
 export class ProductsRepository {
@@ -33,11 +44,7 @@ export class ProductsRepository {
       orderBy,
       take: limit + 1,
       ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-      include: {
-        images: true,
-        tags: { include: { tag: true } },
-        category: { select: { id: true, name: true, slug: true } },
-      },
+      include: PRODUCT_INCLUDE,
     });
 
     const hasMore = items.length > limit;
@@ -51,11 +58,7 @@ export class ProductsRepository {
   async findBySlug(slug: string): Promise<ProductWithDetails | null> {
     return prisma.product.findUnique({
       where: { slug },
-      include: {
-        images: true,
-        tags: { include: { tag: true } },
-        category: { select: { id: true, name: true, slug: true } },
-      },
+      include: PRODUCT_INCLUDE,
     }) as Promise<ProductWithDetails | null>;
   }
 
@@ -66,11 +69,7 @@ export class ProductsRepository {
   async create(data: Prisma.ProductCreateInput): Promise<ProductWithDetails> {
     return prisma.product.create({
       data,
-      include: {
-        images: true,
-        tags: { include: { tag: true } },
-        category: { select: { id: true, name: true, slug: true } },
-      },
+      include: PRODUCT_INCLUDE,
     }) as Promise<ProductWithDetails>;
   }
 
@@ -78,11 +77,7 @@ export class ProductsRepository {
     return prisma.product.update({
       where: { id },
       data,
-      include: {
-        images: true,
-        tags: { include: { tag: true } },
-        category: { select: { id: true, name: true, slug: true } },
-      },
+      include: PRODUCT_INCLUDE,
     }) as Promise<ProductWithDetails>;
   }
 
@@ -95,11 +90,7 @@ export class ProductsRepository {
       where: { stock: { gt: 0 } },
       orderBy: { createdAt: 'desc' },
       take: limit,
-      include: {
-        images: true,
-        tags: { include: { tag: true } },
-        category: { select: { id: true, name: true, slug: true } },
-      },
+      include: PRODUCT_INCLUDE,
     }) as Promise<ProductWithDetails[]>;
   }
 
@@ -109,12 +100,6 @@ export class ProductsRepository {
     tagIds: string[],
     limit = 6,
   ): Promise<ProductWithDetails[]> {
-    const include = {
-      images: true,
-      tags: { include: { tag: true } },
-      category: { select: { id: true, name: true, slug: true } },
-    } as const;
-
     const baseWhere = { categoryId, id: { not: productId }, stock: { gt: 0 } };
 
     if (tagIds.length === 0) {
@@ -122,7 +107,7 @@ export class ProductsRepository {
         where: baseWhere,
         take: limit,
         orderBy: { averageRating: 'desc' },
-        include,
+        include: PRODUCT_INCLUDE,
       }) as Promise<ProductWithDetails[]>;
     }
 
@@ -131,7 +116,7 @@ export class ProductsRepository {
       where: { ...baseWhere, tags: { some: { tagId: { in: tagIds } } } },
       take: limit,
       orderBy: { averageRating: 'desc' },
-      include,
+      include: PRODUCT_INCLUDE,
     });
 
     if (withTags.length >= limit) return withTags as ProductWithDetails[];
@@ -142,7 +127,7 @@ export class ProductsRepository {
       where: { ...baseWhere, id: { notIn: excludeIds } },
       take: limit - withTags.length,
       orderBy: { averageRating: 'desc' },
-      include,
+      include: PRODUCT_INCLUDE,
     });
 
     return [...withTags, ...filler] as ProductWithDetails[];

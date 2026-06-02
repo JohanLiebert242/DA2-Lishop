@@ -36,7 +36,13 @@ export class ProductsService {
 
   async create(dto: CreateProductDto): Promise<ProductWithDetails> {
     const slug = slugify(dto.name, { lower: true, strict: true });
-    const { images, tags, categoryId, ...rest } = dto;
+    const { images, tags, variants, categoryId, ...rest } = dto;
+    const normalizedVariants = variants?.map((variant, index) => ({
+      ...variant,
+      weightGrams: variant.weightGrams ?? 500,
+      isDefault: variants.some((v) => v.isDefault) ? !!variant.isDefault : index === 0,
+      isActive: variant.isActive ?? true,
+    }));
 
     return this.repo.create({
       ...rest,
@@ -57,6 +63,9 @@ export class ProductsService {
           })),
         },
       }),
+      ...(normalizedVariants && {
+        variants: { create: normalizedVariants },
+      }),
     } as any);
   }
 
@@ -67,6 +76,7 @@ export class ProductsService {
     const updateData: any = { ...dto };
     delete updateData.images;
     delete updateData.tags;
+    delete updateData.variants;
     delete updateData.categoryId;
 
     if (dto.name) updateData.slug = slugify(dto.name, { lower: true, strict: true });

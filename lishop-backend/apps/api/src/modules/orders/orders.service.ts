@@ -76,7 +76,11 @@ export class OrdersService {
       paymentMethod: dto.paymentMethod,
       items: cart.items.map((item) => ({
         productId: item.productId,
+        variantId: item.variantId,
         productName: item.productName,
+        variantName: item.variantName,
+        variantSku: item.variantSku,
+        variantAttributes: item.variantAttributes,
         quantity: item.quantity,
         unitPriceVnd: item.priceVnd,
         totalPriceVnd: item.priceVnd * item.quantity,

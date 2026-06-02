@@ -8,6 +8,7 @@ import { RedisService } from '../redis/redis.service';
 const makeRow = (overrides: Partial<any> = {}): any => ({
   id: 'ci1',
   productId: 'p1',
+  variantId: null,
   quantity: 2,
   product: {
     id: 'p1',
@@ -16,8 +17,10 @@ const makeRow = (overrides: Partial<any> = {}): any => ({
     priceVnd: 20000000,
     priceUsd: 800,
     stock: 5,
+    weightGrams: 500,
     images: [{ url: 'https://img.jpg' }],
   },
+  variant: null,
   ...overrides,
 });
 
@@ -91,18 +94,48 @@ describe('CartService', () => {
   });
 
   it('addItem throws BadRequestException when insufficient stock', async () => {
-    repo.findProduct.mockResolvedValue({ id: 'p1', stock: 1 });
+    repo.findProduct.mockResolvedValue({ id: 'p1', stock: 1, variants: [] });
     await expect(service.addItem('u1', { productId: 'p1', quantity: 5 })).rejects.toThrow(BadRequestException);
   });
 
   it('addItem calls addOrUpdate and returns updated cart', async () => {
-    repo.findProduct.mockResolvedValue({ id: 'p1', stock: 10 });
+    repo.findProduct.mockResolvedValue({ id: 'p1', stock: 10, variants: [] });
     repo.addOrUpdate.mockResolvedValue(undefined);
     repo.findByUserId.mockResolvedValue([makeRow()]);
     redis.get.mockResolvedValue(null);
     const cart = await service.addItem('u1', { productId: 'p1', quantity: 2 });
-    expect(repo.addOrUpdate).toHaveBeenCalledWith('u1', 'p1', 2);
+    expect(repo.addOrUpdate).toHaveBeenCalledWith('u1', 'p1', null, 2);
     expect(cart.items).toHaveLength(1);
+  });
+
+  it('addItem uses selected variant and cart totals use variant price', async () => {
+    const variant = {
+      id: 'v1',
+      productId: 'p1',
+      sku: 'IPHONE15PM-512-BLUE',
+      name: 'Blue Titanium 512GB',
+      priceVnd: 39990000,
+      priceUsd: 1599,
+      stock: 4,
+      weightGrams: 240,
+      attributes: { color: 'Blue Titanium', storage: '512GB' },
+      imageUrl: 'https://variant.jpg',
+      isDefault: false,
+      isActive: true,
+    };
+    repo.findProduct.mockResolvedValue({ id: 'p1', stock: 10, variants: [variant] });
+    repo.addOrUpdate.mockResolvedValue(undefined);
+    repo.findByUserId.mockResolvedValue([makeRow({ variantId: 'v1', variant })]);
+    redis.get.mockResolvedValue(null);
+
+    const cart = await service.addItem('u1', { productId: 'p1', variantId: 'v1', quantity: 2 });
+
+    expect(repo.addOrUpdate).toHaveBeenCalledWith('u1', 'p1', 'v1', 2);
+    expect(cart.items).toHaveLength(1);
+    const item = cart.items[0]!;
+    expect(item.variantName).toBe('Blue Titanium 512GB');
+    expect(item.priceVnd).toBe(39990000);
+    expect(cart.subtotalVnd).toBe(79980000);
   });
 
   it('applyCoupon stores code in Redis and returns cart with discount', async () => {

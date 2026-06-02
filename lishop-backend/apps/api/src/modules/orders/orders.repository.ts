@@ -20,7 +20,11 @@ export interface ShipmentWithEvents {
 
 export interface OrderItemInput {
   productId: string;
+  variantId?: string | null;
   productName: string;
+  variantName?: string | null;
+  variantSku?: string | null;
+  variantAttributes?: unknown;
   quantity: number;
   unitPriceVnd: number;
   totalPriceVnd: number;
@@ -54,7 +58,11 @@ export interface OrderWithDetails {
   items: {
     id: string;
     productId: string;
+    variantId: string | null;
     productName: string;
+    variantName: string | null;
+    variantSku: string | null;
+    variantAttributes: unknown;
     quantity: number;
     unitPriceVnd: number;
     totalPriceVnd: number;
@@ -108,13 +116,21 @@ export class OrdersRepository {
     return prisma.$transaction(async (tx) => {
       // Decrement stock atomically; throws P2025 if any item has insufficient stock
       const stockUpdates = await Promise.all(
-        input.items.map((item) =>
-          tx.product.update({
+        input.items.map(async (item) => {
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId, stock: { gte: item.quantity } },
+              data: { stock: { decrement: item.quantity } },
+              select: { id: true, stock: true },
+            });
+          }
+
+          return tx.product.update({
             where: { id: item.productId, stock: { gte: item.quantity } },
             data: { stock: { decrement: item.quantity } },
             select: { id: true, stock: true },
-          }),
-        ),
+          });
+        }),
       );
 
       // Create order
@@ -133,7 +149,11 @@ export class OrdersRepository {
           items: {
             create: input.items.map((item) => ({
               productId: item.productId,
+              variantId: item.variantId ?? null,
               productName: item.productName,
+              variantName: item.variantName ?? null,
+              variantSku: item.variantSku ?? null,
+              variantAttributes: item.variantAttributes ?? undefined,
               quantity: item.quantity,
               unitPriceVnd: item.unitPriceVnd,
               totalPriceVnd: item.totalPriceVnd,
@@ -227,13 +247,21 @@ export class OrdersRepository {
 
       // Restore stock
       const stockUpdates = await Promise.all(
-        items.map((item) =>
-          tx.product.update({
+        items.map(async (item) => {
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { increment: item.quantity } },
+              select: { id: true, stock: true },
+            });
+          }
+
+          return tx.product.update({
             where: { id: item.productId },
             data: { stock: { increment: item.quantity } },
             select: { id: true, stock: true },
-          }),
-        ),
+          });
+        }),
       );
 
       await tx.stockMovement.createMany({

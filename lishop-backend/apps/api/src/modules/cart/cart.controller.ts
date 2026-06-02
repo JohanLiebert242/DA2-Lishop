@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -55,8 +56,9 @@ export class CartController {
   async removeItem(
     @CurrentUser('id') userId: string,
     @Param('productId', ParseUUIDPipe) productId: string,
+    @Query('variantId') variantId?: string,
   ) {
-    return this.cartService.removeItem(userId, productId);
+    return this.cartService.removeItem(userId, productId, variantId);
   }
 
   @Post('coupon')
