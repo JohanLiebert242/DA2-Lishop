@@ -218,6 +218,11 @@ export const adminApi = {
   // Products
   listProducts: () =>
     apiFetch<{ items: AdminProduct[]; nextCursor: string | null }>('/products?limit=100'),
+  importProducts: (products: CreateProductInput[]) =>
+    apiFetch<ImportProductsResult>('/admin/products/import', {
+      method: 'POST',
+      body: JSON.stringify({ products }),
+    }),
   createProduct: (data: CreateProductInput) =>
     apiFetch<AdminProduct>('/products', { method: 'POST', body: JSON.stringify(data) }),
   updateProduct: (id: string, data: Partial<CreateProductInput>) =>
@@ -306,9 +311,30 @@ export interface CreateProductInput {
   priceUsd: number;
   stock: number;
   weightGrams?: number;
-  categoryId: string;
+  categoryId?: string;
+  categorySlug?: string;
   images?: { url: string; alt?: string; isPrimary?: boolean }[];
   tags?: string[];
+  variants?: ProductVariantInput[];
+}
+
+export interface ProductVariantInput {
+  sku: string;
+  name: string;
+  priceVnd: number;
+  priceUsd: number;
+  stock: number;
+  weightGrams?: number;
+  attributes: Record<string, string>;
+  imageUrl?: string;
+  isDefault?: boolean;
+  isActive?: boolean;
+}
+
+export interface ImportProductsResult {
+  created: number;
+  failed: number;
+  errors: { index: number; name: string; message: string }[];
 }
 
 // ─── Payments ────────────────────────────────────────────────────────────────

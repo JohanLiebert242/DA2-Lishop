@@ -6,6 +6,8 @@ import { RedisService } from '../redis/redis.service';
 import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
 import { OrderStatus, prisma } from '@lishop/database';
 import { UserRole } from '@lishop/contracts';
+import { ProductsService } from '../products/products.service';
+import { ImportProductDto, ImportProductsDto } from './dto/import-products.dto';
 
 const STATS_CACHE_KEY = 'cache:admin:stats';
 const STATS_TTL = 300; // 5 minutes
@@ -26,6 +28,7 @@ export class AdminService {
     private readonly notifRepo: NotificationsRepository,
     private readonly invoicesService: InvoicesService,
     private readonly redis: RedisService,
+    private readonly productsService: ProductsService,
   ) {}
 
   async getStats(): Promise<AdminStats> {
@@ -176,6 +179,58 @@ export class AdminService {
 
   getAnalytics(): Promise<AdminAnalytics> {
     return this.repo.getAnalytics();
+  }
+
+  async importProducts(dto: ImportProductsDto): Promise<{
+    created: number;
+    failed: number;
+    errors: { index: number; name: string; message: string }[];
+  }> {
+    if (dto.products.length === 0) {
+      throw new BadRequestException('Import list must contain at least one product');
+    }
+    if (dto.products.length > 200) {
+      throw new BadRequestException('Import supports at most 200 products per request');
+    }
+
+    let created = 0;
+    const errors: { index: number; name: string; message: string }[] = [];
+
+    for (const [index, product] of dto.products.entries()) {
+      try {
+        const categoryId = await this.resolveImportCategory(product);
+        const { categorySlug: _categorySlug, ...payload } = product;
+        await this.productsService.create({
+          ...payload,
+          categoryId,
+          weightGrams: product.weightGrams ?? 500,
+        });
+        created += 1;
+      } catch (err) {
+        errors.push({
+          index,
+          name: product.name,
+          message: err instanceof Error ? err.message : 'Unknown import error',
+        });
+      }
+    }
+
+    return { created, failed: errors.length, errors };
+  }
+
+  private async resolveImportCategory(product: ImportProductDto): Promise<string> {
+    if (product.categoryId) return product.categoryId;
+    if (!product.categorySlug) {
+      throw new BadRequestException('categoryId or categorySlug is required');
+    }
+    const category = await prisma.category.findUnique({
+      where: { slug: product.categorySlug },
+      select: { id: true },
+    });
+    if (!category) {
+      throw new BadRequestException(`Category not found: ${product.categorySlug}`);
+    }
+    return category.id;
   }
 
   async updateUserRole(userId: string, role: UserRole): Promise<AdminUserItem> {

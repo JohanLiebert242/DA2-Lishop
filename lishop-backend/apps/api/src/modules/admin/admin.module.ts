@@ -11,9 +11,10 @@ import { PaymentsModule } from '../payments/payments.module';
 import { InvoicesModule } from '../invoices/invoices.module';
 import { RefundsModule } from '../refunds/refunds.module';
 import { WalletModule } from '../wallet/wallet.module';
+import { ProductsModule } from '../products/products.module';
 
 @Module({
-  imports: [NotificationsModule, ReturnsModule, SupportModule, ReviewsModule, PromotionsModule, PaymentsModule, InvoicesModule, RefundsModule, WalletModule],
+  imports: [NotificationsModule, ReturnsModule, SupportModule, ReviewsModule, PromotionsModule, PaymentsModule, InvoicesModule, RefundsModule, WalletModule, ProductsModule],
   providers: [AdminRepository, AdminService],
   controllers: [AdminController],
 })

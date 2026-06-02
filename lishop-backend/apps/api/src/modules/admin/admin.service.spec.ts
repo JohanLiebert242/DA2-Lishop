@@ -5,6 +5,7 @@ import { AdminRepository } from './admin.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { InvoicesService } from '../invoices/invoices.service';
 import { RedisService } from '../redis/redis.service';
+import { ProductsService } from '../products/products.service';
 import { OrderStatus } from '@lishop/database';
 
 const mockStats = { orderCount: 10, revenueVnd: 5000000, userCount: 20, productCount: 30 };
@@ -45,6 +46,7 @@ describe('AdminService', () => {
   const notifRepo = { createNotification: jest.fn() };
   const invoicesService = { generateForOrder: jest.fn() };
   const redisService = { get: jest.fn(), setex: jest.fn() };
+  const productsService = { create: jest.fn() };
 
   beforeEach(async () => {
     notifRepo.createNotification.mockResolvedValue(undefined);
@@ -58,6 +60,7 @@ describe('AdminService', () => {
         { provide: NotificationsRepository, useValue: notifRepo },
         { provide: InvoicesService, useValue: invoicesService },
         { provide: RedisService, useValue: redisService },
+        { provide: ProductsService, useValue: productsService },
       ],
     }).compile();
     service = module.get(AdminService);
@@ -121,5 +124,26 @@ describe('AdminService', () => {
     const result = await service.getAnalytics();
     expect(result.dailyRevenue).toHaveLength(1);
     expect(result.topProducts).toHaveLength(1);
+  });
+
+  it('importProducts creates products and returns a summary', async () => {
+    productsService.create.mockResolvedValue({ id: 'p1' });
+    const result = await service.importProducts({
+      products: [{
+        name: 'Imported product',
+        description: 'Imported description',
+        priceVnd: 100000,
+        priceUsd: 400,
+        stock: 5,
+        categoryId: '11111111-1111-1111-1111-111111111111',
+      }],
+    });
+
+    expect(productsService.create).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Imported product',
+      categoryId: '11111111-1111-1111-1111-111111111111',
+      weightGrams: 500,
+    }));
+    expect(result).toEqual({ created: 1, failed: 0, errors: [] });
   });
 });

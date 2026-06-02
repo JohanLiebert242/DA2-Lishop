@@ -5,6 +5,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { ModerateReviewDto } from './dto/moderate-review.dto';
+import { ImportProductsDto } from './dto/import-products.dto';
 import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -121,6 +122,13 @@ export class AdminController {
   @ApiOperation({ summary: 'Get revenue and top products analytics' })
   getAnalytics() {
     return this.adminService.getAnalytics();
+  }
+
+  @Post('products/import')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Import products in bulk from parsed JSON or CSV data' })
+  importProducts(@Body() dto: ImportProductsDto) {
+    return this.adminService.importProducts(dto);
   }
 
   @Get('returns')

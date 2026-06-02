@@ -7,6 +7,67 @@ import { adminApi, AdminProduct, AdminCategory, CreateProductInput } from '../..
 
 interface ImageEntry { url: string; alt: string; isPrimary: boolean }
 
+function splitCsvLine(line: string): string[] {
+  const values: string[] = [];
+  let current = '';
+  let quoted = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && quoted && next === '"') {
+      current += '"';
+      i += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === ',' && !quoted) {
+      values.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  values.push(current.trim());
+  return values;
+}
+
+function parseProductsCsv(text: string): CreateProductInput[] {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = splitCsvLine(lines[0]!).map((header) => header.trim());
+
+  return lines.slice(1).map((line) => {
+    const values = splitCsvLine(line);
+    const row = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']));
+    const imageUrl = row['imageUrl']?.trim();
+    const tags = row['tags']?.split('|').map((tag) => tag.trim()).filter(Boolean);
+
+    return {
+      name: row['name'] ?? '',
+      ...(row['sku'] ? { sku: row['sku'] } : {}),
+      description: row['description'] ?? '',
+      priceVnd: Number(row['priceVnd'] ?? 0),
+      priceUsd: Number(row['priceUsd'] ?? 0),
+      stock: Number(row['stock'] ?? 0),
+      weightGrams: Number(row['weightGrams'] ?? 500),
+      ...(row['categoryId'] ? { categoryId: row['categoryId'] } : {}),
+      ...(row['categorySlug'] ? { categorySlug: row['categorySlug'] } : {}),
+      ...(imageUrl ? { images: [{ url: imageUrl, alt: row['imageAlt'] ?? '', isPrimary: true }] } : {}),
+      ...(tags && tags.length > 0 ? { tags } : {}),
+    };
+  });
+}
+
+function parseProductsImport(text: string): CreateProductInput[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    const parsed = JSON.parse(trimmed) as CreateProductInput[] | { products: CreateProductInput[] };
+    return Array.isArray(parsed) ? parsed : parsed.products;
+  }
+  return parseProductsCsv(trimmed);
+}
+
 interface ProductModalProps {
   existing?: AdminProduct;
   categories: AdminCategory[];
@@ -178,9 +239,105 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
   );
 }
 
+function ProductImportModal({
+  onClose,
+  onImported,
+}: {
+  onClose: () => void;
+  onImported: () => void;
+}) {
+  const [rawText, setRawText] = useState('');
+  const [previewCount, setPreviewCount] = useState(0);
+  const [error, setError] = useState('');
+
+  function refreshPreview(text: string) {
+    setRawText(text);
+    try {
+      setPreviewCount(parseProductsImport(text).length);
+      setError('');
+    } catch (err) {
+      setPreviewCount(0);
+      setError(err instanceof Error ? err.message : 'Không đọc được dữ liệu import');
+    }
+  }
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      const products = parseProductsImport(rawText);
+      if (products.length === 0) throw new Error('File import không có sản phẩm hợp lệ');
+      return adminApi.importProducts(products);
+    },
+    onSuccess: () => onImported(),
+    onError: (err: Error) => setError(err.message),
+  });
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    refreshPreview(await file.text());
+  }
+
+  const sampleCsv = 'name,sku,description,priceVnd,priceUsd,stock,weightGrams,categorySlug,imageUrl,tags\nÁo imported,IMP-001,Mô tả sản phẩm,199000,799,20,500,thoi-trang,https://example.com/image.jpg,import|new';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <h3 className="mb-4 text-base font-semibold text-gray-900">Import sản phẩm</h3>
+        <div className="space-y-3">
+          <input
+            type="file"
+            accept=".json,.csv,text/csv,application/json"
+            onChange={(event) => handleFile(event.target.files?.[0])}
+            className="block w-full cursor-pointer rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
+          />
+          <textarea
+            value={rawText}
+            onChange={(event) => refreshPreview(event.target.value)}
+            rows={10}
+            className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            placeholder={sampleCsv}
+          />
+          <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+            CSV cần header. Dùng <span className="font-mono">categoryId</span> hoặc <span className="font-mono">categorySlug</span>. JSON có thể là mảng sản phẩm hoặc object <span className="font-mono">{'{"products":[]}'}</span>.
+          </div>
+          {previewCount > 0 && (
+            <p className="text-xs font-medium text-emerald-700">Đã đọc {previewCount} sản phẩm.</p>
+          )}
+          {mutation.data && (
+            <div className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+              Tạo thành công {mutation.data.created}, lỗi {mutation.data.failed}.
+              {mutation.data.errors.length > 0 && (
+                <ul className="mt-1 list-disc pl-4">
+                  {mutation.data.errors.slice(0, 5).map((item) => (
+                    <li key={`${item.index}-${item.name}`}>Dòng {item.index + 1}: {item.message}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="cursor-pointer rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Đóng
+          </button>
+          <button
+            type="button"
+            onClick={() => mutation.mutate()}
+            disabled={previewCount === 0 || mutation.isPending}
+            className="cursor-pointer rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {mutation.isPending ? 'Đang import...' : 'Import'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductsPage() {
   const queryClient = useQueryClient();
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [productSearch, setProductSearch] = useState('');
 
@@ -217,6 +374,13 @@ export default function ProductsPage() {
           placeholder="Tìm sản phẩm..."
           className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none w-48"
         />
+        <button
+          type="button"
+          onClick={() => setShowImportModal(true)}
+          className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 whitespace-nowrap"
+        >
+          Import
+        </button>
         <button
           type="button"
           onClick={() => { setEditingProduct(null); setShowProductModal(true); }}
@@ -306,6 +470,12 @@ export default function ProductsPage() {
           categories={categories}
           onClose={() => { setShowProductModal(false); setEditingProduct(null); }}
           onSaved={() => queryClient.invalidateQueries({ queryKey: ['admin-products'] })}
+        />
+      )}
+      {showImportModal && (
+        <ProductImportModal
+          onClose={() => setShowImportModal(false)}
+          onImported={() => queryClient.invalidateQueries({ queryKey: ['admin-products'] })}
         />
       )}
     </div>
