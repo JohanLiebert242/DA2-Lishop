@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { CouponType } from '@lishop/database';
 import { CouponsRepository } from './coupons.repository';
 
@@ -10,6 +11,25 @@ export interface CouponValidationResult {
 @Injectable()
 export class CouponsService {
   constructor(private readonly repo: CouponsRepository) {}
+
+  async issueHighValueOrderCoupon(userId: string, orderNumber: string) {
+    void userId;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    const safeOrderNumber = orderNumber.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const uniqueSuffix = randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+
+    return this.repo.create({
+      code: `NEXT10-${safeOrderNumber}-${uniqueSuffix}`,
+      type: CouponType.PERCENT,
+      value: 10,
+      minOrderVnd: 0,
+      maxUses: 1,
+      usedCount: 0,
+      expiresAt,
+      isActive: true,
+    });
+  }
 
   async validateCoupon(
     code: string,

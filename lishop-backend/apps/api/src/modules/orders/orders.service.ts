@@ -15,6 +15,7 @@ import { PlaceOrderDto } from './dto/place-order.dto';
 import { OrderStatus, PaymentMethod, ShippingProvider } from '@lishop/database';
 
 const CANCELLABLE_STATUSES: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.PROCESSING];
+const HIGH_VALUE_ORDER_COUPON_THRESHOLD_VND = 30_000_000;
 
 @Injectable()
 export class OrdersService {
@@ -100,6 +101,24 @@ export class OrdersService {
     // Record coupon usage so it cannot be reused
     if (cart.couponCode) {
       await this.couponsService.recordUsage(cart.couponCode, userId);
+    }
+
+    if (totalVnd >= HIGH_VALUE_ORDER_COUPON_THRESHOLD_VND) {
+      const rewardCoupon = await this.couponsService.issueHighValueOrderCoupon(
+        userId,
+        order.orderNumber,
+      );
+      this.notifRepo
+        .createNotification(
+          userId,
+          'Bạn nhận được coupon 10%',
+          `Đơn hàng #${order.orderNumber} đạt từ 30 triệu. Mã ${rewardCoupon.code} giảm 10% cho lần mua kế tiếp.`,
+          'PROMOTIONS',
+          rewardCoupon.id,
+        )
+        .catch((err: unknown) =>
+          console.error('[OrdersService] Failed to create high-value coupon notification', err),
+        );
     }
 
     await this.cartService.clearCart(userId);

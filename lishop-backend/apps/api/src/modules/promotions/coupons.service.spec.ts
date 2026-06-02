@@ -89,4 +89,28 @@ describe('CouponsService', () => {
     const coupon = makeCoupon({ type: 'FREE_SHIPPING', value: 0 });
     expect(service.calculateDiscount(coupon, 500000)).toBe(0);
   });
+
+  it('issueHighValueOrderCoupon creates a one-use 10 percent coupon', async () => {
+    const createdCoupon = makeCoupon({
+      code: 'NEXT10-LS123456-ABCDEF12',
+      type: 'PERCENT',
+      value: 10,
+      maxUses: 1,
+    });
+    repo.create.mockResolvedValue(createdCoupon);
+
+    const result = await service.issueHighValueOrderCoupon('u1', 'LS-123456');
+
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({
+      code: expect.stringMatching(/^NEXT10-LS123456-[A-Z0-9]{8}$/),
+      type: 'PERCENT',
+      value: 10,
+      minOrderVnd: 0,
+      maxUses: 1,
+      usedCount: 0,
+      isActive: true,
+      expiresAt: expect.any(Date),
+    }));
+    expect(result.code).toBe('NEXT10-LS123456-ABCDEF12');
+  });
 });

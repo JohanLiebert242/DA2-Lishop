@@ -79,7 +79,7 @@ describe('OrdersService', () => {
   };
   const addressRepo = { findById: jest.fn() };
   const cartService = { getCart: jest.fn(), clearCart: jest.fn() };
-  const couponsService = { recordUsage: jest.fn() };
+  const couponsService = { recordUsage: jest.fn(), issueHighValueOrderCoupon: jest.fn() };
   const notifRepo = { createNotification: jest.fn() };
   const shippingService = { calculateFee: jest.fn().mockReturnValue(30000) };
   const walletService = { deductForOrder: jest.fn() };
@@ -87,6 +87,10 @@ describe('OrdersService', () => {
   beforeEach(async () => {
     walletService.deductForOrder.mockResolvedValue(undefined);
     couponsService.recordUsage.mockResolvedValue(undefined);
+    couponsService.issueHighValueOrderCoupon.mockResolvedValue({
+      id: 'coupon-next-10',
+      code: 'NEXT10-LS123456-ABCDEF12',
+    });
     const module = await Test.createTestingModule({
       providers: [
         OrdersService,
@@ -156,6 +160,26 @@ describe('OrdersService', () => {
       'order1',
     );
     expect(result.orderNumber).toBe('LS-123456');
+  });
+
+  it('placeOrder awards a 10 percent next-order coupon for orders from 30 million VND', async () => {
+    cartService.getCart.mockResolvedValue(mockCart);
+    addressRepo.findById.mockResolvedValue(mockAddress);
+    shippingService.calculateFee.mockReturnValue(30000);
+    repo.create.mockResolvedValue(mockOrder);
+    cartService.clearCart.mockResolvedValue(undefined);
+    notifRepo.createNotification.mockResolvedValue({});
+
+    await service.placeOrder('u1', defaultDto);
+
+    expect(couponsService.issueHighValueOrderCoupon).toHaveBeenCalledWith('u1', 'LS-123456');
+    expect(notifRepo.createNotification).toHaveBeenCalledWith(
+      'u1',
+      'Bạn nhận được coupon 10%',
+      expect.stringContaining('NEXT10-LS123456-ABCDEF12'),
+      'PROMOTIONS',
+      'coupon-next-10',
+    );
   });
 
   it('findMyOrders returns orders for user', async () => {
