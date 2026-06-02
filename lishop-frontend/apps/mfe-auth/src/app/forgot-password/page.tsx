@@ -3,25 +3,24 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { ForgotPasswordSchema } from '@lishop/contracts';
 import Link from 'next/link';
 import { useState } from 'react';
 import { authApi } from '../../lib/auth-api';
+import { toast } from '@lishop/ui';
 
-const ForgotSchema = z.object({
-  email: z.string().email('Email không hợp lệ'),
-});
-
-type ForgotForm = z.infer<typeof ForgotSchema>;
+type ForgotForm = z.infer<typeof ForgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<ForgotForm>({
-    resolver: zodResolver(ForgotSchema),
+    resolver: zodResolver(ForgotPasswordSchema),
   });
 
   async function onSubmit(data: ForgotForm) {
     await authApi.forgotPassword(data.email).catch(() => {});
+    toast.success('Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi');
     setSubmitted(true); // Always show success to avoid leaking emails
   }
 

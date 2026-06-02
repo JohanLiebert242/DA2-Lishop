@@ -3,6 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { RegisterSchema } from '@lishop/contracts';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { authApi } from '../../lib/auth-api';
@@ -10,15 +11,9 @@ import { hasSessionCookie } from '@lishop/shared';
 import { Button } from '@lishop/ui';
 import { Input } from '@lishop/ui';
 import { Label } from '@lishop/ui';
+import { toast } from '@lishop/ui';
 
 const SHELL_URL = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
-
-const RegisterSchema = z.object({
-  firstName: z.string().min(1, 'Vui lòng nhập tên'),
-  lastName: z.string().min(1, 'Vui lòng nhập họ'),
-  email: z.string().email('Email không hợp lệ'),
-  password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự').max(128),
-});
 
 type RegisterForm = z.infer<typeof RegisterSchema>;
 
@@ -38,10 +33,13 @@ export default function RegisterPage() {
     setServerError(null);
     try {
       await authApi.register(data);
+      toast.success('Tạo tài khoản thành công');
       setSuccess(true);
       setTimeout(() => { window.location.href = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010'; }, 500);
     } catch (e) {
-      setServerError((e as Error).message);
+      const message = (e as Error).message;
+      setServerError(message);
+      toast.error(message || 'Tạo tài khoản thất bại');
     }
   }
 

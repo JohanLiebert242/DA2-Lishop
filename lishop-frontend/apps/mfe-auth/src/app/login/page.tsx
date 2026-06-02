@@ -3,6 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { LoginSchema } from '@lishop/contracts';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { authApi } from '../../lib/auth-api';
@@ -10,13 +11,9 @@ import { hasSessionCookie } from '@lishop/shared';
 import { Button } from '@lishop/ui';
 import { Input } from '@lishop/ui';
 import { Label } from '@lishop/ui';
+import { toast } from '@lishop/ui';
 
 const SHELL_URL = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
-
-const LoginSchema = z.object({
-  email: z.string().email('Email không hợp lệ'),
-  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
-});
 
 type LoginForm = z.infer<typeof LoginSchema>;
 
@@ -36,11 +33,14 @@ export default function LoginPage() {
     setServerError(null);
     try {
       await authApi.login(data);
+      toast.success('Đăng nhập thành công');
       setSuccess(true);
       const shellUrl = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
       setTimeout(() => { window.location.href = shellUrl; }, 500);
     } catch (e) {
-      setServerError((e as Error).message);
+      const message = (e as Error).message;
+      setServerError(message);
+      toast.error(message || 'Đăng nhập thất bại');
     }
   }
 

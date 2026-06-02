@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { useAuthStore } from '../stores/auth.store';
 import { eventBus, LishopEvent } from '@lishop/event-bus';
+import { toast } from '@lishop/ui';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
@@ -41,6 +42,7 @@ export function useAuth() {
     // Backend clears lishop_at and lishop_session cookies
     clearAuth();
     eventBus.emit(LishopEvent.AUTH_LOGOUT, undefined);
+    toast.success('Đã đăng xuất');
   }, [accessToken, clearAuth]);
 
   const refresh = useCallback(async (): Promise<string | null> => {

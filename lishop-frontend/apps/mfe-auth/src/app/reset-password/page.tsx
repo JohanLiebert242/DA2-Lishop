@@ -3,13 +3,15 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { ResetPasswordSchema } from '@lishop/contracts';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { authApi } from '../../lib/auth-api';
+import { toast } from '@lishop/ui';
 
 const ResetSchema = z.object({
-  password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự').max(128),
+  password: ResetPasswordSchema.shape.password,
   confirm: z.string(),
 }).refine((d) => d.password === d.confirm, {
   message: 'Mật khẩu không khớp',
@@ -32,9 +34,12 @@ export default function ResetPasswordPage() {
     setServerError(null);
     try {
       await authApi.resetPassword(token, data.password);
+      toast.success('Mật khẩu đã được đặt lại');
       setSuccess(true);
     } catch (e) {
-      setServerError((e as Error).message);
+      const message = (e as Error).message;
+      setServerError(message);
+      toast.error(message || 'Đặt lại mật khẩu thất bại');
     }
   }
 

@@ -6,6 +6,7 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...init.headers },
     ...init,
   });
+  if (res.status === 204) return undefined as T;
   const json = await res.json();
   if (!res.ok) {
     throw new Error(json.message ?? json.error ?? 'Request failed');
