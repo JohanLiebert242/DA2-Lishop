@@ -17,6 +17,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<UpdateProfileInput>({});
   const [message, setMessage] = useState('');
+  const [avatarError, setAvatarError] = useState('');
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
@@ -103,7 +104,32 @@ export default function ProfilePage() {
       lastName: profile?.lastName ?? '',
       avatarUrl: profile?.avatarUrl ?? '',
     });
+    setAvatarError('');
     setEditing(true);
+  }
+
+  function handleAvatarUpload(file: File | undefined) {
+    setAvatarError('');
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Vui lòng chọn file ảnh.');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError('Ảnh đại diện không được vượt quá 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setForm((f) => ({ ...f, avatarUrl: reader.result as string }));
+      }
+    };
+    reader.onerror = () => setAvatarError('Không thể đọc file ảnh, vui lòng thử lại.');
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -143,9 +169,8 @@ export default function ProfilePage() {
 
             {editing ? (
               <div className="space-y-4">
-                {/* Avatar preview + URL input */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1.5">Ảnh đại diện (URL)</label>
+                  <label className="block text-xs font-bold text-stone-700 mb-1.5">Ảnh đại diện</label>
                   <div className="flex items-center gap-3">
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-600 text-lg font-bold text-white shadow-brand">
                       {form.avatarUrl ? (
@@ -155,12 +180,16 @@ export default function ProfilePage() {
                         initials
                       )}
                     </div>
-                    <input
-                      value={form.avatarUrl ?? ''}
-                      onChange={(e) => setForm((f) => ({ ...f, avatarUrl: e.target.value }))}
-                      className="input-field"
-                      placeholder="https://example.com/avatar.jpg"
-                    />
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleAvatarUpload(e.target.files?.[0])}
+                        className="block w-full cursor-pointer rounded-xl border border-warm bg-white px-3 py-2 text-sm text-stone-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-indigo-700"
+                      />
+                      <p className="mt-1 text-xs text-muted">Chỉ nhận file ảnh, tối đa 2MB.</p>
+                      {avatarError && <p className="mt-1 text-xs font-semibold text-red-600">{avatarError}</p>}
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -206,12 +235,6 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between rounded-xl bg-warm px-4 py-3">
                   <span className="text-sm text-muted">Email</span>
                   <span className="text-sm font-semibold text-stone-900">{profile.email}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-warm px-4 py-3">
-                  <span className="text-sm text-muted">Vai trò</span>
-                  <span className="text-sm font-semibold text-stone-900">
-                    {profile.role === 'ADMIN' ? 'Quản trị viên' : 'Khách hàng'}
-                  </span>
                 </div>
                 <button
                   onClick={handleEdit}
