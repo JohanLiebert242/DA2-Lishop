@@ -65,7 +65,15 @@ test.describe('checkout flow', () => {
     expect(product, 'seeded catalog should contain an in-stock product').toBeTruthy();
 
     await page.goto(`${CATALOG_URL}/products/${product!.slug}`);
-    await page.getByRole('button', { name: /thêm|them|add/i }).first().click();
+    await page.getByRole('button', { name: /giỏ|gio|cart/i }).click();
+    await expect
+      .poll(async () => {
+        const response = await page.request.get(`${API_URL}/cart`);
+        if (!response.ok()) return 0;
+        const cart = await unwrap<{ items: unknown[] }>(response);
+        return cart.items.length;
+      })
+      .toBeGreaterThan(0);
 
     await page.goto(`${CART_URL}/cart`);
     await expect(page.getByRole('link', { name: /thanh toán|thanh toan|checkout/i })).toBeVisible();
