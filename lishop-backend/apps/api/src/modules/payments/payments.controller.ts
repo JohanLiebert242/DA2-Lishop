@@ -25,6 +25,39 @@ import { Public } from '../auth/decorators/public.decorator';
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
+  @Public()
+  @Get('mock/return')
+  @ApiOperation({ summary: 'Mock gateway return for local payment testing' })
+  @Redirect()
+  async mockReturn(
+    @Query('orderId') orderId: string,
+    @Query('success') success = 'true',
+  ) {
+    const returnUrl =
+      process.env['PAYMENT_RETURN_URL'] ??
+      process.env['VNPAY_RETURN_URL'] ??
+      'http://localhost:3004/checkout/payment-result';
+    const result = await this.paymentsService.handleMockPayment(
+      orderId,
+      success !== 'false',
+    );
+    return {
+      url: `${returnUrl}?success=${result.success}&orderId=${result.orderId}`,
+    };
+  }
+
+  @Public()
+  @Post('mock/webhook')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mock payment webhook for local payment testing' })
+  mockWebhook(@Body() body: { orderId: string; success?: boolean; providerRef?: string }) {
+    return this.paymentsService.handleMockPayment(
+      body.orderId,
+      body.success ?? true,
+      body.providerRef,
+    );
+  }
+
   @Get(':orderId')
   @ApiOperation({ summary: 'Get payment status for an order' })
   getPayment(

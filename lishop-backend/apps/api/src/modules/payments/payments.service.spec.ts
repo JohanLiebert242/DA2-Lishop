@@ -6,7 +6,7 @@ import { PaymentsGatewayService } from './payments.gateway';
 
 jest.mock('@lishop/database', () => ({
   prisma: {
-    payment: { findFirst: jest.fn(), update: jest.fn() },
+    payment: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
     order: { findUnique: jest.fn(), update: jest.fn() },
     $transaction: jest.fn(),
   },
@@ -161,6 +161,39 @@ describe('PaymentsService', () => {
 
       expect(result.success).toBe(true);
       expect(prisma.$transaction).toHaveBeenCalled();
+    });
+  });
+
+  describe('handleMockPayment', () => {
+    it('completes payment and moves order to processing on success', async () => {
+      (prisma.payment.findUnique as jest.Mock).mockResolvedValue({ orderId: 'order1' });
+      (prisma.$transaction as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.handleMockPayment('order1', true, 'mock-ref');
+
+      expect(result).toEqual({ success: true, orderId: 'order1' });
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.payment.update).toHaveBeenCalledWith({
+        where: { orderId: 'order1' },
+        data: { status: 'COMPLETED', providerRef: 'mock-ref' },
+      });
+      expect(prisma.order.update).toHaveBeenCalledWith({
+        where: { id: 'order1' },
+        data: { status: 'PROCESSING' },
+      });
+    });
+
+    it('marks payment failed on mock failure', async () => {
+      (prisma.payment.findUnique as jest.Mock).mockResolvedValue({ orderId: 'order1' });
+      (prisma.payment.update as jest.Mock).mockResolvedValue({ orderId: 'order1' });
+
+      const result = await service.handleMockPayment('order1', false, 'mock-fail');
+
+      expect(result).toEqual({ success: false, orderId: 'order1' });
+      expect(prisma.payment.update).toHaveBeenCalledWith({
+        where: { orderId: 'order1' },
+        data: { status: 'FAILED', providerRef: 'mock-fail' },
+      });
     });
   });
 });

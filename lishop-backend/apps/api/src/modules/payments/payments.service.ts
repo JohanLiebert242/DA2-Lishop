@@ -98,6 +98,44 @@ export class PaymentsService {
     return { success, orderId };
   }
 
+  async handleMockPayment(
+    orderId: string,
+    success: boolean,
+    providerRef?: string,
+  ): Promise<{ success: boolean; orderId: string }> {
+    const payment = await prisma.payment.findUnique({
+      where: { orderId },
+      select: { orderId: true },
+    });
+    if (!payment) throw new NotFoundException(`Payment for order ${orderId} not found`);
+
+    if (success) {
+      await prisma.$transaction([
+        prisma.payment.update({
+          where: { orderId },
+          data: {
+            status: PaymentStatus.COMPLETED,
+            providerRef: providerRef ?? `mock_${Date.now()}`,
+          },
+        }),
+        prisma.order.update({
+          where: { id: orderId },
+          data: { status: OrderStatus.PROCESSING },
+        }),
+      ]);
+    } else {
+      await prisma.payment.update({
+        where: { orderId },
+        data: {
+          status: PaymentStatus.FAILED,
+          providerRef: providerRef ?? `mock_failed_${Date.now()}`,
+        },
+      });
+    }
+
+    return { success, orderId };
+  }
+
   async handleMoMoIpn(body: Record<string, string | number>): Promise<void> {
     const valid = this.gateway.verifyMoMoIpn(body);
     if (!valid) return;
