@@ -195,6 +195,7 @@ interface Props {
 
 export function ProductDetailClient({ slug, initialProduct }: Props) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(() => new Set());
   const [addingToCart, setAddingToCart] = useState(false);
   const [qty, setQty] = useState(1);
   const addToCartBtnRef = useRef<HTMLButtonElement>(null);
@@ -284,6 +285,11 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     ? product.images.sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
     : null;
   const currentImage = images?.[selectedImageIndex];
+  const availableCurrentImage = currentImage && !failedImageIds.has(currentImage.id) ? currentImage : null;
+
+  function markImageFailed(id: string) {
+    setFailedImageIds((previous) => new Set(previous).add(id));
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -303,13 +309,14 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
         {/* Images */}
         <div>
           <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-stone-100">
-            {currentImage ? (
+            {availableCurrentImage ? (
               <Image
-                src={currentImage.url}
-                alt={currentImage.alt ?? product.name}
+                src={availableCurrentImage.url}
+                alt={availableCurrentImage.alt ?? product.name}
                 fill
                 className="object-cover transition-transform duration-300 hover:scale-[1.35] cursor-zoom-in"
                 priority
+                onError={() => markImageFailed(availableCurrentImage.id)}
               />
             ) : (
               <div className="flex h-full items-center justify-center text-muted">
@@ -329,7 +336,19 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                       : 'border-warm hover:border-indigo-300'
                   }`}
                 >
-                  <Image src={img.url} alt={img.alt ?? ''} fill className="object-cover" />
+                  {!failedImageIds.has(img.id) ? (
+                    <Image
+                      src={img.url}
+                      alt={img.alt ?? ''}
+                      fill
+                      className="object-cover"
+                      onError={() => markImageFailed(img.id)}
+                    />
+                  ) : (
+                    <span className="flex h-full items-center justify-center bg-stone-100 text-[10px] font-semibold text-muted">
+                      No image
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

@@ -241,8 +241,8 @@ async function main() {
       averageRating: 4.8,
       reviewCount: 124,
       images: [
-        { url: 'https://images.unsplash.com/photo-1695048133142-1a20484bce71?w=600', alt: 'iPhone 15 Pro Max', isPrimary: true },
-        { url: 'https://images.unsplash.com/photo-1696426032855-e1cfc71bd9cd?w=600', alt: 'iPhone 15 Pro Max back', isPrimary: false },
+        { url: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600', alt: 'iPhone 15 Pro Max', isPrimary: true },
+        { url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600', alt: 'iPhone 15 Pro Max back', isPrimary: false },
       ],
       tags: [tagHot.id, tagBestSeller.id],
     },
@@ -257,7 +257,7 @@ async function main() {
       averageRating: 4.7,
       reviewCount: 89,
       images: [
-        { url: 'https://images.unsplash.com/photo-1706439168897-77474011a8d5?w=600', alt: 'Samsung Galaxy S24 Ultra', isPrimary: true },
+        { url: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=600', alt: 'Samsung Galaxy S24 Ultra', isPrimary: true },
       ],
       tags: [tagHot.id],
     },
@@ -288,7 +288,7 @@ async function main() {
       averageRating: 4.9,
       reviewCount: 203,
       images: [
-        { url: 'https://images.unsplash.com/photo-1706133700681-c78f63059d14?w=600', alt: 'MacBook Pro 14', isPrimary: true },
+        { url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600', alt: 'MacBook Pro 14', isPrimary: true },
         { url: 'https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=600', alt: 'MacBook Pro 14 side', isPrimary: false },
       ],
       tags: [tagBestSeller.id, tagHot.id],
@@ -335,7 +335,7 @@ async function main() {
       averageRating: 4.4,
       reviewCount: 312,
       images: [
-        { url: 'https://images.unsplash.com/photo-1588769606168-f8b7fff0e81e?w=600', alt: 'Áo Polo Lacoste', isPrimary: true },
+        { url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600', alt: 'Áo Polo Lacoste', isPrimary: true },
       ],
       tags: [tagBestSeller.id],
     },

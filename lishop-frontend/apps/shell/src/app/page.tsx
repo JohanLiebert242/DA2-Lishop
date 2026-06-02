@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState } from 'react';
 import { formatVND } from '@lishop/shared';
 import { useAuthStore } from '../stores/auth.store';
 
@@ -53,14 +54,17 @@ function Stars({ rating, count }: { rating: number; count: number }) {
 
 function ProductCard({ product, badge }: { product: Product; badge?: React.ReactNode }) {
   const img = product.images.find(i => i.isPrimary) ?? product.images[0];
+  const [imageFailed, setImageFailed] = useState(false);
+  const availableImage = img && !imageFailed ? img : null;
   return (
     <Link href={`${CATALOG_URL}/products/${product.slug}`} className="group block">
       <div className="card overflow-hidden h-full flex flex-col">
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-50">
-          {img ? (
-            <Image src={img.url} alt={img.alt ?? product.name} fill
+          {availableImage ? (
+            <Image src={availableImage.url} alt={availableImage.alt ?? product.name} fill
               className="object-cover transition-all duration-300 group-hover:scale-[1.04]"
-              sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw" />
+              sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw"
+              onError={() => setImageFailed(true)} />
           ) : (
             <div className="flex h-full items-center justify-center text-faint text-xs">Chưa có ảnh</div>
           )}
@@ -83,6 +87,39 @@ function ProductCard({ product, badge }: { product: Product; badge?: React.React
             {formatVND(product.priceVnd)}
           </p>
         </div>
+      </div>
+    </Link>
+  );
+}
+
+function SaleProductCard({ item }: { item: FlashSaleItem }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const salePrice = Math.round(item.product.priceVnd * (1 - item.discountPercent / 100));
+  const img = item.product.images[0];
+  const availableImage = img && !imageFailed ? img : null;
+
+  return (
+    <Link key={item.id} href={`${CATALOG_URL}/products/${item.product.slug}`}
+      className="group relative rounded-xl overflow-hidden bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all">
+      <div className="absolute top-2 right-2 z-10 rounded-lg bg-red-500 px-1.5 py-0.5 text-xs font-black text-white shadow">
+        -{item.discountPercent}%
+      </div>
+      {availableImage ? (
+        <div className="relative aspect-square overflow-hidden bg-white/5">
+          <Image src={availableImage.url} alt={item.product.name} fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(max-width:640px) 50vw,20vw"
+            onError={() => setImageFailed(true)} />
+        </div>
+      ) : (
+        <div className="flex aspect-square items-center justify-center bg-white/5 text-xs font-semibold text-white/55">
+          No image
+        </div>
+      )}
+      <div className="p-2.5">
+        <p className="line-clamp-1 text-xs font-semibold text-white leading-snug">{item.product.name}</p>
+        <p className="mt-1 text-xs text-white/50 line-through">{formatVND(item.product.priceVnd)}</p>
+        <p className="text-sm font-black text-amber-300">{formatVND(salePrice)}</p>
       </div>
     </Link>
   );
@@ -361,31 +398,9 @@ export default function HomePage() {
             {activeSale.items.length > 0 && (
               <div className="px-6 pb-6">
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                  {activeSale.items.slice(0, 5).map(item => {
-                    const salePrice = Math.round(item.product.priceVnd * (1 - item.discountPercent / 100));
-                    const img = item.product.images[0];
-                    return (
-                      <Link key={item.id} href={`${CATALOG_URL}/products/${item.product.slug}`}
-                        className="group relative rounded-xl overflow-hidden bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all">
-                        {/* Discount badge */}
-                        <div className="absolute top-2 right-2 z-10 rounded-lg bg-red-500 px-1.5 py-0.5 text-xs font-black text-white shadow">
-                          -{item.discountPercent}%
-                        </div>
-                        {img && (
-                          <div className="relative aspect-square overflow-hidden bg-white/5">
-                            <Image src={img.url} alt={item.product.name} fill
-                              className="object-cover transition-transform duration-300 group-hover:scale-105"
-                              sizes="(max-width:640px) 50vw,20vw" />
-                          </div>
-                        )}
-                        <div className="p-2.5">
-                          <p className="line-clamp-1 text-xs font-semibold text-white leading-snug">{item.product.name}</p>
-                          <p className="mt-1 text-xs text-white/50 line-through">{formatVND(item.product.priceVnd)}</p>
-                          <p className="text-sm font-black text-amber-300">{formatVND(salePrice)}</p>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                  {activeSale.items.slice(0, 5).map(item => (
+                    <SaleProductCard key={item.id} item={item} />
+                  ))}
                 </div>
               </div>
             )}

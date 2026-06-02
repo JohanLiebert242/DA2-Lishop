@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatVND } from '@lishop/shared';
 import type { ProductSummary } from '../lib/catalog-api';
@@ -29,7 +30,9 @@ function Stars({ rating, count }: { rating: number; count: number }) {
 
 export function ProductCard({ product }: { product: ProductSummary }) {
   const queryClient = useQueryClient();
+  const [imageFailed, setImageFailed] = useState(false);
   const primaryImage = product.images.find((img) => img.isPrimary) ?? product.images[0];
+  const availableImage = primaryImage && !imageFailed ? primaryImage : null;
 
   const { data: wishlistIds = [] } = useQuery({
     queryKey: ['wishlist'],
@@ -58,13 +61,14 @@ export function ProductCard({ product }: { product: ProductSummary }) {
     <Link href={`/products/${product.slug}`} className="group block">
       <div className="card overflow-hidden h-full flex flex-col">
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-50">
-          {primaryImage ? (
+          {availableImage ? (
             <Image
-              src={primaryImage.url}
-              alt={primaryImage.alt ?? product.name}
+              src={availableImage.url}
+              alt={availableImage.alt ?? product.name}
               fill
               className="object-cover transition-all duration-350 group-hover:scale-[1.04]"
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              onError={() => setImageFailed(true)}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-faint text-sm">
