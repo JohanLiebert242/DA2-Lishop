@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { NotificationsRepository } from './notifications.repository';
+import { NotificationsStream } from './notifications.stream';
 
 const mockPrefs = [
   { id: 'p1', eventType: 'ORDER_STATUS', emailEnabled: true, pushEnabled: true, inAppEnabled: true },
@@ -28,12 +29,14 @@ describe('NotificationsService', () => {
     markAsRead: jest.fn(),
     createNotification: jest.fn(),
   };
+  const streamHub = { subscribe: jest.fn() };
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
       providers: [
         NotificationsService,
         { provide: NotificationsRepository, useValue: repo },
+        { provide: NotificationsStream, useValue: streamHub },
       ],
     }).compile();
     service = module.get(NotificationsService);
@@ -80,5 +83,12 @@ describe('NotificationsService', () => {
     repo.createNotification.mockResolvedValue(mockNotif);
     await service.createNotification('u1', 'Đơn hàng mới', 'Đơn hàng LS-001 đã được đặt.', 'ORDER_STATUS', 'order1');
     expect(repo.createNotification).toHaveBeenCalledWith('u1', 'Đơn hàng mới', 'Đơn hàng LS-001 đã được đặt.', 'ORDER_STATUS', 'order1');
+  });
+  it('stream delegates to stream hub', () => {
+    const observable = { subscribe: jest.fn() };
+    streamHub.subscribe.mockReturnValue(observable);
+    const result = service.stream('u1');
+    expect(streamHub.subscribe).toHaveBeenCalledWith('u1');
+    expect(result).toBe(observable);
   });
 });

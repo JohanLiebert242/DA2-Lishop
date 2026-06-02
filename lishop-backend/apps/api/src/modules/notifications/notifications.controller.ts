@@ -9,6 +9,7 @@ import {
   Patch,
   Put,
   Query,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
@@ -34,6 +35,12 @@ export class NotificationsController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
     return this.notificationsService.listFeed(user.id, page, limit);
+  }
+
+  @Sse('stream')
+  @ApiOperation({ summary: 'Subscribe to realtime in-app notifications' })
+  stream(@CurrentUser() user: { id: string }) {
+    return this.notificationsService.stream(user.id);
   }
 
   @Patch(':id/read')

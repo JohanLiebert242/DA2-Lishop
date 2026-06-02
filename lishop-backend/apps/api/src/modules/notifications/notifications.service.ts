@@ -4,10 +4,15 @@ import {
   NotificationPreferenceItem,
   NotificationItem,
 } from './notifications.repository';
+import { Observable } from 'rxjs';
+import { NotificationsStream } from './notifications.stream';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly repo: NotificationsRepository) {}
+  constructor(
+    private readonly repo: NotificationsRepository,
+    private readonly streamHub: NotificationsStream,
+  ) {}
 
   getPreferences(userId: string): Promise<NotificationPreferenceItem[]> {
     return this.repo.getPreferences(userId);
@@ -23,6 +28,10 @@ export class NotificationsService {
 
   listFeed(userId: string, page: number, limit: number): Promise<NotificationItem[]> {
     return this.repo.findByUserId(userId, page, limit);
+  }
+
+  stream(userId: string): Observable<MessageEvent> {
+    return this.streamHub.subscribe(userId);
   }
 
   async markAsRead(id: string, userId: string): Promise<NotificationItem> {

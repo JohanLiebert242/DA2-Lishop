@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { prisma } from '@lishop/database';
+import { NotificationsStream } from './notifications.stream';
 
 export const EVENT_TYPES = ['ORDER_STATUS', 'PROMOTIONS', 'NEW_PRODUCTS', 'REVIEWS'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -25,6 +26,8 @@ export interface NotificationItem {
 
 @Injectable()
 export class NotificationsRepository {
+  constructor(private readonly stream: NotificationsStream) {}
+
   async getPreferences(userId: string): Promise<NotificationPreferenceItem[]> {
     const existing = await prisma.notificationPreference.findMany({
       where: { userId },
@@ -127,7 +130,7 @@ export class NotificationsRepository {
         isRead: true,
         createdAt: true,
       },
-    }) as Promise<NotificationItem>;
+    }) as Promise<NotificationItem | null>;
   }
 
   async createNotification(
@@ -137,7 +140,7 @@ export class NotificationsRepository {
     type: string,
     relatedId?: string,
   ): Promise<NotificationItem> {
-    return prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         userId,
         title,
@@ -155,6 +158,8 @@ export class NotificationsRepository {
         isRead: true,
         createdAt: true,
       },
-    }) as Promise<NotificationItem>;
+    }) as NotificationItem;
+    this.stream.publish(userId, notification);
+    return notification;
   }
 }

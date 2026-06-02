@@ -4,6 +4,7 @@ const apiFetch = createApiFetch(
   process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000',
   process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001',
 );
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
 export interface NotificationItem {
   id: string;
@@ -49,4 +50,5 @@ export const notificationsApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  streamUrl: () => `${API_URL}/notifications/stream`,
 };

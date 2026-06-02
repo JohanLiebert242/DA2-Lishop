@@ -78,10 +78,40 @@ function NotificationRow({ notif }: { notif: NotificationItem }) {
 }
 
 function FeedTab() {
+  const queryClient = useQueryClient();
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notification-feed'],
     queryFn: () => notificationsApi.listFeed(1),
   });
+
+  useEffect(() => {
+    const stream = new EventSource(notificationsApi.streamUrl(), { withCredentials: true });
+
+    stream.addEventListener('notification', (event) => {
+      try {
+        const notification = JSON.parse((event as MessageEvent).data) as NotificationItem;
+        queryClient.setQueryData<NotificationItem[]>(['notification-feed'], (current = []) => {
+          if (current.some((item) => item.id === notification.id)) return current;
+          const next = [notification, ...current];
+          const unreadCount = next.filter((item) => !item.isRead).length.toString();
+          window.localStorage.setItem('lishop_notification_count', unreadCount);
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: 'lishop_notification_count',
+            newValue: unreadCount,
+          }));
+          return next;
+        });
+      } catch {
+        queryClient.invalidateQueries({ queryKey: ['notification-feed'] });
+      }
+    });
+
+    stream.onerror = () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-feed'] });
+    };
+
+    return () => stream.close();
+  }, [queryClient]);
 
   if (isLoading) {
     return (
