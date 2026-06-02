@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { hasSessionCookie } from '@lishop/shared';
 import {
   notificationsApi,
   NotificationItem,
@@ -239,7 +240,7 @@ type Tab = 'feed' | 'preferences';
 
 export default function NotificationsPage() {
   useEffect(() => {
-    if (!localStorage.getItem('lishop_at')) window.location.replace(`${AUTH_URL}/login`);
+    if (!hasSessionCookie()) window.location.replace(`${AUTH_URL}/login`);
   }, []);
 
   const [activeTab, setActiveTab] = useState<Tab>('feed');

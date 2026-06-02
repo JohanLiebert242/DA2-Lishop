@@ -6,6 +6,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { authApi } from '../../lib/auth-api';
+import { hasSessionCookie } from '@lishop/shared';
 import { Button } from '@lishop/ui';
 import { Input } from '@lishop/ui';
 import { Label } from '@lishop/ui';
@@ -24,7 +25,7 @@ export default function LoginPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem('lishop_at')) window.location.replace(SHELL_URL);
+    if (hasSessionCookie()) window.location.replace(SHELL_URL);
   }, []);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
@@ -34,8 +35,7 @@ export default function LoginPage() {
   async function onSubmit(data: LoginForm) {
     setServerError(null);
     try {
-      const result = await authApi.login(data);
-      localStorage.setItem('lishop_at', result.accessToken);
+      await authApi.login(data);
       setSuccess(true);
       const shellUrl = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
       setTimeout(() => { window.location.href = shellUrl; }, 500);

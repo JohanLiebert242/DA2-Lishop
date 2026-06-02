@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { hasSessionCookie } from '@lishop/shared';
 import { profileApi, UpdateProfileInput, LoyaltyPointItem } from '../../lib/profile-api';
 import { AccountSidebar } from '../../components/account-sidebar';
 
@@ -9,7 +10,7 @@ const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:30
 
 export default function ProfilePage() {
   useEffect(() => {
-    if (!localStorage.getItem('lishop_at')) window.location.replace(`${AUTH_URL}/login`);
+    if (!hasSessionCookie()) window.location.replace(`${AUTH_URL}/login`);
   }, []);
 
   const queryClient = useQueryClient();

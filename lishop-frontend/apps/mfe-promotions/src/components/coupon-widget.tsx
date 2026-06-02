@@ -1,19 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { hasSessionCookie } from '@lishop/shared';
 
 const CART_URL = process.env['NEXT_PUBLIC_MFE_CART_URL'] ?? 'http://localhost:3003';
 
 async function applyToCart(code: string): Promise<string> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('lishop_at') : null;
-  if (!token) return 'Vui lòng đăng nhập để sử dụng mã giảm giá';
+  if (!hasSessionCookie()) return 'Vui lòng đăng nhập để sử dụng mã giảm giá';
 
   const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
   const res = await fetch(`${API_URL}/cart/coupon`, {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ code }),
   });

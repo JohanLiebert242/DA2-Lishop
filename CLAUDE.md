@@ -91,8 +91,8 @@ modules/<domain>/
 ### Key Infrastructure
 
 - **Prisma singleton**: `import { prisma } from '@lishop/database'` — use this everywhere, never `new PrismaClient()`
-- **JWT**: `jose` v4 — `jwtVerify` / `new SignJWT(...)`. Access token in `Authorization: Bearer` header; refresh token in httpOnly cookie `lishop_rt`
-- **Auth token in localStorage**: `lishop_at` — all frontend MFEs read this key
+- **JWT**: `jose` v4 — `jwtVerify` / `new SignJWT(...)`. Access token in httpOnly cookie `lishop_at`; refresh token in httpOnly cookie `refresh_token`
+- **Auth session cookie**: `lishop_session` — frontend MFEs use this readable, non-sensitive cookie as the logged-in signal
 - **Redis**: via `RedisService` (ioredis wrapper) — cart data, token blacklist, reset tokens
 - **Response envelope**: `TransformInterceptor` wraps all responses as `{ data: T, statusCode, timestamp }`. Frontend always reads `json.data ?? json`
 - **Validation**: global `ValidationPipe` with `whitelist: true, forbidNonWhitelisted: true`
@@ -146,22 +146,17 @@ Exports `NotificationsRepository`. Any module that needs to create notifications
 Each MFE is a standalone Next.js 15 App Router app with its own:
 - `src/app/providers.tsx` — `QueryClientProvider` wrapper
 - `src/app/layout.tsx` — wraps children with `<Providers>`
-- `src/lib/<domain>-api.ts` — typed `apiFetch` wrapper that reads `lishop_at` from localStorage
+- `src/lib/<domain>-api.ts` — typed `apiFetch` wrapper that sends auth cookies with `credentials: 'include'`
 
 ### Data Fetching Pattern
 
 All MFEs use TanStack Query v5:
 
 ```typescript
-// Reading lishop_at (all api files follow this pattern)
-function getToken() {
-  if (typeof window === 'undefined') return null;
-  return window.localStorage.getItem('lishop_at');
-}
-
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     ...init,
   });
   const json = await res.json();

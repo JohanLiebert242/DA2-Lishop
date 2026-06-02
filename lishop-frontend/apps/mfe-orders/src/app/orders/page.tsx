@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { formatVND } from '@lishop/shared';
+import { formatVND, hasSessionCookie } from '@lishop/shared';
 import { ordersApi, OrderStatus } from '../../lib/orders-api';
 import { AccountSidebar } from '../../components/account-sidebar';
 
@@ -33,7 +33,7 @@ function SkeletonCard() {
 
 export default function OrdersPage() {
   useEffect(() => {
-    if (!localStorage.getItem('lishop_at')) window.location.replace(`${AUTH_URL}/login`);
+    if (!hasSessionCookie()) window.location.replace(`${AUTH_URL}/login`);
   }, []);
 
   const { data: orders = [], isLoading } = useQuery({

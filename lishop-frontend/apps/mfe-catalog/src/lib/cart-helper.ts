@@ -1,17 +1,18 @@
+import { hasSessionCookie } from '@lishop/shared';
+
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
 
 export async function addToCart(productId: string, quantity: number): Promise<void> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('lishop_at') : null;
-  if (!token) {
+  if (!hasSessionCookie()) {
     window.location.href = `${AUTH_URL}/login`;
     return;
   }
   const res = await fetch(`${API_URL}/cart/items`, {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ productId, quantity }),
   });

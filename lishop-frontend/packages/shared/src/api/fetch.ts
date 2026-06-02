@@ -1,5 +1,10 @@
 const DEFAULT_AUTH_URL = 'http://localhost:3001';
 
+export function hasSessionCookie(): boolean {
+  if (typeof document === 'undefined') return false;
+  return /(?:^|;\s*)lishop_session=1(?:;|$)/.test(document.cookie);
+}
+
 export function createApiFetch(apiUrl: string, authUrl = DEFAULT_AUTH_URL) {
   async function doRequest(path: string, init: RequestInit): Promise<Response> {
     return fetch(`${apiUrl}${path}`, {

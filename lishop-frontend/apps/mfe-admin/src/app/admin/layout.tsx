@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { formatVND } from '@lishop/shared';
+import { formatVND, hasSessionCookie } from '@lishop/shared';
 import { adminApi } from '../../lib/admin-api';
 
 const AUTH_URL  = process.env['NEXT_PUBLIC_MFE_AUTH_URL']  ?? 'http://localhost:3001';
@@ -30,12 +30,20 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    const token = localStorage.getItem('lishop_at');
-    if (!token) { window.location.replace(`${AUTH_URL}/login`); return; }
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]!));
-      if (payload.role !== 'ADMIN') window.location.replace(SHELL_URL);
-    } catch { window.location.replace(SHELL_URL); }
+    if (!hasSessionCookie()) {
+      window.location.replace(`${AUTH_URL}/login`);
+      return;
+    }
+    fetch(`${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000'}/auth/me`, {
+      credentials: 'include',
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('unauthorized');
+        const json = await res.json();
+        const user = json.data ?? json;
+        if (user.role !== 'ADMIN') window.location.replace(SHELL_URL);
+      })
+      .catch(() => window.location.replace(`${AUTH_URL}/login`));
   }, []);
 
   const pathname = usePathname();

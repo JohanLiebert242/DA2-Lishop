@@ -6,6 +6,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { authApi } from '../../lib/auth-api';
+import { hasSessionCookie } from '@lishop/shared';
 import { Button } from '@lishop/ui';
 import { Input } from '@lishop/ui';
 import { Label } from '@lishop/ui';
@@ -26,7 +27,7 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem('lishop_at')) window.location.replace(SHELL_URL);
+    if (hasSessionCookie()) window.location.replace(SHELL_URL);
   }, []);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterForm>({
@@ -36,8 +37,7 @@ export default function RegisterPage() {
   async function onSubmit(data: RegisterForm) {
     setServerError(null);
     try {
-      const result = await authApi.register(data);
-      localStorage.setItem('lishop_at', result.accessToken);
+      await authApi.register(data);
       setSuccess(true);
       setTimeout(() => { window.location.href = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010'; }, 500);
     } catch (e) {
