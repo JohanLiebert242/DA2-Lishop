@@ -450,6 +450,32 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="border-b border-stone-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+            <div className="shrink-0">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Brand partners</p>
+              <h2 className="mt-1 text-xl font-black tracking-tight text-stone-950">Thương hiệu nổi bật tại Lishop</h2>
+            </div>
+            <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {BRANDS.slice(0, 12).map((brand) => (
+                <Link
+                  key={brand.name}
+                  href={`${CATALOG_URL}/products`}
+                  className="group flex items-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 transition hover:border-amber-300 hover:bg-amber-50"
+                >
+                  <span className="text-xl">{brand.icon}</span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-stone-900 group-hover:text-amber-700">{brand.name}</p>
+                    <p className="truncate text-[11px] font-semibold text-stone-500">{brand.cat}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Category pills ────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 pt-10 pb-4">
         <div className="flex items-center gap-3 overflow-x-auto pb-2">
