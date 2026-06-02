@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { formatVND, hasSessionCookie } from '@lishop/shared';
@@ -8,19 +8,32 @@ import { ordersApi, OrderStatus } from '../../lib/orders-api';
 import { AccountSidebar } from '../../components/account-sidebar';
 
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
+const CATALOG_URL = process.env['NEXT_PUBLIC_MFE_CATALOG_URL'] ?? 'http://localhost:3002/products';
+const PROFILE_URL = process.env['NEXT_PUBLIC_MFE_PROFILE_URL'] ?? 'http://localhost:3006';
+const SHOP_NAME = 'Lishop Official Store';
 
 const STATUS_META: Record<OrderStatus, { label: string; color: string; dot: string }> = {
-  PENDING:    { label: 'Chờ xác nhận', color: 'bg-amber-50 text-amber-700 border border-amber-200',   dot: 'bg-amber-400' },
-  PROCESSING: { label: 'Đang xử lý',  color: 'bg-blue-50 text-blue-700 border border-blue-200',       dot: 'bg-blue-400' },
-  SHIPPED:    { label: 'Đang giao',   color: 'bg-violet-50 text-violet-700 border border-violet-200', dot: 'bg-violet-400' },
-  DELIVERED:  { label: 'Đã giao',    color: 'bg-emerald-50 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-400' },
-  CANCELLED:  { label: 'Đã hủy',     color: 'bg-red-50 text-red-700 border border-red-200',           dot: 'bg-red-400' },
-  REFUNDED:   { label: 'Đã hoàn tiền', color: 'bg-stone-100 text-stone-600 border border-stone-200', dot: 'bg-stone-400' },
+  PENDING: { label: 'Cho xac nhan', color: 'bg-amber-50 text-amber-700 border border-amber-200', dot: 'bg-amber-400' },
+  PROCESSING: { label: 'Dang xu ly', color: 'bg-blue-50 text-blue-700 border border-blue-200', dot: 'bg-blue-400' },
+  SHIPPED: { label: 'Dang giao', color: 'bg-violet-50 text-violet-700 border border-violet-200', dot: 'bg-violet-400' },
+  DELIVERED: { label: 'Da giao', color: 'bg-emerald-50 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-400' },
+  CANCELLED: { label: 'Da huy', color: 'bg-red-50 text-red-700 border border-red-200', dot: 'bg-red-400' },
+  REFUNDED: { label: 'Da hoan tien', color: 'bg-stone-100 text-stone-600 border border-stone-200', dot: 'bg-stone-400' },
 };
+
+const STATUS_OPTIONS: Array<{ value: OrderStatus | 'ALL'; label: string }> = [
+  { value: 'ALL', label: 'Tat ca' },
+  { value: 'PENDING', label: 'Cho xac nhan' },
+  { value: 'PROCESSING', label: 'Dang xu ly' },
+  { value: 'SHIPPED', label: 'Dang giao' },
+  { value: 'DELIVERED', label: 'Da giao' },
+  { value: 'CANCELLED', label: 'Da huy' },
+  { value: 'REFUNDED', label: 'Da hoan tien' },
+];
 
 function SkeletonCard() {
   return (
-    <div className="card p-5 animate-pulse">
+    <div className="card animate-pulse p-5">
       <div className="flex justify-between">
         <div className="h-4 w-24 rounded bg-stone-100" />
         <div className="h-6 w-20 rounded-full bg-stone-100" />
@@ -31,7 +44,27 @@ function SkeletonCard() {
   );
 }
 
+function formatOrderDate(value: string) {
+  return new Date(value).toLocaleDateString('vi-VN', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function compactDate(value: string) {
+  return new Date(value).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
 export default function OrdersPage() {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
+
   useEffect(() => {
     if (!hasSessionCookie()) window.location.replace(`${AUTH_URL}/login`);
   }, []);
@@ -42,83 +75,204 @@ export default function OrdersPage() {
     retry: false,
   });
 
+  const filteredOrders = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+
+    return orders.filter((order) => {
+      const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
+      const searchableText = [
+        order.orderNumber,
+        SHOP_NAME,
+        ...order.items.flatMap((item) => [item.productName, item.variantName ?? '', item.variantSku ?? '']),
+      ].join(' ').toLowerCase();
+      const matchesSearch = !keyword || searchableText.includes(keyword);
+
+      return matchesStatus && matchesSearch;
+    });
+  }, [orders, search, statusFilter]);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <div className="flex gap-7">
         <AccountSidebar activeSection="orders" />
 
-        <div className="flex-1 min-w-0">
-          {/* Page title */}
-          <div className="mb-6 flex items-center justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-black text-stone-900 tracking-tight">Đơn hàng của tôi</h1>
-              <p className="mt-0.5 text-sm text-muted">Theo dõi và quản lý các đơn hàng</p>
+              <h1 className="text-2xl font-black tracking-tight text-stone-900">Don hang cua toi</h1>
+              <p className="mt-0.5 text-sm text-muted">Theo doi va quan ly cac don hang</p>
             </div>
             {!isLoading && orders.length > 0 && (
               <span className="rounded-xl bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-700">
-                {orders.length} đơn hàng
+                {filteredOrders.length}/{orders.length} don hang
               </span>
             )}
           </div>
 
+          <div className="mb-5 rounded-2xl border border-warm bg-white p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative min-w-0 flex-1">
+                <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Tim theo ma don, ten san pham, SKU..."
+                  className="input-field w-full py-2.5 pl-9 pr-4 text-sm"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {STATUS_OPTIONS.map((option) => {
+                  const isSelected = statusFilter === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setStatusFilter(option.value)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                        isSelected
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                          : 'border-warm bg-white text-stone-600 hover:border-indigo-200 hover:bg-indigo-50/60'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="space-y-4">
-              {[1,2,3].map(i => <SkeletonCard key={i} />)}
+              {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
             </div>
           ) : orders.length === 0 ? (
-            <div className="card flex flex-col items-center justify-center py-20 text-center gap-4">
+            <div className="card flex flex-col items-center justify-center gap-4 py-20 text-center">
               <span className="text-6xl">📦</span>
               <div>
-                <p className="text-lg font-bold text-stone-700">Chưa có đơn hàng nào</p>
-                <p className="mt-1 text-sm text-muted">Hãy bắt đầu mua sắm để tạo đơn hàng đầu tiên!</p>
+                <p className="text-lg font-bold text-stone-700">Chua co don hang nao</p>
+                <p className="mt-1 text-sm text-muted">Hay bat dau mua sam de tao don hang dau tien.</p>
               </div>
-              <a href={process.env['NEXT_PUBLIC_MFE_CATALOG_URL'] ?? 'http://localhost:3002/products'}
-                className="btn-primary mt-2">
-                Mua sắm ngay
+              <a href={CATALOG_URL} className="btn-primary mt-2">
+                Mua sam ngay
               </a>
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="card flex flex-col items-center justify-center gap-3 py-16 text-center">
+              <span className="text-5xl">⌕</span>
+              <div>
+                <p className="font-bold text-stone-700">Khong tim thay don hang phu hop</p>
+                <p className="mt-1 text-sm text-muted">Thu doi tu khoa hoac bo loc trang thai.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setStatusFilter('ALL');
+                }}
+                className="rounded-xl border border-warm px-4 py-2 text-sm font-bold text-stone-600 transition hover:bg-warm-100"
+              >
+                Xoa bo loc
+              </button>
             </div>
           ) : (
             <div className="space-y-3">
-              {orders.map(order => {
+              {filteredOrders.map((order) => {
                 const meta = STATUS_META[order.status];
+                const firstItem = order.items[0];
+                const productSummary = order.items
+                  .slice(0, 2)
+                  .map((item) => `${item.productName}${item.variantName ? ` - ${item.variantName}` : ''}`)
+                  .join(', ');
+                const deliveredAt = order.status === 'DELIVERED' ? order.shipment?.deliveredAt : null;
+                const buyAgainHref = firstItem
+                  ? `${CATALOG_URL}?q=${encodeURIComponent(firstItem.productName)}`
+                  : CATALOG_URL;
+
                 return (
-                  <Link key={order.id} href={`/orders/${order.id}`} className="block group">
-                    <div className="card p-5 hover:border-indigo-200 transition-all">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="font-black text-stone-900 text-base">#{order.orderNumber}</span>
-                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${meta.color}`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-                              {meta.label}
-                            </span>
-                          </div>
-                          <p className="mt-1.5 text-xs text-muted">
-                            {new Date(order.createdAt).toLocaleDateString('vi-VN', {
-                              weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
-                            })}
-                          </p>
+                  <div key={order.id} className="card p-5 transition-all hover:border-indigo-200">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Link href={`/orders/${order.id}`} className="text-base font-black text-stone-900 transition hover:text-indigo-700">
+                            #{order.orderNumber}
+                          </Link>
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${meta.color}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                            {meta.label}
+                          </span>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-lg font-black text-indigo-600">{formatVND(order.totalVnd)}</p>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+                          <span>Dat ngay: {formatOrderDate(order.createdAt)}</span>
+                          <span className="font-semibold text-stone-600">Shop: {SHOP_NAME}</span>
+                          {deliveredAt && (
+                            <span className="font-semibold text-emerald-700">Giao thanh cong: {compactDate(deliveredAt)}</span>
+                          )}
                         </div>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between border-t border-warm pt-4">
-                        <p className="text-xs text-muted line-clamp-1 flex-1 mr-4">
-                          <span className="font-semibold text-stone-600">{order.items.length} sản phẩm: </span>
-                          {order.items
-                            .slice(0, 2)
-                            .map((i) => `${i.productName}${i.variantName ? ` - ${i.variantName}` : ''}`)
-                            .join(', ')}
-                          {order.items.length > 2 && ` +${order.items.length - 2} khác`}
-                        </p>
-                        <span className="shrink-0 text-xs font-semibold text-indigo-600 group-hover:text-indigo-800 transition-colors">
-                          Xem chi tiết →
-                        </span>
+                      <div className="shrink-0 text-right">
+                        <p className="text-lg font-black text-indigo-600">{formatVND(order.totalVnd)}</p>
+                        <p className="mt-0.5 text-xs text-muted">{order.items.length} san pham</p>
                       </div>
                     </div>
-                  </Link>
+
+                    <div className="mt-4 border-t border-warm pt-4">
+                      <p className="text-xs text-muted">
+                        <span className="font-semibold text-stone-600">{order.items.length} san pham: </span>
+                        {productSummary}
+                        {order.items.length > 2 && ` +${order.items.length - 2} khac`}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap gap-2">
+                          <Link
+                            href={`/orders/${order.id}#review`}
+                            className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                              order.status === 'DELIVERED'
+                                ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                                : 'border-warm bg-stone-50 text-stone-400'
+                            }`}
+                            aria-disabled={order.status !== 'DELIVERED'}
+                          >
+                            Danh gia
+                          </Link>
+                          <Link
+                            href={`/orders/${order.id}#return`}
+                            className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                              order.status === 'DELIVERED' || order.status === 'REFUNDED'
+                                ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                : 'border-warm bg-stone-50 text-stone-400'
+                            }`}
+                            aria-disabled={order.status !== 'DELIVERED' && order.status !== 'REFUNDED'}
+                          >
+                            Yeu cau hoan tien
+                          </Link>
+                          <a
+                            href={`${PROFILE_URL}/support?order=${encodeURIComponent(order.orderNumber)}`}
+                            className="rounded-xl border border-warm bg-white px-3 py-2 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                          >
+                            Lien he nguoi ban
+                          </a>
+                          <a
+                            href={buyAgainHref}
+                            className="rounded-xl border border-warm bg-white px-3 py-2 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                          >
+                            Mua lai
+                          </a>
+                        </div>
+
+                        <Link href={`/orders/${order.id}`} className="text-xs font-semibold text-indigo-600 transition-colors hover:text-indigo-800">
+                          Xem chi tiet →
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
             </div>
