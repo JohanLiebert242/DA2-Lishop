@@ -1,33 +1,31 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { promotionsApi } from '../../lib/promotions-api';
+import { promotionsApi, type PublicCoupon } from '../../lib/promotions-api';
 import { FlashSaleBanner } from '../../components/flash-sale-banner';
 import { CouponWidget } from '../../components/coupon-widget';
 
-function CountdownTimer({ endAt }: { endAt: string }) {
-  const end = new Date(endAt).getTime();
-  const now = Date.now();
-  const diff = Math.max(0, end - now);
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  const s = Math.floor((diff % 60000) / 1000);
+function couponDescription(coupon: PublicCoupon): string {
+  if (coupon.type === 'PERCENT') {
+    return `Giam ${coupon.value}%${
+      coupon.minOrderVnd > 0 ? ` - Don tu ${(coupon.minOrderVnd / 1000).toFixed(0)}K` : ''
+    }`;
+  }
 
-  return (
-    <div className="flex items-center gap-1.5">
-      {[h, m, s].map((v, i) => (
-        <span key={i} className="flex items-center gap-1.5">
-          <span className="flex h-9 w-10 items-center justify-center rounded-xl bg-stone-900 text-base font-black text-white tabular-nums">
-            {String(v).padStart(2, '0')}
-          </span>
-          {i < 2 && <span className="text-base font-black text-stone-600">:</span>}
-        </span>
-      ))}
-    </div>
-  );
+  if (coupon.type === 'FIXED') {
+    return `Giam ${(coupon.value / 1000).toFixed(0)}K${
+      coupon.minOrderVnd > 0 ? ` - Don tu ${(coupon.minOrderVnd / 1000).toFixed(0)}K` : ''
+    }`;
+  }
+
+  return 'Mien phi giao hang';
 }
 
 export default function PromotionsPage() {
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [copyMessage, setCopyMessage] = useState('');
+
   const { data: flashSales = [], isLoading } = useQuery({
     queryKey: ['flash-sales-active'],
     queryFn: () => promotionsApi.getActiveFlashSales(),
@@ -40,118 +38,144 @@ export default function PromotionsPage() {
     staleTime: 60_000,
   });
 
-  const activeSale = flashSales[0];
+  async function copyCoupon(code: string) {
+    try {
+      await navigator.clipboard?.writeText(code);
+    } catch {
+      // Browsers can block clipboard writes in tests or private contexts.
+    }
+
+    setCopiedCode(code);
+    setCopyMessage(`Da copy ma ${code}`);
+  }
 
   return (
     <div className="min-h-screen bg-warm">
-      {/* Hero banner */}
+      {copyMessage && (
+        <div
+          role="status"
+          className="fixed right-4 top-4 z-50 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-emerald-700 shadow-lg"
+        >
+          {copyMessage}
+        </div>
+      )}
+
       <div
-        className="relative overflow-hidden py-12 text-white text-center"
+        className="relative overflow-hidden py-12 text-center text-white"
         style={{ background: 'linear-gradient(135deg, #dc2626 0%, #7c3aed 50%, #4f46e5 100%)' }}
       >
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 50%, white 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }} />
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 50%, white 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
         <div className="relative mx-auto max-w-3xl px-4">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-xs font-bold mb-4">
+          <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-xs font-bold">
             <span className="h-2 w-2 rounded-full bg-red-300 animate-pulse" />
-            ĐANG DIỄN RA
+            DANG DIEN RA
           </span>
-          <h1 className="text-4xl font-black tracking-tight">🔥 Flash Sale & Khuyến mãi</h1>
-          <p className="mt-2 text-white/80">Ưu đãi lên đến 25% · Số lượng có hạn</p>
-          {activeSale && (
-            <div className="mt-5 flex flex-col items-center gap-2">
-              <p className="text-sm font-semibold text-white/80">Kết thúc sau:</p>
-              <CountdownTimer endAt={activeSale.endAt} />
-            </div>
-          )}
+          <h1 className="text-4xl font-black tracking-tight">Flash Sale & Khuyen mai</h1>
+          <p className="mt-2 text-white/80">Uu dai len den 25% - So luong co han</p>
         </div>
       </div>
 
       <div className="mx-auto max-w-6xl px-4 py-10">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* Main: flash sales */}
-          <div className="lg:col-span-2 space-y-6">
-            <h2 className="text-xl font-black text-stone-900 tracking-tight flex items-center gap-2">
-              ⚡ Flash Sale đang chạy
-            </h2>
+          <div className="space-y-6 lg:col-span-2">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-red-600">
+                Su kien: Flash Sale dang chay
+              </p>
+              <h2 className="mt-1 flex items-center gap-2 text-xl font-black tracking-tight text-stone-900">
+                Flash Sale dang chay ({flashSales.length} dot)
+              </h2>
+            </div>
 
             {isLoading && (
               <div className="space-y-4">
-                {[1,2].map(i => (
-                  <div key={i} className="card h-40 animate-pulse bg-stone-50" />
+                {[1, 2].map((item) => (
+                  <div key={item} className="card h-40 animate-pulse bg-stone-50" />
                 ))}
               </div>
             )}
 
             {!isLoading && flashSales.length === 0 && (
-              <div className="card flex flex-col items-center justify-center py-16 text-center gap-4">
-                <span className="text-5xl">⏳</span>
+              <div className="card flex flex-col items-center justify-center gap-4 py-16 text-center">
+                <span className="text-5xl">...</span>
                 <div>
-                  <p className="font-bold text-stone-700">Chưa có flash sale nào</p>
-                  <p className="mt-1 text-sm text-muted">Flash sale diễn ra hàng ngày lúc 12:00 và 20:00</p>
+                  <p className="font-bold text-stone-700">Chua co flash sale nao</p>
+                  <p className="mt-1 text-sm text-muted">
+                    Flash sale dien ra hang ngay luc 12:00 va 20:00
+                  </p>
                 </div>
               </div>
             )}
 
-            {flashSales.map(sale => (
+            {flashSales.map((sale) => (
               <FlashSaleBanner key={sale.id} sale={sale} />
             ))}
           </div>
 
-          {/* Sidebar: coupons + guide */}
           <div className="space-y-5">
             <CouponWidget />
 
-            {/* How to use */}
             <div className="card p-5">
-              <h3 className="mb-4 font-black text-stone-900 text-sm flex items-center gap-2">
-                📋 Hướng dẫn sử dụng mã
+              <h3 className="mb-4 flex items-center gap-2 text-sm font-black text-stone-900">
+                Huong dan su dung ma
               </h3>
               <ol className="space-y-3">
                 {[
-                  { step: '1', text: 'Thêm sản phẩm vào giỏ hàng' },
-                  { step: '2', text: 'Nhập mã giảm giá ở trang giỏ hàng' },
-                  { step: '3', text: 'Giảm giá tự động áp dụng' },
-                  { step: '4', text: 'Hoàn tất thanh toán' },
-                ].map(item => (
+                  { step: '1', text: 'Them san pham vao gio hang' },
+                  { step: '2', text: 'Nhap ma giam gia o trang gio hang' },
+                  { step: '3', text: 'Giam gia tu dong ap dung' },
+                  { step: '4', text: 'Hoan tat thanh toan' },
+                ].map((item) => (
                   <li key={item.step} className="flex items-start gap-3">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-black text-white">
                       {item.step}
                     </span>
-                    <span className="text-sm text-stone-600 leading-relaxed">{item.text}</span>
+                    <span className="text-sm leading-relaxed text-stone-600">{item.text}</span>
                   </li>
                 ))}
               </ol>
             </div>
 
-            {/* Active coupons highlight */}
             {coupons.length > 0 && (
-              <div className="card p-5 bg-gradient-to-br from-indigo-50 to-violet-50">
-                <h3 className="mb-3 font-black text-stone-900 text-sm">🎫 Mã giảm giá hot</h3>
+              <div className="card bg-gradient-to-br from-indigo-50 to-violet-50 p-5">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
+                  Su kien: Ma giam gia hot
+                </p>
+                <h3 className="mb-3 mt-1 text-sm font-black text-stone-900">
+                  Ma giam gia hot ({coupons.length} ma)
+                </h3>
                 <div className="space-y-2.5">
-                  {coupons.map(c => {
-                    const desc = c.type === 'PERCENT'
-                      ? `Giảm ${c.value}%${c.minOrderVnd > 0 ? ` · Đơn từ ${(c.minOrderVnd / 1000).toFixed(0)}K` : ''}`
-                      : c.type === 'FIXED'
-                      ? `Giảm ${(c.value / 1000).toFixed(0)}K${c.minOrderVnd > 0 ? ` · Đơn từ ${(c.minOrderVnd / 1000).toFixed(0)}K` : ''}`
-                      : 'Miễn phí giao hàng';
-                    return (
-                      <div key={c.id} className="flex items-center justify-between rounded-xl bg-white border border-warm px-3 py-2.5 shadow-sm">
-                        <div>
-                          <p className="text-xs font-black text-indigo-700 tracking-widest">{c.code}</p>
-                          <p className="text-xs text-muted mt-0.5">{desc}</p>
-                        </div>
-                        <button
-                          onClick={() => navigator.clipboard?.writeText(c.code)}
-                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors ml-2"
-                        >
-                          Sao chép
-                        </button>
+                  {coupons.map((coupon) => (
+                    <div
+                      key={coupon.id}
+                      data-testid={`coupon-card-${coupon.code}`}
+                      className="flex items-center justify-between rounded-xl border border-warm bg-white px-3 py-2.5 shadow-sm"
+                    >
+                      <div>
+                        <p className="text-xs font-black tracking-widest text-indigo-700">
+                          {coupon.code}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted">{couponDescription(coupon)}</p>
                       </div>
-                    );
-                  })}
+                      <button
+                        onClick={() => copyCoupon(coupon.code)}
+                        className={`ml-2 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                          copiedCode === coupon.code
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                        }`}
+                      >
+                        {copiedCode === coupon.code ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

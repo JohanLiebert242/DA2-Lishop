@@ -45,7 +45,7 @@ export function FlashSaleBanner({ sale }: { sale: FlashSaleInfo }) {
           <h3 className="text-lg font-bold">⚡ Flash Sale</h3>
           <p className="text-sm text-red-100">Kết thúc sau</p>
         </div>
-        <div className="flex items-end gap-1.5">
+        <div data-testid="section-countdown" className="flex items-end gap-1.5">
           <TimeBlock value={h} label="giờ" />
           <span className="mb-3 text-xl font-bold">:</span>
           <TimeBlock value={m} label="phút" />
