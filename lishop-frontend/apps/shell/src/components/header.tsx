@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { formatVND } from '@lishop/shared';
 import { useAuth } from '../hooks/use-auth';
@@ -18,6 +19,11 @@ const MFE = {
 } as const;
 
 const DAILY_COUPON_VALUES = [5000, 10000, 15000, 20000, 30000, 50000];
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+
+interface WalletInfo {
+  balanceVnd: number;
+}
 
 function getDailyCouponValue(index: number) {
   const daySeed = Math.floor(Date.now() / 86_400_000);
@@ -83,6 +89,18 @@ export function Header() {
     [],
   );
 
+  const { data: wallet } = useQuery({
+    queryKey: ['shell-wallet'],
+    enabled: isAuthenticated,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/wallet`, { credentials: 'include' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? 'Không tải được số dư tài khoản');
+      return (json.data ?? json) as WalletInfo;
+    },
+  });
+
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const keyword = query.trim();
@@ -103,7 +121,7 @@ export function Header() {
             <div className="hidden leading-tight sm:block">
               <span className="block text-lg font-black tracking-tight text-stone-950">Lishop</span>
               <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-600">
-                Smart commerce
+                Thương mại thông minh
               </span>
             </div>
           </Link>
@@ -197,6 +215,13 @@ export function Header() {
             )}
 
             {isAuthenticated ? (
+              <>
+              <Link
+                href={`${MFE.profile}/wallet`}
+                className="hidden rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 xl:inline-flex"
+              >
+                Số dư: {formatVND(wallet?.balanceVnd ?? 0)}
+              </Link>
               <div className="relative">
                 <button
                   type="button"
@@ -258,6 +283,7 @@ export function Header() {
                   </div>
                 )}
               </div>
+              </>
             ) : (
               <div className="flex items-center gap-2">
                 <Link href={`${MFE.auth}/login`} className="hidden rounded-2xl px-3 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-100 sm:inline-flex">

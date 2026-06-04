@@ -9,7 +9,7 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (res.status === 204) return undefined as T;
   const json = await res.json();
   if (!res.ok) {
-    throw new Error(json.message ?? json.error ?? 'Request failed');
+    throw new Error(json.message ?? json.error ?? 'Yêu cầu không thành công');
   }
   // Backend wraps responses in { data: ... }
   return (json.data ?? json) as T;

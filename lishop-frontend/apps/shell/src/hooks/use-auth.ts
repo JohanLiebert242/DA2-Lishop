@@ -17,7 +17,7 @@ export function useAuth() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    if (!res.ok) throw new Error((await res.json()).message ?? 'Login failed');
+    if (!res.ok) throw new Error((await res.json()).message ?? 'Đăng nhập không thành công');
     const data = await res.json();
     const token: string = data.data?.accessToken ?? data.accessToken;
 

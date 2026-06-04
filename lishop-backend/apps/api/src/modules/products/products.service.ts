@@ -19,7 +19,7 @@ export class ProductsService {
 
   async findBySlug(slug: string): Promise<ProductWithDetails> {
     const product = await this.repo.findBySlug(slug);
-    if (!product) throw new NotFoundException(`Product not found: ${slug}`);
+    if (!product) throw new NotFoundException(`Không tìm thấy sản phẩm: ${slug}`);
     return product;
   }
 
@@ -29,7 +29,7 @@ export class ProductsService {
 
   async findRelated(slug: string, limit = 6): Promise<ProductWithDetails[]> {
     const product = await this.repo.findBySlug(slug);
-    if (!product) throw new NotFoundException(`Product not found: ${slug}`);
+    if (!product) throw new NotFoundException(`Không tìm thấy sản phẩm: ${slug}`);
     const tagIds = product.tags.map((pt) => pt.tagId);
     return this.repo.findRelated(product.id, product.categoryId, tagIds, limit);
   }
@@ -71,7 +71,7 @@ export class ProductsService {
 
   async update(id: string, dto: UpdateProductDto): Promise<ProductWithDetails> {
     const existing = await this.repo.findById(id);
-    if (!existing) throw new NotFoundException(`Product not found: ${id}`);
+    if (!existing) throw new NotFoundException(`Không tìm thấy sản phẩm: ${id}`);
 
     const updateData: any = { ...dto };
     delete updateData.images;
@@ -87,7 +87,7 @@ export class ProductsService {
 
   async delete(id: string): Promise<void> {
     const existing = await this.repo.findById(id);
-    if (!existing) throw new NotFoundException(`Product not found: ${id}`);
+    if (!existing) throw new NotFoundException(`Không tìm thấy sản phẩm: ${id}`);
     await this.repo.delete(id);
   }
 }

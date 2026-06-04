@@ -4,7 +4,7 @@ import { BankTransferInfo, WalletRepository, WalletInfo, WalletTopupRequestItem,
 
 const POINTS_TO_VND = 100; // 1 point = 100 VND
 const TOPUP_BANK = {
-  bankName: process.env['WALLET_TOPUP_BANK_NAME'] ?? 'Lishop Demo Bank',
+  bankName: process.env['WALLET_TOPUP_BANK_NAME'] ?? 'Ngân hàng Demo Lishop',
   bankAccountNumber: process.env['WALLET_TOPUP_BANK_ACCOUNT_NUMBER'] ?? '1900 6868 6868',
   bankAccountName: process.env['WALLET_TOPUP_BANK_ACCOUNT_NAME'] ?? 'CONG TY TNHH LISHOP',
 };
@@ -51,7 +51,7 @@ export class WalletService {
       userId,
       amountVnd,
       WalletTxType.PAYMENT,
-      `Payment for order`,
+      `Thanh toán đơn hàng`,
       orderId,
     );
   }

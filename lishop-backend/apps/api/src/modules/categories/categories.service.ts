@@ -23,7 +23,7 @@ export class CategoriesService {
 
   async findBySlug(slug: string): Promise<CategoryTree> {
     const cat = await this.repo.findBySlug(slug);
-    if (!cat) throw new NotFoundException(`Category not found: ${slug}`);
+    if (!cat) throw new NotFoundException(`Không tìm thấy danh mục: ${slug}`);
     return cat as CategoryTree;
   }
 
@@ -40,7 +40,7 @@ export class CategoriesService {
 
   async delete(id: string): Promise<void> {
     const existing = await this.repo.findById(id);
-    if (!existing) throw new NotFoundException(`Category not found: ${id}`);
+    if (!existing) throw new NotFoundException(`Không tìm thấy danh mục: ${id}`);
     await this.repo.delete(id);
   }
 

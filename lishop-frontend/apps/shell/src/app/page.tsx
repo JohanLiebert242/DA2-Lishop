@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import Image from 'next/image';
 import { FormEvent, useEffect, useState } from 'react';
-import { formatVND } from '@lishop/shared';
+import { formatVND, productListUrl } from '@lishop/shared';
 import { useAuthStore } from '../stores/auth.store';
 import { NEWS_ITEMS } from '../lib/news';
 
@@ -114,7 +114,7 @@ function SaleProductCard({ item }: { item: FlashSaleItem }) {
         </div>
       ) : (
         <div className="flex aspect-square items-center justify-center bg-white/5 text-xs font-semibold text-white/55">
-          No image
+          Chưa có ảnh
         </div>
       )}
       <div className="p-2.5">
@@ -634,7 +634,7 @@ export default function HomePage() {
           ]).map(cat => {
             const meta = CAT_META[cat.slug] ?? { icon: '📦', gradient: 'from-stone-400 to-stone-600' };
             return (
-              <Link key={cat.id} href={`${CATALOG_URL}/products`}
+              <Link key={cat.id} href={productListUrl(CATALOG_URL, { categoryId: cat.id })}
                 className="group relative overflow-hidden rounded-2xl aspect-[4/3] flex flex-col items-center justify-center text-white cursor-pointer shadow-warm hover:shadow-brand transition-all hover:-translate-y-1">
                 {cat.imageUrl ? (
                   <Image src={cat.imageUrl} alt={cat.name} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
@@ -689,7 +689,7 @@ export default function HomePage() {
         </div>
         <div className="flex flex-wrap items-center justify-center gap-3">
           {BRANDS.map(brand => (
-            <Link key={brand.name} href={`${CATALOG_URL}/products`}
+            <Link key={brand.name} href={productListUrl(CATALOG_URL, { brand: brand.name })}
               className="group flex items-center gap-2.5 rounded-2xl bg-white border border-warm px-5 py-3 shadow-sm hover:shadow-brand hover:border-indigo-200 transition-all hover:-translate-y-0.5">
               <span className="text-2xl">{brand.icon}</span>
               <div className="text-left">
@@ -731,7 +731,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-12">
         <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Customer review</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Đánh giá khách hàng</p>
             <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-950">Khách hàng nói gì về Lishop</h2>
           </div>
           <p className="max-w-xl text-sm leading-6 text-muted">
@@ -764,7 +764,7 @@ export default function HomePage() {
       <section className="bg-stone-950 py-12 text-white">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">Gmail subscription</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">Đăng ký email</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight">Nhận bảng tin ưu đãi mỗi tuần</h2>
             <p className="mt-3 max-w-lg text-sm leading-7 text-white/65">
               Đăng ký bằng email để nhận coupon mới, bản tin flash sale và cập nhật sản phẩm nổi bật.
@@ -789,7 +789,7 @@ export default function HomePage() {
           <div>
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Latest news</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Tin mới nhất</p>
                 <h2 className="mt-2 text-2xl font-black tracking-tight">Bảng tin Lishop</h2>
               </div>
               <Link href="/news" className="shrink-0 rounded-2xl border border-white/15 px-4 py-2 text-xs font-black text-white transition hover:bg-white/10">

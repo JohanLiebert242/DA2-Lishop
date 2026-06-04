@@ -587,7 +587,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                     />
                   ) : (
                     <span className="flex h-full items-center justify-center bg-stone-100 text-[10px] font-semibold text-muted">
-                      No image
+                      Chưa có ảnh
                     </span>
                   )}
                 </button>

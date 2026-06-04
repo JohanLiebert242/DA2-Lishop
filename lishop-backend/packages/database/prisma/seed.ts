@@ -82,27 +82,27 @@ const IMAGE_POOLS = {
 } as const;
 
 const categorySeeds = [
-  { name: 'Electronics', slug: 'electronics', imageUrl: IMAGE_POOLS.phones[0] },
-  { name: 'Fashion', slug: 'fashion', imageUrl: IMAGE_POOLS.fashion[0] },
-  { name: 'Home Living', slug: 'home-living', imageUrl: IMAGE_POOLS.home[0] },
-  { name: 'Sports', slug: 'sports', imageUrl: IMAGE_POOLS.fitness[0] },
-  { name: 'Books', slug: 'books', imageUrl: IMAGE_POOLS.books[0] },
-  { name: 'Beauty', slug: 'beauty', imageUrl: IMAGE_POOLS.beauty[0] },
+  { name: 'Điện tử', slug: 'electronics', imageUrl: IMAGE_POOLS.phones[0] },
+  { name: 'Thời trang', slug: 'fashion', imageUrl: IMAGE_POOLS.fashion[0] },
+  { name: 'Nhà cửa', slug: 'home-living', imageUrl: IMAGE_POOLS.home[0] },
+  { name: 'Thể thao', slug: 'sports', imageUrl: IMAGE_POOLS.fitness[0] },
+  { name: 'Sách', slug: 'books', imageUrl: IMAGE_POOLS.books[0] },
+  { name: 'Làm đẹp', slug: 'beauty', imageUrl: IMAGE_POOLS.beauty[0] },
 ] as const;
 
 const childCategorySeeds = [
-  { name: 'Phones', slug: 'phones', parentSlug: 'electronics' },
-  { name: 'Laptops', slug: 'laptops', parentSlug: 'electronics' },
-  { name: 'Audio', slug: 'audio', parentSlug: 'electronics' },
-  { name: 'Mens Wear', slug: 'mens-wear', parentSlug: 'fashion' },
-  { name: 'Womens Wear', slug: 'womens-wear', parentSlug: 'fashion' },
-  { name: 'Shoes', slug: 'shoes', parentSlug: 'fashion' },
-  { name: 'Kitchen', slug: 'kitchen', parentSlug: 'home-living' },
-  { name: 'Furniture', slug: 'furniture', parentSlug: 'home-living' },
-  { name: 'Decor', slug: 'decor', parentSlug: 'home-living' },
-  { name: 'Fitness', slug: 'fitness', parentSlug: 'sports' },
-  { name: 'Business Books', slug: 'business-books', parentSlug: 'books' },
-  { name: 'Skincare', slug: 'skincare', parentSlug: 'beauty' },
+  { name: 'Điện thoại', slug: 'phones', parentSlug: 'electronics' },
+  { name: 'Máy tính xách tay', slug: 'laptops', parentSlug: 'electronics' },
+  { name: 'Âm thanh', slug: 'audio', parentSlug: 'electronics' },
+  { name: 'Thời trang nam', slug: 'mens-wear', parentSlug: 'fashion' },
+  { name: 'Thời trang nữ', slug: 'womens-wear', parentSlug: 'fashion' },
+  { name: 'Giày dép', slug: 'shoes', parentSlug: 'fashion' },
+  { name: 'Nhà bếp', slug: 'kitchen', parentSlug: 'home-living' },
+  { name: 'Nội thất', slug: 'furniture', parentSlug: 'home-living' },
+  { name: 'Trang trí', slug: 'decor', parentSlug: 'home-living' },
+  { name: 'Thể hình', slug: 'fitness', parentSlug: 'sports' },
+  { name: 'Sách kinh doanh', slug: 'business-books', parentSlug: 'books' },
+  { name: 'Chăm sóc da', slug: 'skincare', parentSlug: 'beauty' },
 ] as const;
 
 const productSeeds: ProductSeed[] = [
@@ -219,18 +219,57 @@ function priceUsd(priceVnd: number) {
   return Math.max(1, Math.round(priceVnd / 25000));
 }
 
-function uniqueProductImageUrl(slug: string, imageIndex: number, baseUrl: string) {
-  const separator = baseUrl.includes('?') ? '&' : '?';
-  return `${baseUrl}${separator}auto=format&fit=crop&q=82&crop=entropy&lishop=${slug}-${imageIndex}`;
+function uniqueProductImageUrl(slug: string, imageIndex: number, _baseUrl: string) {
+  return `https://picsum.photos/seed/lishop-${slug}-${imageIndex}/900/675`;
 }
 
-function uniqueVariantImageUrl(productSlug: string, variantSlug: string, baseUrl: string) {
-  const separator = baseUrl.includes('?') ? '&' : '?';
-  return `${baseUrl}${separator}auto=format&fit=crop&q=82&crop=entropy&lishop=${productSlug}-variant-${variantSlug}`;
+function uniqueVariantImageUrl(productSlug: string, variantSlug: string, _baseUrl: string) {
+  return `https://picsum.photos/seed/lishop-${productSlug}-${variantSlug}/900/675`;
 }
 
 function pick<T>(items: T[], index: number) {
   return items[index % items.length];
+}
+
+function inferBrand(productName: string) {
+  const knownBrands = [
+    'La Roche Posay',
+    'The Ordinary',
+    'New Balance',
+    'Michael Kors',
+    'LocknLock',
+    'MacBook',
+    'iPhone',
+    'Samsung',
+    'Xiaomi',
+    'OPPO',
+    'Google',
+    'ASUS',
+    'Dell',
+    'Lenovo',
+    'HP',
+    'Acer',
+    'Sony',
+    'Apple',
+    'JBL',
+    'Marshall',
+    'Lacoste',
+    'Levis',
+    'Oxford',
+    'Zara',
+    'Nike',
+    'Adidas',
+    'Converse',
+    'Philips',
+    'Dyson',
+    'Bear',
+    'Bowflex',
+    'Garmin',
+    'Kiehl',
+  ];
+  const match = knownBrands.find((brand) => productName.toLowerCase().startsWith(brand.toLowerCase()));
+  if (match === 'MacBook' || match === 'iPhone') return 'Apple';
+  return match ?? 'Lishop';
 }
 
 async function cleanup() {
@@ -286,16 +325,16 @@ async function createUsers() {
   });
 
   const names = [
-    ['Nguyen Van', 'An'],
-    ['Tran Thi', 'Binh'],
-    ['Le Minh', 'Chau'],
-    ['Pham Quoc', 'Dung'],
-    ['Hoang Gia', 'Han'],
-    ['Do Anh', 'Khoa'],
-    ['Vo Thanh', 'Linh'],
-    ['Bui Ngoc', 'Mai'],
-    ['Dang Tuan', 'Nam'],
-    ['Phan My', 'Quyen'],
+    ['Nguyễn Văn', 'An'],
+    ['Trần Thị', 'Bình'],
+    ['Lê Minh', 'Châu'],
+    ['Phạm Quốc', 'Dũng'],
+    ['Hoàng Gia', 'Hân'],
+    ['Đỗ Anh', 'Khoa'],
+    ['Võ Thanh', 'Linh'],
+    ['Bùi Ngọc', 'Mai'],
+    ['Đặng Tuấn', 'Nam'],
+    ['Phan Mỹ', 'Quyên'],
   ];
 
   const customers: CreatedUser[] = [];
@@ -319,11 +358,11 @@ async function createUsers() {
 
 async function createAddresses(customers: CreatedUser[]) {
   const streets = [
-    ['12 Le Loi', 'District 1', 'Ho Chi Minh City'],
-    ['45 Nguyen Hue', 'District 3', 'Ho Chi Minh City'],
-    ['78 Hoang Dieu', 'Hai Chau', 'Da Nang'],
-    ['101 Tran Phu', 'Ba Dinh', 'Ha Noi'],
-    ['22 Bach Dang', 'Ninh Kieu', 'Can Tho'],
+    ['12 Lê Lợi', 'Quận 1', 'Thành phố Hồ Chí Minh'],
+    ['45 Nguyễn Huệ', 'Quận 3', 'Thành phố Hồ Chí Minh'],
+    ['78 Hoàng Diệu', 'Hải Châu', 'Đà Nẵng'],
+    ['101 Trần Phú', 'Ba Đình', 'Hà Nội'],
+    ['22 Bạch Đằng', 'Ninh Kiều', 'Cần Thơ'],
   ];
 
   const addresses = [];
@@ -408,24 +447,24 @@ function buildVariants(seed: ProductSeed) {
     return [
       {
         sku: `${slug}-STD`,
-        name: 'Standard',
+        name: 'Tiêu chuẩn',
         priceVnd: seed.priceVnd,
         priceUsd: priceUsd(seed.priceVnd),
         stock: Math.max(1, Math.floor(seed.stock * 0.6)),
         weightGrams: seed.categorySlug === 'laptops' ? 1600 : 450,
-        attributes: { color: 'Graphite', storage: seed.categorySlug === 'phones' ? '256GB' : '512GB' },
+        attributes: { color: 'Xám than', storage: seed.categorySlug === 'phones' ? '256GB' : '512GB' },
         imageUrl: variantImage('standard', 0),
         isDefault: true,
         isActive: true,
       },
       {
         sku: `${slug}-PLUS`,
-        name: 'Plus',
+        name: 'Cao cấp',
         priceVnd: seed.priceVnd + Math.round(seed.priceVnd * 0.15),
         priceUsd: priceUsd(seed.priceVnd + Math.round(seed.priceVnd * 0.15)),
         stock: Math.max(1, Math.floor(seed.stock * 0.4)),
         weightGrams: seed.categorySlug === 'laptops' ? 1700 : 470,
-        attributes: { color: 'Silver', storage: seed.categorySlug === 'phones' ? '512GB' : '1TB' },
+        attributes: { color: 'Bạc', storage: seed.categorySlug === 'phones' ? '512GB' : '1TB' },
         imageUrl: variantImage('plus', 1),
         isDefault: false,
         isActive: true,
@@ -436,13 +475,13 @@ function buildVariants(seed: ProductSeed) {
   if (seed.variantKind === 'size') {
     return ['S', 'M', 'L'].map((size, sizeIndex) => ({
       sku: `${slug}-${size}`,
-      name: `${pick(['Black', 'White', 'Navy'], sizeIndex)} / ${size}`,
+      name: `${pick(['Đen', 'Trắng', 'Xanh navy'], sizeIndex)} / ${size}`,
       priceVnd: seed.priceVnd + sizeIndex * 50000,
       priceUsd: priceUsd(seed.priceVnd + sizeIndex * 50000),
       stock: Math.max(1, Math.floor(seed.stock / 3)),
       weightGrams: 350,
-      attributes: { color: pick(['Black', 'White', 'Navy'], sizeIndex), size },
-      imageUrl: variantImage(slugify(`${pick(['Black', 'White', 'Navy'], sizeIndex)}-${size}`), sizeIndex),
+      attributes: { color: pick(['Đen', 'Trắng', 'Xanh navy'], sizeIndex), size },
+      imageUrl: variantImage(slugify(`${pick(['den', 'trang', 'xanh-navy'], sizeIndex)}-${size}`), sizeIndex),
       isDefault: sizeIndex === 0,
       isActive: true,
     }));
@@ -451,13 +490,13 @@ function buildVariants(seed: ProductSeed) {
   if (seed.variantKind === 'shoe') {
     return ['EU 40', 'EU 41', 'EU 42'].map((size, sizeIndex) => ({
       sku: `${slug}-${size.replace(' ', '')}`,
-      name: `${pick(['White', 'Black', 'Red'], sizeIndex)} / ${size}`,
+      name: `${pick(['Trắng', 'Đen', 'Đỏ'], sizeIndex)} / ${size}`,
       priceVnd: seed.priceVnd,
       priceUsd: priceUsd(seed.priceVnd),
       stock: Math.max(1, Math.floor(seed.stock / 3)),
       weightGrams: 800,
-      attributes: { color: pick(['White', 'Black', 'Red'], sizeIndex), size },
-      imageUrl: variantImage(slugify(`${pick(['White', 'Black', 'Red'], sizeIndex)}-${size}`), sizeIndex),
+      attributes: { color: pick(['Trắng', 'Đen', 'Đỏ'], sizeIndex), size },
+      imageUrl: variantImage(slugify(`${pick(['trang', 'den', 'do'], sizeIndex)}-${size}`), sizeIndex),
       isDefault: sizeIndex === 0,
       isActive: true,
     }));
@@ -467,12 +506,12 @@ function buildVariants(seed: ProductSeed) {
     return [
       {
         sku: `${slug}-PAPERBACK`,
-        name: 'Paperback',
+        name: 'Bìa mềm',
         priceVnd: seed.priceVnd,
         priceUsd: priceUsd(seed.priceVnd),
         stock: seed.stock,
         weightGrams: 320,
-        attributes: { format: 'Paperback', language: 'Vietnamese' },
+        attributes: { format: 'Bìa mềm', language: 'Tiếng Việt' },
         imageUrl: variantImage('paperback', 0),
         isDefault: true,
         isActive: true,
@@ -492,10 +531,11 @@ async function createProducts(categories: Map<string, string>, tags: Map<string,
     if (!categoryId) throw new Error(`Missing category ${seed.categorySlug}`);
 
     const slug = slugify(seed.name);
+    const brand = inferBrand(seed.name);
     const imagePool = IMAGE_POOLS[seed.imageKey];
     const images = Array.from({ length: 4 }, (_, imageIndex) => ({
       url: uniqueProductImageUrl(slug, imageIndex, pick([...imagePool], imageIndex)),
-      alt: `${seed.name} image ${imageIndex + 1}`,
+      alt: `Ảnh ${imageIndex + 1} của ${seed.name}`,
       isPrimary: imageIndex === 0,
     }));
 
@@ -504,7 +544,7 @@ async function createProducts(categories: Map<string, string>, tags: Map<string,
         name: seed.name,
         slug,
         sku: `LSP-${String(index + 1).padStart(4, '0')}`,
-        description: `${seed.name} is part of the balanced Lishop demo catalog. It includes realistic pricing, stock, images, tags, and related order history for testing storefront and admin workflows.`,
+        description: `${seed.name} thuộc bộ dữ liệu demo Lishop với thương hiệu ${brand}, giá bán thực tế, tồn kho, hình ảnh riêng và lịch sử đơn hàng để kiểm thử cửa hàng cùng trang quản trị.`,
         priceVnd: seed.priceVnd,
         priceUsd: priceUsd(seed.priceVnd),
         stock: seed.stock,
@@ -527,9 +567,13 @@ async function createProducts(categories: Map<string, string>, tags: Map<string,
       variants.get(slug)?.push(variant);
     }
 
-    for (const tagName of seed.tags) {
-      const tagId = tags.get(tagName);
-      if (!tagId) continue;
+    for (const tagName of [...seed.tags, `brand:${brand}`]) {
+      let tagId = tags.get(tagName);
+      if (!tagId) {
+        const tag = await prisma.tag.create({ data: { name: tagName } });
+        tagId = tag.id;
+        tags.set(tagName, tagId);
+      }
       await prisma.productTag.create({
         data: {
           productId: product.id,
@@ -544,7 +588,7 @@ async function createProducts(categories: Map<string, string>, tags: Map<string,
         type: StockMovementType.ADMIN_ADJUSTMENT,
         delta: seed.stock,
         balanceAfter: seed.stock,
-        note: 'Initial demo stock',
+        note: 'Tồn kho demo ban đầu',
         createdAt: daysAgo(35 - (index % 10)),
       },
     });
@@ -616,9 +660,9 @@ async function createWallets(customers: CreatedUser[]) {
     });
 
     const txs = [
-      { type: WalletTxType.TOPUP, amountVnd: startingBalance, balanceAfter: startingBalance, description: 'Initial demo topup' },
-      { type: WalletTxType.PAYMENT, amountVnd: -150000, balanceAfter: startingBalance - 150000, description: 'Demo wallet payment' },
-      { type: WalletTxType.REFUND, amountVnd: 50000, balanceAfter: startingBalance - 100000, description: 'Demo refund credit' },
+      { type: WalletTxType.TOPUP, amountVnd: startingBalance, balanceAfter: startingBalance, description: 'Nạp tiền demo ban đầu' },
+      { type: WalletTxType.PAYMENT, amountVnd: -150000, balanceAfter: startingBalance - 150000, description: 'Thanh toán bằng ví demo' },
+      { type: WalletTxType.REFUND, amountVnd: 50000, balanceAfter: startingBalance - 100000, description: 'Hoàn tiền demo vào ví' },
     ];
 
     for (const [txIndex, tx] of txs.entries()) {
@@ -699,7 +743,7 @@ async function createOrders(
         shippingFeeVnd,
         discountVnd,
         totalVnd,
-        notes: index % 6 === 0 ? 'Please call before delivery.' : null,
+        notes: index % 6 === 0 ? 'Vui lòng gọi trước khi giao hàng.' : null,
         trackingNumber: status === OrderStatus.SHIPPED || status === OrderStatus.DELIVERED ? `TRK${100000 + index}` : null,
         createdAt: orderDate,
         updatedAt: orderDate,
@@ -749,13 +793,13 @@ async function createOrders(
         },
       });
 
-      for (const [eventIndex, description] of ['Order accepted', 'Picked up', 'In transit', 'Delivered'].entries()) {
-        if (description === 'Delivered' && status !== OrderStatus.DELIVERED) continue;
+      for (const [eventIndex, description] of ['Đã nhận đơn', 'Đã lấy hàng', 'Đang vận chuyển', 'Đã giao hàng'].entries()) {
+        if (description === 'Đã giao hàng' && status !== OrderStatus.DELIVERED) continue;
         await prisma.shipmentEvent.create({
           data: {
             shipmentId: shipment.id,
             status: description.toUpperCase().replace(/ /g, '_'),
-            location: pick(['Ho Chi Minh City', 'Da Nang', 'Ha Noi', 'Can Tho'], index + eventIndex),
+            location: pick(['Thành phố Hồ Chí Minh', 'Đà Nẵng', 'Hà Nội', 'Cần Thơ'], index + eventIndex),
             description,
             createdAt: new Date(orderDate.getTime() + eventIndex * DAY),
           },
@@ -772,7 +816,7 @@ async function createOrders(
           invoiceNo: `INV-${String(index + 1).padStart(5, '0')}`,
           billingName: `${user.firstName} ${user.lastName}`,
           billingEmail: user.email,
-          billingAddress: `Address ${index + 1}`,
+          billingAddress: `Địa chỉ ${index + 1}`,
           billingPhone: `09${String(index + 30000000).slice(0, 8)}`,
           subtotalVnd,
           discountVnd,
@@ -819,8 +863,8 @@ async function createReturnsAndRefunds(orders: Array<{ order: CreatedOrder; item
         userId: order.userId,
         status,
         reason: pick([ReturnReason.DAMAGED, ReturnReason.WRONG_ITEM, ReturnReason.NOT_AS_DESCRIBED, ReturnReason.CHANGED_MIND], index),
-        description: 'Demo return request for admin workflow.',
-        adminNote: status === ReturnStatus.PENDING ? null : 'Reviewed by demo admin.',
+        description: 'Yêu cầu đổi trả demo cho quy trình quản trị.',
+        adminNote: status === ReturnStatus.PENDING ? null : 'Quản trị viên demo đã xem xét.',
         createdAt: daysAgo(12 - index),
         updatedAt: daysAgo(10 - index),
       },
@@ -843,8 +887,8 @@ async function createReturnsAndRefunds(orders: Array<{ order: CreatedOrder; item
           amountVnd: Math.min(order.totalVnd, items[0].totalPriceVnd),
           method: pick([RefundMethod.ORIGINAL_PAYMENT, RefundMethod.WALLET, RefundMethod.MANUAL], index),
           status: pick([RefundStatus.PENDING, RefundStatus.PROCESSING, RefundStatus.COMPLETED], index),
-          reason: 'Refund for demo return.',
-          adminNote: 'Seeded refund record.',
+          reason: 'Hoàn tiền cho yêu cầu đổi trả demo.',
+          adminNote: 'Bản ghi hoàn tiền demo.',
           processedAt: index % 2 === 0 ? daysAgo(4 - index) : null,
           createdAt: daysAgo(9 - index),
           updatedAt: daysAgo(6 - index),
@@ -856,11 +900,11 @@ async function createReturnsAndRefunds(orders: Array<{ order: CreatedOrder; item
 
 async function createReviews(customers: CreatedUser[], products: CreatedProduct[]) {
   const comments = [
-    'Product quality is better than expected and delivery was fast.',
-    'Good value for the price, packaging was clean and careful.',
-    'I like the design and the product matched the listing.',
-    'Useful for daily work, would recommend to friends.',
-    'Customer support answered quickly when I asked about delivery.',
+    'Chất lượng sản phẩm tốt hơn mong đợi và giao hàng nhanh.',
+    'Giá hợp lý, đóng gói sạch sẽ và cẩn thận.',
+    'Mình thích thiết kế và sản phẩm đúng như mô tả.',
+    'Hữu ích cho nhu cầu hằng ngày, sẽ giới thiệu cho bạn bè.',
+    'Chăm sóc khách hàng phản hồi nhanh khi mình hỏi về giao hàng.',
   ];
 
   const reviewPairs = new Set<string>();
@@ -956,7 +1000,7 @@ async function createCustomerActivity(customers: CreatedUser[], products: Create
         data: {
           userId: user.id,
           points: 50 + userIndex * 10 + pointIndex * 20,
-          description: pick(['Welcome bonus', 'Order reward', 'Campaign bonus'], pointIndex),
+          description: pick(['Điểm chào mừng', 'Thưởng đơn hàng', 'Thưởng chiến dịch'], pointIndex),
           createdAt: daysAgo(30 - userIndex - pointIndex),
         },
       });
@@ -966,8 +1010,8 @@ async function createCustomerActivity(customers: CreatedUser[], products: Create
       await prisma.notification.create({
         data: {
           userId: user.id,
-          title: pick(['Order update', 'Flash sale', 'Coupon available', 'Support reply', 'Loyalty points added'], notificationIndex),
-          body: 'This is seeded demo notification content for user workflows.',
+          title: pick(['Cập nhật đơn hàng', 'Flash sale', 'Có coupon mới', 'Phản hồi hỗ trợ', 'Đã cộng điểm thưởng'], notificationIndex),
+          body: 'Đây là nội dung thông báo demo cho luồng người dùng.',
           type: pick(['ORDER', 'PROMOTION', 'COUPON', 'SUPPORT', 'LOYALTY'], notificationIndex),
           relatedId: null,
           isRead: notificationIndex % 2 === 0,
@@ -991,11 +1035,11 @@ async function createSupport(customers: CreatedUser[], admin: CreatedUser, order
         orderRef: order.orderNumber,
         category: pick(categories, index),
         subject: pick([
-          'Need help with delivery',
-          'Question about product warranty',
-          'Payment confirmation request',
-          'Return request follow up',
-          'Coupon did not apply',
+          'Cần hỗ trợ về giao hàng',
+          'Hỏi về bảo hành sản phẩm',
+          'Yêu cầu xác nhận thanh toán',
+          'Theo dõi yêu cầu đổi trả',
+          'Coupon không áp dụng được',
         ], index),
         status: pick(statuses, index),
         createdAt: daysAgo(14 - index),
@@ -1008,7 +1052,7 @@ async function createSupport(customers: CreatedUser[], admin: CreatedUser, order
         ticketId: ticket.id,
         userId: user.id,
         isAdmin: false,
-        content: 'Can you help me check this demo issue?',
+        content: 'Bạn có thể giúp mình kiểm tra vấn đề demo này không?',
         createdAt: daysAgo(14 - index),
       },
     });
@@ -1018,25 +1062,25 @@ async function createSupport(customers: CreatedUser[], admin: CreatedUser, order
         ticketId: ticket.id,
         userId: admin.id,
         isAdmin: true,
-        content: 'Support team has received your request and is checking it.',
+        content: 'Đội ngũ hỗ trợ đã nhận yêu cầu và đang kiểm tra.',
         createdAt: daysAgo(13 - index),
       },
     });
   }
 
   const faqs = [
-    ['How do I track my order?', 'Open Orders and select tracking to see shipment events.', 'orders'],
-    ['How long does delivery take?', 'Standard delivery takes 1-5 business days depending on city.', 'shipping'],
-    ['Can I return a product?', 'Delivered orders can be returned when they meet the return policy.', 'returns'],
-    ['How do coupons work?', 'Enter an active coupon code in cart or checkout before payment.', 'promotions'],
-    ['Which payment methods are supported?', 'Lishop supports COD, wallet, VNPAY, MOMO, PayPal, and Stripe.', 'payments'],
-    ['How are loyalty points earned?', 'Completed orders and campaigns can add points to your account.', 'wallet'],
-    ['Can I update my address?', 'Go to Profile and manage addresses before placing an order.', 'profile'],
-    ['How do I contact support?', 'Create a support ticket from the support page.', 'support'],
-    ['Why is a review pending?', 'Some reviews wait for admin moderation before publishing.', 'reviews'],
-    ['How do flash sales work?', 'Flash sale discounts are active only during the sale window.', 'promotions'],
-    ['Can invoices be downloaded?', 'Invoices are generated for paid orders.', 'invoices'],
-    ['What happens after refund approval?', 'Refunds are processed to wallet, original payment, or manual transfer.', 'refunds'],
+    ['Làm sao để theo dõi đơn hàng?', 'Mở trang Đơn hàng và chọn theo dõi để xem các mốc vận chuyển.', 'orders'],
+    ['Thời gian giao hàng mất bao lâu?', 'Giao hàng tiêu chuẩn thường mất 1-5 ngày làm việc tùy khu vực.', 'shipping'],
+    ['Tôi có thể đổi trả sản phẩm không?', 'Đơn đã giao có thể đổi trả khi đáp ứng chính sách đổi trả.', 'returns'],
+    ['Coupon hoạt động như thế nào?', 'Nhập mã coupon còn hiệu lực trong giỏ hàng hoặc thanh toán trước khi trả tiền.', 'promotions'],
+    ['Lishop hỗ trợ phương thức thanh toán nào?', 'Lishop hỗ trợ COD, ví, VNPAY, MOMO, PayPal và Stripe.', 'payments'],
+    ['Điểm thưởng được tích như thế nào?', 'Đơn hoàn tất và các chiến dịch có thể cộng điểm vào tài khoản của bạn.', 'wallet'],
+    ['Tôi có thể cập nhật địa chỉ không?', 'Vào Hồ sơ để quản lý địa chỉ trước khi đặt hàng.', 'profile'],
+    ['Làm sao để liên hệ hỗ trợ?', 'Tạo phiếu hỗ trợ từ trang Hỗ trợ.', 'support'],
+    ['Vì sao đánh giá đang chờ duyệt?', 'Một số đánh giá cần quản trị viên kiểm duyệt trước khi hiển thị.', 'reviews'],
+    ['Flash sale hoạt động ra sao?', 'Ưu đãi flash sale chỉ có hiệu lực trong khung thời gian mở bán.', 'promotions'],
+    ['Có thể tải hóa đơn không?', 'Hóa đơn được tạo cho các đơn hàng đã thanh toán.', 'invoices'],
+    ['Sau khi duyệt hoàn tiền thì sao?', 'Khoản hoàn tiền được xử lý vào ví, phương thức thanh toán gốc hoặc chuyển khoản thủ công.', 'refunds'],
   ];
 
   for (const [index, [question, answer, category]] of faqs.entries()) {
@@ -1053,7 +1097,7 @@ async function createSupport(customers: CreatedUser[], admin: CreatedUser, order
 }
 
 async function main() {
-  console.warn('Seeding Lishop balanced demo data...');
+  console.warn('Đang seed dữ liệu demo Lishop...');
 
   await cleanup();
 
@@ -1087,11 +1131,11 @@ async function main() {
     faqs: await prisma.fAQ.count(),
   };
 
-  console.warn('Seed complete. Demo accounts:');
+  console.warn('Seed hoàn tất. Tài khoản demo:');
   console.warn('  Admin:     admin@lishop.vn / Admin@12345');
-  console.warn('  Customer:  customer1@lishop.vn / Customer@123');
-  console.warn('  Customers: customer1@lishop.vn through customer10@lishop.vn / Customer@123');
-  console.warn('Record counts:', counts);
+  console.warn('  Khách hàng: customer1@lishop.vn / Customer@123');
+  console.warn('  Danh sách khách hàng: customer1@lishop.vn đến customer10@lishop.vn / Customer@123');
+  console.warn('Số bản ghi:', counts);
 }
 
 main()

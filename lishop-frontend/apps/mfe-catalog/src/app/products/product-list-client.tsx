@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@lishop/shared';
+import type { ProductListUrlFilters } from '@lishop/shared';
 import { catalogApi, CategoryItem, ProductListParams, ProductListResponse } from '../../lib/catalog-api';
 import { ProductCard } from '../../components/product-card';
 import { CategorySidebar } from '../../components/category-sidebar';
@@ -11,13 +12,14 @@ import { ProductFilters } from '../../components/product-filters';
 interface Props {
   initialCategories: CategoryItem[];
   initialProducts: ProductListResponse;
+  initialFilters: ProductListUrlFilters;
 }
 
-export function ProductListClient({ initialCategories, initialProducts }: Props) {
-  const [categoryId, setCategoryId] = useState<string | undefined>();
-  const [sort, setSort] = useState('newest');
-  const [q, setQ] = useState('');
-  const [brand, setBrand] = useState('');
+export function ProductListClient({ initialCategories, initialProducts, initialFilters }: Props) {
+  const [categoryId, setCategoryId] = useState<string | undefined>(initialFilters.categoryId);
+  const [sort, setSort] = useState<string>(initialFilters.sort ?? 'newest');
+  const [q, setQ] = useState(initialFilters.q ?? '');
+  const [brand, setBrand] = useState(initialFilters.brand ?? '');
   const [minPriceVnd, setMinPriceVnd] = useState('');
   const [maxPriceVnd, setMaxPriceVnd] = useState('');
   const [minRating, setMinRating] = useState('');
@@ -72,6 +74,7 @@ export function ProductListClient({ initialCategories, initialProducts }: Props)
   }, []);
 
   const handleResetFilters = useCallback(() => {
+    setCategoryId(undefined);
     setSort('newest');
     setQ('');
     setBrand('');

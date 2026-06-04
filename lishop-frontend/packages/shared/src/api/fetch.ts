@@ -27,14 +27,14 @@ export function createApiFetch(apiUrl: string, authUrl = DEFAULT_AUTH_URL) {
       });
       if (!refreshRes.ok) {
         if (typeof window !== 'undefined') window.location.href = `${authUrl}/login`;
-        throw new Error('Session expired');
+        throw new Error('Phiên đăng nhập đã hết hạn');
       }
       res = await doRequest(path, init);
     }
 
     if (res.status === 204) return undefined as T;
     const json = (await res.json()) as { data?: T; message?: string };
-    if (!res.ok) throw new Error(json.message ?? 'Request failed');
+    if (!res.ok) throw new Error(json.message ?? 'Yêu cầu không thành công');
     return (json.data ?? json) as T;
   };
 }

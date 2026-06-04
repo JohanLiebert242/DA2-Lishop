@@ -50,6 +50,7 @@ export interface ProductSummary {
   averageRating: number;
   reviewCount: number;
   categoryId: string;
+  brand?: string;
   images: ProductImage[];
   variants: ProductVariant[];
   tags: { tag: { name: string } }[];

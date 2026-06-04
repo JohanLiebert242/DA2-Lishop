@@ -116,6 +116,9 @@ export function ProductCard({ product }: { product: ProductSummary }) {
           <h3 className="line-clamp-2 text-sm font-semibold text-stone-800 group-hover:text-indigo-700 transition-colors leading-snug">
             {product.name}
           </h3>
+          {product.brand && (
+            <p className="text-xs font-semibold text-stone-500">Thương hiệu: {product.brand}</p>
+          )}
           {product.averageRating > 0 && (
             <Stars rating={product.averageRating} count={product.reviewCount} />
           )}

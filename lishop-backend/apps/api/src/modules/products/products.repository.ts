@@ -8,6 +8,7 @@ export interface ProductWithDetails extends Product {
   tags: { tagId: string; tag: { name: string } }[];
   category: { id: string; name: string; slug: string };
   variants: ProductVariant[];
+  brand?: string;
 }
 
 const PRODUCT_INCLUDE = {
@@ -61,14 +62,19 @@ export class ProductsRepository {
     if (brand) {
       textFilters.push({
         OR: [
+          { tags: { some: { tag: { name: { equals: `brand:${brand}`, mode: Prisma.QueryMode.insensitive } } } } },
           { name: { contains: brand, mode: Prisma.QueryMode.insensitive } },
           { description: { contains: brand, mode: Prisma.QueryMode.insensitive } },
         ],
       });
     }
 
+    const categoryFilter: Prisma.ProductWhereInput = categoryId
+      ? { category: { is: { OR: [{ id: categoryId }, { parentId: categoryId }] } } }
+      : {};
+
     const where: Prisma.ProductWhereInput = {
-      ...(categoryId && { categoryId }),
+      ...categoryFilter,
       ...(Object.keys(priceFilter).length > 0 && { priceVnd: priceFilter }),
       ...(minRating !== undefined && { averageRating: { gte: minRating } }),
       ...(inStock && { stock: { gt: 0 } }),
@@ -91,14 +97,15 @@ export class ProductsRepository {
     const lastItem = result[result.length - 1];
     const nextCursor = hasMore && lastItem ? lastItem.id : null;
 
-    return { items: result as ProductWithDetails[], nextCursor };
+    return { items: result.map((item) => this.withBrand(item as ProductWithDetails)), nextCursor };
   }
 
   async findBySlug(slug: string): Promise<ProductWithDetails | null> {
-    return prisma.product.findUnique({
+    const product = await prisma.product.findUnique({
       where: { slug },
       include: PRODUCT_INCLUDE,
-    }) as Promise<ProductWithDetails | null>;
+    }) as ProductWithDetails | null;
+    return product ? this.withBrand(product) : null;
   }
 
   async findById(id: string): Promise<Product | null> {
@@ -106,18 +113,20 @@ export class ProductsRepository {
   }
 
   async create(data: Prisma.ProductCreateInput): Promise<ProductWithDetails> {
-    return prisma.product.create({
+    const product = await prisma.product.create({
       data,
       include: PRODUCT_INCLUDE,
-    }) as Promise<ProductWithDetails>;
+    }) as ProductWithDetails;
+    return this.withBrand(product);
   }
 
   async update(id: string, data: Prisma.ProductUpdateInput): Promise<ProductWithDetails> {
-    return prisma.product.update({
+    const product = await prisma.product.update({
       where: { id },
       data,
       include: PRODUCT_INCLUDE,
-    }) as Promise<ProductWithDetails>;
+    }) as ProductWithDetails;
+    return this.withBrand(product);
   }
 
   async delete(id: string): Promise<Product> {
@@ -125,12 +134,13 @@ export class ProductsRepository {
   }
 
   async findFeatured(limit: number = 8): Promise<ProductWithDetails[]> {
-    return prisma.product.findMany({
+    const products = await prisma.product.findMany({
       where: { stock: { gt: 0 } },
       orderBy: { createdAt: 'desc' },
       take: limit,
       include: PRODUCT_INCLUDE,
-    }) as Promise<ProductWithDetails[]>;
+    }) as ProductWithDetails[];
+    return products.map((product) => this.withBrand(product));
   }
 
   async findRelated(
@@ -142,12 +152,13 @@ export class ProductsRepository {
     const baseWhere = { categoryId, id: { not: productId }, stock: { gt: 0 } };
 
     if (tagIds.length === 0) {
-      return prisma.product.findMany({
+      const products = await prisma.product.findMany({
         where: baseWhere,
         take: limit,
         orderBy: { averageRating: 'desc' },
         include: PRODUCT_INCLUDE,
-      }) as Promise<ProductWithDetails[]>;
+      }) as ProductWithDetails[];
+      return products.map((product) => this.withBrand(product));
     }
 
     // Prefer products that share at least one tag, ordered by rating
@@ -158,7 +169,7 @@ export class ProductsRepository {
       include: PRODUCT_INCLUDE,
     });
 
-    if (withTags.length >= limit) return withTags as ProductWithDetails[];
+    if (withTags.length >= limit) return (withTags as ProductWithDetails[]).map((product) => this.withBrand(product));
 
     // Fill remaining slots from the same category (no tag overlap required)
     const excludeIds = [productId, ...withTags.map((p) => p.id)];
@@ -169,7 +180,7 @@ export class ProductsRepository {
       include: PRODUCT_INCLUDE,
     });
 
-    return [...withTags, ...filler] as ProductWithDetails[];
+    return ([...withTags, ...filler] as ProductWithDetails[]).map((product) => this.withBrand(product));
   }
 
   private getOrderBy(sort?: ProductSortOption): Prisma.ProductOrderByWithRelationInput[] {
@@ -179,5 +190,13 @@ export class ProductsRepository {
       case ProductSortOption.RATING_DESC: return [{ averageRating: 'desc' }, { id: 'asc' }];
       default: return [{ createdAt: 'desc' }, { id: 'asc' }];
     }
+  }
+
+  private withBrand(product: ProductWithDetails): ProductWithDetails {
+    const brandTag = product.tags.find((tag) => tag.tag.name.toLowerCase().startsWith('brand:'));
+    return {
+      ...product,
+      brand: brandTag?.tag.name.slice('brand:'.length),
+    };
   }
 }
