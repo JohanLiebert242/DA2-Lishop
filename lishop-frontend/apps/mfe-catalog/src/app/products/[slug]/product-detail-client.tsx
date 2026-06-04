@@ -63,6 +63,7 @@ function ReviewMedia({ url }: { url: string }) {
       <video
         src={url}
         controls
+        data-testid="review-media-video"
         className="h-24 w-32 rounded-lg border border-stone-200 bg-black object-cover"
       />
     );
@@ -74,6 +75,7 @@ function ReviewMedia({ url }: { url: string }) {
       <img
         src={url}
         alt="Review media"
+        data-testid="review-media-image"
         className="h-24 w-32 rounded-lg border border-stone-200 bg-white object-cover"
       />
     );
@@ -231,7 +233,7 @@ function ReviewsSection({ productId }: { productId: string }) {
           )}
         </div>
         {isLoggedInNow && !showForm && (
-          <button onClick={() => setShowForm(true)} className="btn-primary cursor-pointer">
+          <button onClick={() => setShowForm(true)} data-testid="write-review-button" className="btn-primary cursor-pointer">
             Viết đánh giá
           </button>
         )}
@@ -251,6 +253,7 @@ function ReviewsSection({ productId }: { productId: string }) {
             onChange={(e) => setContent(e.target.value)}
             placeholder="Nhận xét của bạn (tùy chọn)..."
             rows={3}
+            data-testid="review-content"
             className="mt-3 w-full resize-none rounded-xl border border-warm px-3 py-2 text-sm bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-colors"
           />
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -261,6 +264,7 @@ function ReviewsSection({ productId }: { productId: string }) {
                 onChange={(e) => setMediaUrlInput(e.target.value)}
                 placeholder="https://... (moi link mot dong)"
                 rows={2}
+                data-testid="review-media-url"
                 className="mt-1 w-full resize-none rounded-xl border border-warm bg-white px-3 py-2 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </label>
@@ -294,6 +298,7 @@ function ReviewsSection({ productId }: { productId: string }) {
             <button
               onClick={() => submitMutation.mutate()}
               disabled={submitMutation.isPending}
+              data-testid="submit-review-button"
               className="btn-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitMutation.isPending ? 'Đang gửi...' : 'Gửi đánh giá'}
@@ -320,6 +325,7 @@ function ReviewsSection({ productId }: { productId: string }) {
                   key={star}
                   type="button"
                   onClick={() => setRatingFilter(star)}
+                  data-testid={`review-filter-${star}`}
                   className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
                     isSelected
                       ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
@@ -356,7 +362,7 @@ function ReviewsSection({ productId }: { productId: string }) {
             const { body, mediaLinks } = parseReviewContent(review.content ?? '');
 
             return (
-              <div key={review.id} className="card p-4">
+              <div key={review.id} data-testid="review-card" className="card p-4">
                 <div className="mb-1 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-stone-900">{review.userName}</span>
@@ -394,13 +400,14 @@ function ReviewsSection({ productId }: { productId: string }) {
               >
                 Truoc
               </button>
-              <span className="text-xs font-semibold text-muted">
+              <span data-testid="review-page-indicator" className="text-xs font-semibold text-muted">
                 {reviewPage}/{totalReviewPages}
               </span>
               <button
                 type="button"
                 onClick={() => setReviewPage((page) => Math.min(totalReviewPages, page + 1))}
                 disabled={reviewPage === totalReviewPages}
+                data-testid="review-next-page"
                 className="rounded-lg border border-warm px-3 py-1.5 text-xs font-bold text-stone-600 transition hover:bg-warm-100 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Sau
@@ -646,6 +653,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                 src={availableCurrentImage.url}
                 alt={availableCurrentImage.alt ?? product.name}
                 fill
+                data-testid="product-main-image"
                 className="object-cover transition-transform duration-300 hover:scale-[1.35] cursor-zoom-in"
                 priority
                 onError={() => markImageFailed(availableCurrentImage.id)}
@@ -881,7 +889,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
             </button>
           </div>
 
-          <Link href={`/shops/${shopSlug}`} className="mt-6 block rounded-xl border border-warm bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+          <Link href={`/shops/${shopSlug}`} data-testid="shop-profile-link" className="mt-6 block rounded-xl border border-warm bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-muted">Shop</p>
@@ -921,7 +929,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                 {product.images.length > 0 && (
                   <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {product.images.slice(0, 6).map((image) => (
-                      <div key={image.id} className="relative aspect-[4/3] overflow-hidden rounded-xl border border-warm bg-white">
+                      <div key={image.id} data-testid="description-image" className="relative aspect-[4/3] overflow-hidden rounded-xl border border-warm bg-white">
                         <Image
                           src={image.url}
                           alt={image.alt ?? product.name}
