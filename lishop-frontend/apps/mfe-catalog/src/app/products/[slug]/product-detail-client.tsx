@@ -6,13 +6,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { formatVND } from '@lishop/shared';
 import { toast } from '@lishop/ui';
-import { catalogApi, ProductDetail, ProductVariant, ReviewInfo } from '../../../lib/catalog-api';
+import { catalogApi, ProductDetail, ProductImage, ProductVariant, ReviewInfo } from '../../../lib/catalog-api';
 import { RelatedProducts } from '../../../components/related-products';
 import { addToCart, flyToCart } from '../../../lib/cart-helper';
 import { getWishlist, addToWishlist, removeFromWishlist, isLoggedIn } from '../../../lib/wishlist-api';
 import { ChatWidget } from '../../../components/chat-widget';
 
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
+const REVIEWS_PER_PAGE = 5;
 
 const ATTRIBUTE_LABELS: Record<string, string> = {
   color: 'Mau sac',
@@ -44,6 +45,52 @@ function parseReviewContent(content: string) {
   return { body, mediaLinks };
 }
 
+function slugifyShopName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'lishop-official-store';
+}
+
+function isVideoUrl(url: string) {
+  return /\.(mp4|webm|ogg)(\?.*)?$/i.test(url);
+}
+
+function isImageUrl(url: string) {
+  return /\.(avif|gif|jpe?g|png|webp)(\?.*)?$/i.test(url);
+}
+
+function ReviewMedia({ url }: { url: string }) {
+  if (isVideoUrl(url)) {
+    return (
+      <video
+        src={url}
+        controls
+        className="h-24 w-32 rounded-lg border border-stone-200 bg-black object-cover"
+      />
+    );
+  }
+
+  if (isImageUrl(url)) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt="Review media"
+        className="h-24 w-32 rounded-lg border border-stone-200 bg-white object-cover"
+      />
+    );
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50"
+    >
+      Xem media
+    </a>
+  );
+}
+
 function Stars({ rating, interactive = false, onSelect }: { rating: number; interactive?: boolean; onSelect?: (r: number) => void }) {
   return (
     <div className="flex gap-0.5">
@@ -67,6 +114,7 @@ function ReviewsSection({ productId }: { productId: string }) {
   const [showForm, setShowForm] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'highest' | 'lowest'>('newest');
   const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all');
+  const [reviewPage, setReviewPage] = useState(1);
   const [mediaUrlInput, setMediaUrlInput] = useState('');
   const [mediaPreviews, setMediaPreviews] = useState<Array<{ name: string; type: string; url: string }>>([]);
   const [isLoggedInNow, setIsLoggedInNow] = useState(false);
@@ -99,6 +147,7 @@ function ReviewsSection({ productId }: { productId: string }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
+      queryClient.invalidateQueries({ queryKey: ['product'] });
       setShowForm(false);
       setContent('');
       setRating(5);
@@ -131,6 +180,15 @@ function ReviewsSection({ productId }: { productId: string }) {
     if (sortOrder === 'lowest') return a.rating - b.rating;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+  const totalReviewPages = Math.max(1, Math.ceil(sortedReviews.length / REVIEWS_PER_PAGE));
+  const paginatedReviews = sortedReviews.slice(
+    (reviewPage - 1) * REVIEWS_PER_PAGE,
+    reviewPage * REVIEWS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    setReviewPage(1);
+  }, [ratingFilter, sortOrder, productId]);
 
   function handleMediaFilesChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -294,7 +352,7 @@ function ReviewsSection({ productId }: { productId: string }) {
               Khong co danh gia nao khop bo loc nay.
             </p>
           )}
-          {sortedReviews.map((review: ReviewInfo) => {
+          {paginatedReviews.map((review: ReviewInfo) => {
             const { body, mediaLinks } = parseReviewContent(review.content ?? '');
 
             return (
@@ -316,15 +374,7 @@ function ReviewsSection({ productId }: { productId: string }) {
                 {mediaLinks.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {mediaLinks.map((url) => (
-                      <a
-                        key={url}
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50"
-                      >
-                        Xem media
-                      </a>
+                      <ReviewMedia key={url} url={url} />
                     ))}
                   </div>
                 )}
@@ -334,6 +384,29 @@ function ReviewsSection({ productId }: { productId: string }) {
               </div>
             );
           })}
+          {sortedReviews.length > REVIEWS_PER_PAGE && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setReviewPage((page) => Math.max(1, page - 1))}
+                disabled={reviewPage === 1}
+                className="rounded-lg border border-warm px-3 py-1.5 text-xs font-bold text-stone-600 transition hover:bg-warm-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Truoc
+              </button>
+              <span className="text-xs font-semibold text-muted">
+                {reviewPage}/{totalReviewPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setReviewPage((page) => Math.min(totalReviewPages, page + 1))}
+                disabled={reviewPage === totalReviewPages}
+                className="rounded-lg border border-warm px-3 py-1.5 text-xs font-bold text-stone-600 transition hover:bg-warm-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Sau
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -435,25 +508,25 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
   const effectiveStock = selectedVariant?.stock ?? product?.stock ?? 0;
   const effectiveSku = selectedVariant?.sku ?? product?.sku;
   const likeCount = product ? Math.max(24, product.reviewCount * 7 + Math.round(product.averageRating * 9)) : 0;
+  const shopName = product?.brand ? `${product.brand} Store` : 'Lishop Official Store';
+  const shopSlug = slugifyShopName(product?.brand ?? shopName);
 
   function handleAttributeSelect(key: string, value: string) {
     const nextAttributes = { ...selectedAttributes, [key]: value };
-    const nextVariant = variants.find((variant) =>
+    const compatibleVariant = variants.find((variant) =>
       attributeKeys.every((attrKey) => !nextAttributes[attrKey] || variant.attributes?.[attrKey] === nextAttributes[attrKey]),
     );
+    const fallbackVariant = variants.find((variant) => variant.attributes?.[key] === value && variant.stock > 0)
+      ?? variants.find((variant) => variant.attributes?.[key] === value);
+    const nextVariant = compatibleVariant ?? fallbackVariant;
 
-    setSelectedAttributes(nextAttributes);
+    setSelectedAttributes(nextVariant?.attributes ?? nextAttributes);
     setSelectedVariantId(nextVariant?.id ?? null);
     setQty(1);
   }
 
   function isAttributeValueAvailable(key: string, value: string) {
-    const nextAttributes = { ...selectedAttributes, [key]: value };
-
-    return variants.some((variant) =>
-      variant.stock > 0 &&
-      attributeKeys.every((attrKey) => !nextAttributes[attrKey] || variant.attributes?.[attrKey] === nextAttributes[attrKey]),
-    );
+    return variants.some((variant) => variant.stock > 0 && variant.attributes?.[key] === value);
   }
 
   function scrollToSizeGuide() {
@@ -477,6 +550,30 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     await navigator.clipboard.writeText(url);
     toast.success('Da sao chep lien ket san pham');
   }
+
+  const images = useMemo(() => {
+    if (!product) return null;
+    const baseImages = [...product.images].sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+
+    if (selectedVariant?.imageUrl) {
+      const variantImage: ProductImage = {
+        id: `variant-${selectedVariant.id}`,
+        url: selectedVariant.imageUrl,
+        alt: `${product.name} ${getVariantLabel(selectedVariant)}`,
+        isPrimary: true,
+      };
+
+      return [variantImage, ...baseImages.filter((image) => image.url !== selectedVariant.imageUrl)];
+    }
+
+    return baseImages.length > 0 ? baseImages : null;
+  }, [product, selectedVariant]);
+  const currentImage = images?.[selectedImageIndex];
+  const availableCurrentImage = currentImage && !failedImageIds.has(currentImage.id) ? currentImage : null;
+
+  useEffect(() => {
+    if (selectedVariant?.imageUrl) setSelectedImageIndex(0);
+  }, [selectedVariant?.imageUrl]);
 
   if (isLoading) {
     return (
@@ -521,12 +618,6 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
       setAddingToCart(false);
     }
   }
-
-  const images = product.images.length > 0
-    ? product.images.sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
-    : null;
-  const currentImage = images?.[selectedImageIndex];
-  const availableCurrentImage = currentImage && !failedImageIds.has(currentImage.id) ? currentImage : null;
 
   function markImageFailed(id: string) {
     setFailedImageIds((previous) => new Set(previous).add(id));
@@ -790,11 +881,11 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
             </button>
           </div>
 
-          <div className="mt-6 rounded-xl border border-warm bg-white p-4">
+          <Link href={`/shops/${shopSlug}`} className="mt-6 block rounded-xl border border-warm bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-muted">Shop</p>
-                <h2 className="mt-1 text-base font-black text-stone-900">Lishop Official Store</h2>
+                <h2 className="mt-1 text-base font-black text-stone-900">{shopName}</h2>
               </div>
               <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
                 Mall verified
@@ -814,7 +905,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                 <p className="text-xs text-muted">Danh gia</p>
               </div>
             </div>
-          </div>
+          </Link>
 
           <div className="mt-6 border-t border-warm pt-6">
             <h2 className="text-sm font-black uppercase tracking-wider text-stone-900">Chi tiet san pham</h2>
@@ -827,6 +918,21 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
               <section>
                 <h3 className="font-black uppercase tracking-wide text-stone-800">Thong tin san pham</h3>
                 <p className="mt-1 whitespace-pre-line">{product.description}</p>
+                {product.images.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {product.images.slice(0, 6).map((image) => (
+                      <div key={image.id} className="relative aspect-[4/3] overflow-hidden rounded-xl border border-warm bg-white">
+                        <Image
+                          src={image.url}
+                          alt={image.alt ?? product.name}
+                          fill
+                          className="object-cover"
+                          onError={() => markImageFailed(image.id)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div className="rounded-lg bg-warm-100 px-3 py-2">
                     <dt className="text-xs font-bold text-muted">Danh muc</dt>

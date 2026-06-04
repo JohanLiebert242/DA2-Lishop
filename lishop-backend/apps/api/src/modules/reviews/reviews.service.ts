@@ -17,14 +17,17 @@ export class ReviewsService {
 
     const verifiedPurchase = await this.repo.hasDeliveredOrderWithProduct(userId, productId);
 
-    return this.repo.create({
+    const review = await this.repo.create({
       rating: dto.rating,
       content: dto.content ?? '',
-      status: ReviewStatus.PENDING,
+      status: ReviewStatus.APPROVED,
       verifiedPurchase,
       product: { connect: { id: productId } },
       user: { connect: { id: userId } },
     });
+
+    await this.repo.refreshProductReviewStats(productId);
+    return review;
   }
 
   findAllForAdmin(status?: ReviewStatus): Promise<AdminReview[]> {

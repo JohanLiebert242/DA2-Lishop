@@ -30,7 +30,7 @@ export class ReviewsRepository {
     const reviews = await prisma.review.findMany({
       where: { productId, status: ReviewStatus.APPROVED },
       orderBy: { createdAt: 'desc' },
-      take: 20,
+      take: 100,
       include: {
         user: { select: { firstName: true, lastName: true, email: true } },
       },
@@ -67,6 +67,22 @@ export class ReviewsRepository {
 
   create(data: Prisma.ReviewCreateInput): Promise<Review> {
     return prisma.review.create({ data });
+  }
+
+  async refreshProductReviewStats(productId: string): Promise<void> {
+    const aggregate = await prisma.review.aggregate({
+      where: { productId, status: ReviewStatus.APPROVED },
+      _avg: { rating: true },
+      _count: { id: true },
+    });
+
+    await prisma.product.update({
+      where: { id: productId },
+      data: {
+        averageRating: aggregate._avg.rating ?? 0,
+        reviewCount: aggregate._count.id,
+      },
+    });
   }
 
   findByIdAdmin(id: string): Promise<AdminReview | null> {
@@ -124,20 +140,7 @@ export class ReviewsRepository {
       },
     });
 
-    // Recalculate product averageRating and reviewCount based on APPROVED reviews
-    const aggregate = await prisma.review.aggregate({
-      where: { productId: updated.productId, status: ReviewStatus.APPROVED },
-      _avg: { rating: true },
-      _count: { id: true },
-    });
-
-    await prisma.product.update({
-      where: { id: updated.productId },
-      data: {
-        averageRating: aggregate._avg.rating ?? 0,
-        reviewCount: aggregate._count.id,
-      },
-    });
+    await this.refreshProductReviewStats(updated.productId);
 
     return updated;
   }

@@ -17,6 +17,16 @@ const BRAND_OPTIONS = [
   'La Roche Posay',
 ];
 
+const PRICE_MIN = 0;
+const PRICE_MAX = 50_000_000;
+const PRICE_STEP = 500_000;
+
+function formatCompactVnd(value: number) {
+  if (value >= 1_000_000) return `${value / 1_000_000}tr`;
+  if (value >= 1_000) return `${value / 1_000}k`;
+  return `${value}`;
+}
+
 interface ProductFiltersProps {
   sort: string;
   q: string;
@@ -60,9 +70,21 @@ export function ProductFilters({
   onFreeShippingChange,
   onReset,
 }: ProductFiltersProps) {
+  const minPriceNumber = minPriceVnd ? Number(minPriceVnd) : PRICE_MIN;
+  const maxPriceNumber = maxPriceVnd ? Number(maxPriceVnd) : PRICE_MAX;
   const hasActiveFilters = Boolean(
     q || brand || minPriceVnd || maxPriceVnd || minRating || inStock || onSale || freeShipping || sort !== 'newest',
   );
+
+  function handleMinPrice(value: string) {
+    const nextValue = Math.min(Number(value), maxPriceNumber);
+    onMinPriceChange(nextValue <= PRICE_MIN ? '' : String(nextValue));
+  }
+
+  function handleMaxPrice(value: string) {
+    const nextValue = Math.max(Number(value), minPriceNumber);
+    onMaxPriceChange(nextValue >= PRICE_MAX ? '' : String(nextValue));
+  }
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2.5">
@@ -90,40 +112,54 @@ export function ProductFilters({
         ))}
       </select>
 
-      <div className="flex items-center overflow-hidden rounded-lg border border-stone-200 bg-white">
-        <input
-          type="number"
-          min="0"
-          inputMode="numeric"
-          value={minPriceVnd}
-          onChange={e => onMinPriceChange(e.target.value)}
-          placeholder="Giá từ"
-          className="w-24 border-0 bg-transparent px-3 py-2 text-sm outline-none"
-        />
-        <span className="h-5 w-px bg-stone-200" />
-        <input
-          type="number"
-          min="0"
-          inputMode="numeric"
-          value={maxPriceVnd}
-          onChange={e => onMaxPriceChange(e.target.value)}
-          placeholder="đến"
-          className="w-24 border-0 bg-transparent px-3 py-2 text-sm outline-none"
-        />
+      <div className="min-w-64 rounded-lg border border-stone-200 bg-white px-3 py-2">
+        <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold text-stone-600">
+          <span>Giá</span>
+          <span>{formatCompactVnd(minPriceNumber)} - {formatCompactVnd(maxPriceNumber)}</span>
+        </div>
+        <div className="grid gap-1">
+          <input
+            type="range"
+            min={PRICE_MIN}
+            max={PRICE_MAX}
+            step={PRICE_STEP}
+            value={minPriceNumber}
+            onChange={e => handleMinPrice(e.target.value)}
+            className="h-2 cursor-pointer accent-indigo-600"
+            aria-label="Giá tối thiểu"
+          />
+          <input
+            type="range"
+            min={PRICE_MIN}
+            max={PRICE_MAX}
+            step={PRICE_STEP}
+            value={maxPriceNumber}
+            onChange={e => handleMaxPrice(e.target.value)}
+            className="h-2 cursor-pointer accent-indigo-600"
+            aria-label="Giá tối đa"
+          />
+        </div>
       </div>
 
-      <select
-        value={minRating}
-        onChange={e => onMinRatingChange(e.target.value)}
-        className="input-field py-2 pr-8 text-sm font-medium"
-      >
-        <option value="">Đánh giá</option>
-        <option value="5">5 sao</option>
-        <option value="4">Từ 4 sao</option>
-        <option value="3">Từ 3 sao</option>
-        <option value="2">Từ 2 sao</option>
-        <option value="1">Từ 1 sao</option>
-      </select>
+      <div className="flex items-center overflow-hidden rounded-lg border border-stone-200 bg-white">
+        {[1, 2, 3, 4, 5].map((star) => {
+          const selected = minRating === String(star);
+
+          return (
+            <button
+              key={star}
+              type="button"
+              onClick={() => onMinRatingChange(selected ? '' : String(star))}
+              className={`h-9 w-9 border-r border-stone-100 text-sm font-bold transition last:border-r-0 ${
+                selected ? 'bg-yellow-50 text-yellow-500' : 'text-stone-400 hover:bg-yellow-50 hover:text-yellow-500'
+              }`}
+              aria-label={`${star} sao`}
+            >
+              {star}★
+            </button>
+          );
+        })}
+      </div>
 
       <div className="relative">
         <select

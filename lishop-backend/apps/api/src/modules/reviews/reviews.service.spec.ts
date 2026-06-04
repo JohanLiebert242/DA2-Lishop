@@ -21,6 +21,7 @@ describe('ReviewsService', () => {
     findByProductIdAndUserId: jest.fn(),
     hasDeliveredOrderWithProduct: jest.fn(),
     create: jest.fn(),
+    refreshProductReviewStats: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -52,12 +53,20 @@ describe('ReviewsService', () => {
     expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ verifiedPurchase: false }));
   });
 
-  it('createReview sets status to PENDING (requires moderation)', async () => {
+  it('createReview approves immediately so the new feedback appears publicly', async () => {
     repo.findByProductIdAndUserId.mockResolvedValue(null);
     repo.hasDeliveredOrderWithProduct.mockResolvedValue(false);
-    repo.create.mockResolvedValue(mockReview);
+    repo.create.mockResolvedValue({ ...mockReview, productId: 'p1' });
     await service.createReview('u1', 'p1', { rating: 5 });
-    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ status: ReviewStatus.PENDING }));
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ status: ReviewStatus.APPROVED }));
+  });
+
+  it('createReview refreshes product review statistics after creating feedback', async () => {
+    repo.findByProductIdAndUserId.mockResolvedValue(null);
+    repo.hasDeliveredOrderWithProduct.mockResolvedValue(false);
+    repo.create.mockResolvedValue({ ...mockReview, productId: 'p1' });
+    await service.createReview('u1', 'p1', { rating: 5 });
+    expect(repo.refreshProductReviewStats).toHaveBeenCalledWith('p1');
   });
 
   it('createReview sets verifiedPurchase=true when user has delivered order', async () => {
