@@ -3,6 +3,30 @@ import { createHmac } from 'crypto';
 
 @Injectable()
 export class PaymentsGatewayService {
+  private getMockPaymentUrl(orderId: string): string {
+    const mockReturnUrl =
+      process.env['PAYMENT_MOCK_RETURN_URL'] ||
+      'http://localhost:4000/payments/mock/return';
+    const params = new URLSearchParams({ orderId, success: 'true' });
+    return `${mockReturnUrl}?${params.toString()}`;
+  }
+
+  private usesDemoVNPayCredentials(tmnCode: string, hashSecret: string): boolean {
+    return tmnCode === 'DEMO' || hashSecret === 'DEMO_SECRET';
+  }
+
+  private usesDemoMoMoCredentials(
+    partnerCode: string,
+    accessKey: string,
+    secretKey: string,
+  ): boolean {
+    return (
+      partnerCode === 'MOMO_DEMO' ||
+      accessKey === 'DEMO_ACCESS' ||
+      secretKey === 'DEMO_SECRET'
+    );
+  }
+
   // ─── VNPAY ───────────────────────────────────────────────────────────────────
 
   generateVNPayUrl(
@@ -19,6 +43,10 @@ export class PaymentsGatewayService {
     const returnUrl =
       process.env['VNPAY_RETURN_URL'] ??
       'http://localhost:3004/checkout/payment-result';
+
+    if (this.usesDemoVNPayCredentials(tmnCode, hashSecret)) {
+      return this.getMockPaymentUrl(orderId);
+    }
 
     const now = new Date();
     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -82,6 +110,13 @@ export class PaymentsGatewayService {
       process.env['MOMO_IPN_URL'] ?? 'http://localhost:4000/payments/momo/ipn';
 
     const requestId = `${orderId}-${Date.now()}`;
+    if (this.usesDemoMoMoCredentials(partnerCode, accessKey, secretKey)) {
+      return {
+        payUrl: this.getMockPaymentUrl(orderId),
+        requestId,
+      };
+    }
+
     const requestType = 'payWithMethod';
     const extraData = '';
     const orderInfo = `Thanh toan don hang #${orderId.slice(0, 8)}`;

@@ -158,7 +158,6 @@ export default function CheckoutPage() {
             {
               method: 'POST',
               credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
             },
           );
           const json = await res.json();

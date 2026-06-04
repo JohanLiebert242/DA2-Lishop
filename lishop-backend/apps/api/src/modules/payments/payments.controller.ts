@@ -8,11 +8,12 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
-  Redirect,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FastifyReply } from 'fastify';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -28,22 +29,20 @@ export class PaymentsController {
   @Public()
   @Get('mock/return')
   @ApiOperation({ summary: 'Mock gateway return for local payment testing' })
-  @Redirect()
   async mockReturn(
     @Query('orderId') orderId: string,
     @Query('success') success = 'true',
+    @Res() reply: FastifyReply,
   ) {
     const returnUrl =
-      process.env['PAYMENT_RETURN_URL'] ??
-      process.env['VNPAY_RETURN_URL'] ??
+      process.env['PAYMENT_RETURN_URL'] ||
+      process.env['VNPAY_RETURN_URL'] ||
       'http://localhost:3004/checkout/payment-result';
     const result = await this.paymentsService.handleMockPayment(
       orderId,
       success !== 'false',
     );
-    return {
-      url: `${returnUrl}?success=${result.success}&orderId=${result.orderId}`,
-    };
+    return reply.redirect(302, `${returnUrl}?success=${result.success}&orderId=${result.orderId}`);
   }
 
   @Public()
@@ -85,15 +84,15 @@ export class PaymentsController {
   @Public()
   @Get('vnpay/return')
   @ApiOperation({ summary: 'VNPAY payment return callback' })
-  @Redirect()
-  async vnpayReturn(@Query() query: Record<string, string>) {
+  async vnpayReturn(
+    @Query() query: Record<string, string>,
+    @Res() reply: FastifyReply,
+  ) {
     const returnUrl =
-      process.env['VNPAY_RETURN_URL'] ??
+      process.env['VNPAY_RETURN_URL'] ||
       'http://localhost:3004/checkout/payment-result';
     const result = await this.paymentsService.handleVNPayReturn(query);
-    return {
-      url: `${returnUrl}?success=${result.success}&orderId=${result.orderId}`,
-    };
+    return reply.redirect(302, `${returnUrl}?success=${result.success}&orderId=${result.orderId}`);
   }
 
   // ─── MoMo IPN (server-to-server) ─────────────────────────────────────────
