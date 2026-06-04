@@ -13,6 +13,8 @@ export interface Address {
   district: string;
   city: string;
   country: string;
+  latitude: number | null;
+  longitude: number | null;
   isDefault: boolean;
 }
 
@@ -23,6 +25,8 @@ export interface CreateAddressInput {
   district: string;
   city: string;
   country?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export const addressesApi = {

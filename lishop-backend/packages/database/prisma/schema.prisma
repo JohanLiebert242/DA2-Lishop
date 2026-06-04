@@ -168,6 +168,8 @@ model Address {
   district  String
   city      String
   country   String   @default("VN")
+  latitude  Float?
+  longitude Float?
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
 

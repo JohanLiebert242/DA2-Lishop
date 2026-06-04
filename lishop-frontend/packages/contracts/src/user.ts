@@ -9,6 +9,8 @@ export const AddressSchema = z.object({
   district: z.string(),
   city: z.string(),
   country: z.string().default('VN'),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
   isDefault: z.boolean().default(false),
 });
 

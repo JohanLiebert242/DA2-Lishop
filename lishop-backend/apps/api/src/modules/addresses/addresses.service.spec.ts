@@ -49,6 +49,23 @@ describe('AddressesService', () => {
     expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ userId: { connect: { id: 'u1' } } }));
   });
 
+  it('createAddress keeps map coordinates for future delivery routing', async () => {
+    repo.create.mockResolvedValue(makeAddr({ latitude: 10.7769, longitude: 106.7009 }));
+    await service.createAddress('u1', {
+      fullName: 'A',
+      phone: '0901234567',
+      street: 'B',
+      district: 'C',
+      city: 'D',
+      latitude: 10.7769,
+      longitude: 106.7009,
+    });
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({
+      latitude: 10.7769,
+      longitude: 106.7009,
+    }));
+  });
+
   it('updateAddress throws NotFoundException when not found', async () => {
     repo.findById.mockResolvedValue(null);
     await expect(service.updateAddress('u1', 'a99', {})).rejects.toThrow(NotFoundException);
@@ -57,6 +74,16 @@ describe('AddressesService', () => {
   it('updateAddress throws ForbiddenException when address belongs to another user', async () => {
     repo.findById.mockResolvedValue(makeAddr({ userId: 'u2' }));
     await expect(service.updateAddress('u1', 'a1', {})).rejects.toThrow(ForbiddenException);
+  });
+
+  it('updateAddress keeps edited map coordinates', async () => {
+    repo.findById.mockResolvedValue(makeAddr());
+    repo.update.mockResolvedValue(makeAddr({ latitude: 10.7769, longitude: 106.7009 }));
+    await service.updateAddress('u1', 'a1', { latitude: 10.7769, longitude: 106.7009 });
+    expect(repo.update).toHaveBeenCalledWith('a1', expect.objectContaining({
+      latitude: 10.7769,
+      longitude: 106.7009,
+    }));
   });
 
   it('deleteAddress throws NotFoundException when not found', async () => {
