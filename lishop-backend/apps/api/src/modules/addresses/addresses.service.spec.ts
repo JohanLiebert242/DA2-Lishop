@@ -46,7 +46,7 @@ describe('AddressesService', () => {
   it('createAddress creates with userId', async () => {
     repo.create.mockResolvedValue(makeAddr());
     await service.createAddress('u1', { fullName: 'A', phone: '0901234567', street: 'B', district: 'C', city: 'D' });
-    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ userId: { connect: { id: 'u1' } } }));
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ user: { connect: { id: 'u1' } } }));
   });
 
   it('createAddress keeps map coordinates for future delivery routing', async () => {

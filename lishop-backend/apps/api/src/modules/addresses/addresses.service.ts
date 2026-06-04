@@ -15,7 +15,7 @@ export class AddressesService {
   async createAddress(userId: string, dto: CreateAddressDto): Promise<Address> {
     return this.repo.create({
       ...dto,
-      userId: { connect: { id: userId } },
+      user: { connect: { id: userId } },
     } as any);
   }
 
