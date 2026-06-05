@@ -40,6 +40,10 @@ export class NotificationsService {
     return result;
   }
 
+  markAllAsRead(userId: string): Promise<{ count: number }> {
+    return this.repo.markAllAsRead(userId);
+  }
+
   createNotification(
     userId: string,
     title: string,

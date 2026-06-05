@@ -99,6 +99,21 @@ function FeedTab() {
     refetchInterval: streamState === 'live' ? 60_000 : 15_000,
     retry: 2,
   });
+  const unreadCount = notifications.filter((item) => !item.isRead).length;
+
+  const markAllRead = useMutation({
+    mutationFn: () => notificationsApi.markAllAsRead(),
+    onMutate: () => {
+      queryClient.setQueryData<NotificationItem[]>(['notification-feed'], (old = []) => {
+        const next = old.map((item) => ({ ...item, isRead: true }));
+        updateUnreadCount(next);
+        return next;
+      });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-feed'] });
+    },
+  });
 
   useEffect(() => {
     const stream = new EventSource(notificationsApi.streamUrl(), { withCredentials: true });
@@ -126,6 +141,10 @@ function FeedTab() {
 
     return () => stream.close();
   }, [queryClient]);
+
+  useEffect(() => {
+    updateUnreadCount(notifications);
+  }, [notifications]);
 
   if (isLoading) {
     return (
@@ -159,6 +178,18 @@ function FeedTab() {
 
   return (
     <div className="space-y-3">
+      {unreadCount > 0 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => markAllRead.mutate()}
+            disabled={markAllRead.isPending}
+            className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Đã đọc tất cả
+          </button>
+        </div>
+      )}
       <div className={`rounded-xl border px-4 py-3 text-xs font-semibold ${
         streamState === 'live'
           ? 'border-emerald-200 bg-emerald-50 text-emerald-700'

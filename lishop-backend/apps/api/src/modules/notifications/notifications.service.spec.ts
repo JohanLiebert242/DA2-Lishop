@@ -27,6 +27,7 @@ describe('NotificationsService', () => {
     upsertPreference: jest.fn(),
     findByUserId: jest.fn(),
     markAsRead: jest.fn(),
+    markAllAsRead: jest.fn(),
     createNotification: jest.fn(),
   };
   const streamHub = { subscribe: jest.fn() };
@@ -77,6 +78,13 @@ describe('NotificationsService', () => {
   it('markAsRead throws NotFoundException when notification not found', async () => {
     repo.markAsRead.mockResolvedValue(null);
     await expect(service.markAsRead('notfound', 'u1')).rejects.toThrow(NotFoundException);
+  });
+
+  it('markAllAsRead delegates to repository and returns updated count', async () => {
+    repo.markAllAsRead.mockResolvedValue({ count: 3 });
+    const result = await service.markAllAsRead('u1');
+    expect(repo.markAllAsRead).toHaveBeenCalledWith('u1');
+    expect(result.count).toBe(3);
   });
 
   it('createNotification delegates to repository', async () => {

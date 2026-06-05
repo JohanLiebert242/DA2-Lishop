@@ -133,6 +133,13 @@ export class NotificationsRepository {
     }) as Promise<NotificationItem | null>;
   }
 
+  async markAllAsRead(userId: string): Promise<{ count: number }> {
+    return prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true },
+    });
+  }
+
   async createNotification(
     userId: string,
     title: string,

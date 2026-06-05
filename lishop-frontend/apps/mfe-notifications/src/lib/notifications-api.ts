@@ -43,6 +43,8 @@ export const notificationsApi = {
     apiFetch<NotificationItem[]>(`/notifications?page=${page}&limit=20`),
   markAsRead: (id: string) =>
     apiFetch<NotificationItem>(`/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllAsRead: () =>
+    apiFetch<{ count: number }>('/notifications/read-all', { method: 'PATCH' }),
   getPreferences: () =>
     apiFetch<NotificationPreference[]>('/notifications/preferences'),
   upsertPreference: (eventType: string, data: UpsertPreferenceInput) =>
