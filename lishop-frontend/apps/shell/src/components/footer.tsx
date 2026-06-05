@@ -29,11 +29,11 @@ const LINKS = {
     { label: 'Thông báo', href: `${MFE.notifications}/notifications` },
   ],
   'Hỗ trợ': [
-    { label: 'Hướng dẫn mua hàng', href: '#' },
-    { label: 'Chính sách đổi trả', href: '#' },
-    { label: 'Chính sách vận chuyển', href: '#' },
-    { label: 'Câu hỏi thường gặp', href: '#' },
-    { label: 'Liên hệ hỗ trợ', href: '#' },
+    { label: 'Hướng dẫn mua hàng', href: `${SHELL}/support` },
+    { label: 'Chính sách đổi trả', href: `${SHELL}/support` },
+    { label: 'Chính sách vận chuyển', href: `${SHELL}/support` },
+    { label: 'Câu hỏi thường gặp', href: `${SHELL}/support` },
+    { label: 'Liên hệ hỗ trợ', href: `${SHELL}/support` },
   ],
 };
 
