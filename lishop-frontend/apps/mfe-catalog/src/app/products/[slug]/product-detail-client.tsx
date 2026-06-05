@@ -34,6 +34,14 @@ function getVariantLabel(variant: ProductVariant) {
   return attrs.length > 0 ? attrs.join(' / ') : variant.name;
 }
 
+function formatCompactCount(value: number) {
+  if (value >= 1000) {
+    return `${(value / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}k`;
+  }
+
+  return value.toLocaleString('vi-VN');
+}
+
 function parseReviewContent(content: string) {
   const lines = content.split('\n');
   const mediaLinks = lines
@@ -630,6 +638,31 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     setFailedImageIds((previous) => new Set(previous).add(id));
   }
 
+  const shopInitials = shopName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+  const shopReviewCount = Math.max(product.reviewCount, 23500);
+  const shopProductCount = Math.max(product.stock * 10 + variants.length, 96);
+  const shopFollowerCount = Math.max(likeCount * 4, 84300);
+  const currentVariantSummary = selectedVariant ? getVariantLabel(selectedVariant) : 'Đang cập nhật';
+  const materialLabel = product.tags[0]?.tag.name ?? 'Đang cập nhật';
+  const featuredImage = product.images.find((image) => !failedImageIds.has(image.id)) ?? product.images[0];
+  const detailRows = [
+    { label: 'Danh Mục', value: product.category.name },
+    { label: 'Kho', value: effectiveStock > 0 ? 'CÒN HÀNG' : 'HẾT HÀNG' },
+    { label: 'Phân loại hiện tại', value: currentVariantSummary },
+    { label: 'SKU', value: effectiveSku ?? 'Đang cập nhật' },
+    { label: 'Thương hiệu', value: product.brand ?? shopName },
+    { label: 'Chất liệu', value: materialLabel },
+    { label: 'Xuất xứ', value: 'Việt Nam' },
+    { label: 'Sản phẩm đặt theo yêu cầu', value: 'Không' },
+    { label: 'Tên tổ chức chịu trách nhiệm sản xuất', value: product.brand ?? 'Lishop' },
+    { label: 'Địa chỉ tổ chức chịu trách nhiệm sản xuất', value: 'Mỹ Thạnh, Mỹ Xuân, Phú Mỹ, Bà Rịa Vũng Tàu' },
+  ];
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <nav className="mb-6 flex items-center gap-2 text-sm text-muted">
@@ -889,99 +922,171 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
             </button>
           </div>
 
-          <Link href={`/shops/${shopSlug}`} data-testid="shop-profile-link" className="mt-6 block rounded-xl border border-warm bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-wide text-muted">Shop</p>
-                <h2 className="mt-1 text-base font-black text-stone-900">{shopName}</h2>
-              </div>
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
-                Mall verified
+        </div>
+      </div>
+
+      <section data-testid="product-shop-section" className="mt-6 bg-white px-5 py-5 shadow-sm ring-1 ring-warm">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-center">
+          <div className="flex gap-4 lg:border-r lg:border-warm lg:pr-6">
+            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-stone-900 text-white ring-1 ring-stone-200">
+              {featuredImage ? (
+                <Image
+                  src={featuredImage.url}
+                  alt={featuredImage.alt ?? shopName}
+                  fill
+                  className="object-cover opacity-90"
+                  onError={() => markImageFailed(featuredImage.id)}
+                />
+              ) : (
+                <span className="flex h-full items-center justify-center text-xl font-black">{shopInitials}</span>
+              )}
+              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-t bg-red-500 px-2 py-0.5 text-[10px] font-black uppercase leading-none text-white">
+                Yêu thích
               </span>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-lg bg-warm-100 px-3 py-2">
-                <p className="text-sm font-black text-stone-900">98%</p>
-                <p className="text-xs text-muted">Phan hoi</p>
+            <div className="min-w-0">
+              <h2 className="truncate text-lg font-black text-stone-900">{shopName}</h2>
+              <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-stone-500">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                online
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <a
+                  href="#chat"
+                  className="inline-flex h-9 items-center justify-center rounded-sm border border-red-400 bg-red-50 px-4 text-sm font-bold text-red-500 transition hover:bg-red-100"
+                >
+                  Chat Ngay
+                </a>
+                <Link
+                  href={`/shops/${shopSlug}`}
+                  data-testid="shop-profile-link"
+                  className="inline-flex h-9 items-center justify-center rounded-sm border border-stone-200 bg-white px-4 text-sm font-bold text-stone-700 transition hover:border-red-200 hover:text-red-500"
+                >
+                  Xem Shop
+                </Link>
               </div>
-              <div className="rounded-lg bg-warm-100 px-3 py-2">
-                <p className="text-sm font-black text-stone-900">24h</p>
-                <p className="text-xs text-muted">Xu ly don</p>
-              </div>
-              <div className="rounded-lg bg-warm-100 px-3 py-2">
-                <p className="text-sm font-black text-stone-900">4.9</p>
-                <p className="text-xs text-muted">Danh gia</p>
-              </div>
-            </div>
-          </Link>
-
-          <div className="mt-6 border-t border-warm pt-6">
-            <h2 className="text-sm font-black uppercase tracking-wider text-stone-900">Chi tiet san pham</h2>
-            <div className="mt-4 space-y-5 text-sm leading-relaxed text-stone-600">
-              <section>
-                <h3 className="font-black uppercase tracking-wide text-stone-800">Ten san pham</h3>
-                <p className="mt-1">{product.name}</p>
-              </section>
-
-              <section>
-                <h3 className="font-black uppercase tracking-wide text-stone-800">Thong tin san pham</h3>
-                <p className="mt-1 whitespace-pre-line">{product.description}</p>
-                {product.images.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {product.images.slice(0, 6).map((image) => (
-                      <div key={image.id} data-testid="description-image" className="relative aspect-[4/3] overflow-hidden rounded-xl border border-warm bg-white">
-                        <Image
-                          src={image.url}
-                          alt={image.alt ?? product.name}
-                          fill
-                          className="object-cover"
-                          onError={() => markImageFailed(image.id)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <div className="rounded-lg bg-warm-100 px-3 py-2">
-                    <dt className="text-xs font-bold text-muted">Danh muc</dt>
-                    <dd className="font-semibold text-stone-800">{product.category.name}</dd>
-                  </div>
-                  <div className="rounded-lg bg-warm-100 px-3 py-2">
-                    <dt className="text-xs font-bold text-muted">SKU hien tai</dt>
-                    <dd className="font-mono text-xs font-semibold text-stone-800">{effectiveSku ?? 'Dang cap nhat'}</dd>
-                  </div>
-                </dl>
-              </section>
-
-              {hasSizeGuide && (
-                <section ref={sizeGuideRef} id="size-guide" className="scroll-mt-24">
-                  <h3 className="font-black uppercase tracking-wide text-stone-800">Huong dan size</h3>
-                  <p className="mt-1">
-                    Neu ban phan van giua hai size, hay chon size lon hon de thoai mai hon. Vui long doi chieu
-                    thong so co the voi bang size cua tung mau san pham truoc khi dat hang.
-                  </p>
-                </section>
-              )}
-
-              <section>
-                <h3 className="font-black uppercase tracking-wide text-stone-800">Huong dan bao quan</h3>
-                <p className="mt-1">
-                  Bao quan san pham noi kho thoang, tranh anh nang truc tiep va nhiet do cao. Voi thoi trang,
-                  nen giat mat trai va tach mau; voi thiet bi, tranh am va sac bang phu kien phu hop.
-                </p>
-              </section>
-
-              <section>
-                <h3 className="font-black uppercase tracking-wide text-stone-800">Cam ket khach hang</h3>
-                <ul className="mt-2 space-y-1">
-                  <li>San pham dung mo ta va duoc kiem tra truoc khi giao.</li>
-                  <li>Ho tro doi tra theo chinh sach Lishop neu san pham loi hoac sai phien ban.</li>
-                  <li>Tu van nhanh qua chat va cap nhat trang thai don hang lien tuc.</li>
-                </ul>
-              </section>
             </div>
           </div>
+
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+            {[
+              ['Đánh Giá', formatCompactCount(shopReviewCount)],
+              ['Sản Phẩm', shopProductCount.toLocaleString('vi-VN')],
+              ['Tỉ Lệ Phản Hồi', '89%'],
+              ['Thời Gian Phản Hồi', 'trong vài phút'],
+              ['Tham Gia', '8 năm trước'],
+              ['Người Theo Dõi', formatCompactCount(shopFollowerCount)],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between gap-4 text-sm">
+                <dt className="text-stone-400">{label}</dt>
+                <dd className="font-semibold text-red-500">{value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
+      </section>
+
+      <div data-testid="product-detail-shell" className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <section data-testid="product-detail-main" className="bg-white px-6 pb-8 pt-6 shadow-sm ring-1 ring-warm">
+          <div className="bg-stone-50 px-4 py-4">
+            <h2 className="text-xl font-semibold uppercase tracking-normal text-stone-900">CHI TIẾT SẢN PHẨM</h2>
+          </div>
+
+          <dl className="mt-7 space-y-0 text-sm">
+            {detailRows.map((row) => (
+              <div key={row.label} className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-[210px_minmax(0,1fr)]">
+                <dt className="text-stone-400">{row.label}</dt>
+                <dd className="font-medium text-stone-800">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <section className="mt-8 border-t border-warm pt-6">
+            <h3 className="text-base font-black uppercase tracking-normal text-stone-900">Mô tả sản phẩm</h3>
+            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-stone-600">{product.description}</p>
+            {product.images.length > 0 && (
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {product.images.slice(0, 6).map((image) => (
+                  <div key={image.id} data-testid="description-image" className="relative aspect-[4/3] overflow-hidden border border-warm bg-white">
+                    <Image
+                      src={image.url}
+                      alt={image.alt ?? product.name}
+                      fill
+                      className="object-cover"
+                      onError={() => markImageFailed(image.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {hasSizeGuide && (
+            <section ref={sizeGuideRef} id="size-guide" className="mt-8 scroll-mt-24 border-t border-warm pt-6">
+              <h3 className="text-base font-black uppercase tracking-normal text-stone-900">Hướng dẫn size</h3>
+              <p className="mt-3 text-sm leading-7 text-stone-600">
+                Nếu bạn phân vân giữa hai size, hãy chọn size lớn hơn để thoải mái hơn. Vui lòng đối chiếu
+                thông số cơ thể với bảng size của từng mẫu sản phẩm trước khi đặt hàng.
+              </p>
+            </section>
+          )}
+
+          <section className="mt-8 border-t border-warm pt-6">
+            <h3 className="text-base font-black uppercase tracking-normal text-stone-900">Cam kết khách hàng</h3>
+            <ul className="mt-3 space-y-2 text-sm leading-7 text-stone-600">
+              <li>Sản phẩm đúng mô tả và được kiểm tra trước khi giao.</li>
+              <li>Hỗ trợ đổi trả theo chính sách Lishop nếu sản phẩm lỗi hoặc sai phiên bản.</li>
+              <li>Tư vấn nhanh qua chat và cập nhật trạng thái đơn hàng liên tục.</li>
+            </ul>
+          </section>
+        </section>
+
+        <aside data-testid="product-detail-sidebar" className="space-y-4">
+          <section className="bg-white px-4 py-5 shadow-sm ring-1 ring-warm">
+            <h2 className="text-sm font-semibold text-stone-400">Mã giảm giá của Shop</h2>
+            <div className="mt-5 space-y-3">
+              {[
+                ['Giảm 3k₫', 'Đơn Tối Thiểu 145k₫'],
+                ['Giảm 5k₫', 'Đơn Tối Thiểu 199k₫'],
+                ['Giảm 50%', 'Giảm tối đa 10k₫'],
+              ].map(([title, condition]) => (
+                <div key={title} className="grid min-h-24 grid-cols-[1fr_70px] overflow-hidden border border-red-100 bg-red-50 text-red-500">
+                  <div className="flex flex-col justify-center px-3">
+                    <p className="text-sm font-black leading-tight">{title}</p>
+                    <p className="mt-0.5 text-xs font-semibold leading-tight">{condition}</p>
+                    <p className="mt-2 text-[11px] text-stone-500">HSD: 20.07.2026</p>
+                  </div>
+                  <div className="flex items-center justify-center border-l border-dashed border-red-200 bg-red-50">
+                    <button type="button" className="h-9 rounded-sm bg-red-500 px-4 text-xs font-black text-white transition hover:bg-red-600">
+                      Lưu
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="bg-white px-4 py-5 shadow-sm ring-1 ring-warm">
+            <h2 className="text-sm font-semibold text-stone-400">Top Sản Phẩm Nổi Bật</h2>
+            <Link href={`/products/${product.slug}`} className="mt-5 block transition hover:opacity-90">
+              <div className="relative aspect-[4/5] w-full overflow-hidden bg-stone-100">
+                {featuredImage ? (
+                  <Image
+                    src={featuredImage.url}
+                    alt={featuredImage.alt ?? product.name}
+                    fill
+                    className="object-cover"
+                    onError={() => markImageFailed(featuredImage.id)}
+                  />
+                ) : (
+                  <span className="flex h-full items-center justify-center text-sm font-semibold text-muted">Chưa có ảnh</span>
+                )}
+              </div>
+              <h3 className="mt-3 line-clamp-2 text-sm font-semibold uppercase leading-5 text-stone-700">{product.name}</h3>
+              <p className="mt-1 text-base font-black text-red-500">{formatVND(effectivePriceVnd)}</p>
+            </Link>
+          </section>
+        </aside>
       </div>
 
       <ReviewsSection productId={product.id} />
