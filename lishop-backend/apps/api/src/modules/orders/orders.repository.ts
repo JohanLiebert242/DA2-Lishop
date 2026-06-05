@@ -58,6 +58,7 @@ export interface OrderWithDetails {
   items: {
     id: string;
     productId: string;
+    productSlug: string | null;
     variantId: string | null;
     productName: string;
     variantName: string | null;
@@ -87,7 +88,11 @@ export interface OrderWithDetails {
 }
 
 const ORDER_INCLUDE = {
-  items: true,
+  items: {
+    include: {
+      product: { select: { slug: true } },
+    },
+  },
   address: {
     select: {
       fullName: true,
@@ -111,6 +116,24 @@ const ESTIMATED_DAYS: Record<ShippingProvider, number> = {
   GHTK: 3,
   VIETTEL_POST: 4,
 };
+
+type OrderRecord = Omit<OrderWithDetails, 'items'> & {
+  items: Array<
+    Omit<OrderWithDetails['items'][number], 'productSlug'> & {
+      product?: { slug: string } | null;
+    }
+  >;
+};
+
+function normalizeOrder(order: OrderRecord): OrderWithDetails {
+  return {
+    ...order,
+    items: order.items.map((item) => {
+      const { product, ...rest } = item;
+      return { ...rest, productSlug: product?.slug ?? null };
+    }),
+  };
+}
 
 @Injectable()
 export class OrdersRepository {
@@ -210,19 +233,21 @@ export class OrdersRepository {
         },
       });
 
-      return tx.order.findUniqueOrThrow({
+      const createdOrder = await tx.order.findUniqueOrThrow({
         where: { id: order.id },
         include: ORDER_INCLUDE,
-      }) as Promise<OrderWithDetails>;
+      });
+      return normalizeOrder(createdOrder);
     });
   }
 
-  findByUserId(userId: string): Promise<OrderWithDetails[]> {
-    return prisma.order.findMany({
+  async findByUserId(userId: string): Promise<OrderWithDetails[]> {
+    const orders = await prisma.order.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       include: ORDER_INCLUDE,
-    }) as Promise<OrderWithDetails[]>;
+    });
+    return orders.map(normalizeOrder);
   }
 
   async findShipmentByOrderId(orderId: string, userId: string): Promise<ShipmentWithEvents | null> {
@@ -240,11 +265,12 @@ export class OrdersRepository {
     return order.shipment as ShipmentWithEvents | null;
   }
 
-  findByIdAndUserId(id: string, userId: string): Promise<OrderWithDetails | null> {
-    return prisma.order.findFirst({
+  async findByIdAndUserId(id: string, userId: string): Promise<OrderWithDetails | null> {
+    const order = await prisma.order.findFirst({
       where: { id, userId },
       include: ORDER_INCLUDE,
-    }) as Promise<OrderWithDetails | null>;
+    });
+    return order ? normalizeOrder(order) : null;
   }
 
   async cancelOrder(id: string): Promise<OrderWithDetails> {
@@ -284,11 +310,12 @@ export class OrdersRepository {
         }),
       });
 
-      return tx.order.update({
+      const cancelled = await tx.order.update({
         where: { id },
         data: { status: OrderStatus.CANCELLED },
         include: ORDER_INCLUDE,
-      }) as Promise<OrderWithDetails>;
+      });
+      return normalizeOrder(cancelled);
     });
   }
 }

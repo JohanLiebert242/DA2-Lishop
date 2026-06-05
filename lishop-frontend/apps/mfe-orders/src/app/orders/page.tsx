@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { formatVND, hasSessionCookie } from '@lishop/shared';
-import { ordersApi, OrderStatus } from '../../lib/orders-api';
+import { ordersApi, OrderStatus, type OrderSummary } from '../../lib/orders-api';
 import { AccountSidebar } from '../../components/account-sidebar';
 
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
-const CATALOG_URL = process.env['NEXT_PUBLIC_MFE_CATALOG_URL'] ?? 'http://localhost:3002/products';
+const CATALOG_BASE_URL = process.env['NEXT_PUBLIC_MFE_CATALOG_URL'] ?? 'http://localhost:3002';
+const CATALOG_PRODUCTS_URL = `${CATALOG_BASE_URL}/products`;
 const PROFILE_URL = process.env['NEXT_PUBLIC_MFE_PROFILE_URL'] ?? 'http://localhost:3006';
 const SHOP_NAME = 'Lishop Official Store';
 
@@ -73,6 +74,21 @@ export default function OrdersPage() {
     queryKey: ['my-orders'],
     queryFn: () => ordersApi.getOrders(),
     retry: false,
+  });
+
+  const contactSellerMutation = useMutation({
+    mutationFn: (order: OrderSummary) => {
+      const productNames = order.items.map((item) => item.productName).join(', ');
+      return ordersApi.createSupportTicket({
+        category: 'ORDER',
+        subject: `Lien he shop ve don hang ${order.orderNumber}`,
+        description: `Toi can lien he shop ve don hang ${order.orderNumber}. San pham: ${productNames}.`,
+        orderRef: order.orderNumber,
+      });
+    },
+    onSuccess: (ticket) => {
+      window.location.href = `${PROFILE_URL}/support/${ticket.id}`;
+    },
   });
 
   const filteredOrders = useMemo(() => {
@@ -157,7 +173,7 @@ export default function OrdersPage() {
                 <p className="text-lg font-bold text-stone-700">Chưa có đơn hàng nào</p>
                 <p className="mt-1 text-sm text-muted">Hãy bắt đầu mua sắm để tạo đơn hàng đầu tiên.</p>
               </div>
-              <a href={CATALOG_URL} className="btn-primary mt-2">
+              <a href={CATALOG_PRODUCTS_URL} className="btn-primary mt-2">
                 Mua sắm ngay
               </a>
             </div>
@@ -190,8 +206,13 @@ export default function OrdersPage() {
                   .join(', ');
                 const deliveredAt = order.status === 'DELIVERED' ? order.shipment?.deliveredAt : null;
                 const buyAgainHref = firstItem
-                  ? `${CATALOG_URL}?q=${encodeURIComponent(firstItem.productName)}`
-                  : CATALOG_URL;
+                  ? firstItem.productSlug
+                    ? `${CATALOG_PRODUCTS_URL}/${firstItem.productSlug}`
+                    : `${CATALOG_PRODUCTS_URL}?q=${encodeURIComponent(firstItem.productName)}`
+                  : CATALOG_PRODUCTS_URL;
+                const isContactingSeller =
+                  contactSellerMutation.isPending &&
+                  contactSellerMutation.variables?.id === order.id;
 
                 return (
                   <div key={order.id} className="card p-5 transition-all hover:border-indigo-200">
@@ -253,12 +274,14 @@ export default function OrdersPage() {
                           >
                             Yêu cầu hoàn tiền
                           </Link>
-                          <a
-                            href={`${PROFILE_URL}/support?order=${encodeURIComponent(order.orderNumber)}`}
+                          <button
+                            type="button"
+                            onClick={() => contactSellerMutation.mutate(order)}
+                            disabled={isContactingSeller}
                             className="rounded-xl border border-warm bg-white px-3 py-2 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                           >
                             Liên hệ người bán
-                          </a>
+                          </button>
                           <a
                             href={buyAgainHref}
                             className="rounded-xl border border-warm bg-white px-3 py-2 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"

@@ -10,6 +10,7 @@ export type OrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | '
 export interface OrderItemInfo {
   id: string;
   productId: string;
+  productSlug: string | null;
   productName: string;
   variantId: string | null;
   variantName: string | null;
@@ -143,6 +144,16 @@ export const ordersApi = {
     apiFetch<InvoiceData>(`/invoices/${orderId}`),
   getRefunds: () =>
     apiFetch<RefundData[]>('/refunds'),
+  createSupportTicket: (data: {
+    category: 'ORDER';
+    subject: string;
+    description: string;
+    orderRef: string;
+  }) =>
+    apiFetch<{ id: string }>('/support/tickets', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 export async function getTracking(orderId: string): Promise<TrackingResponse> {
