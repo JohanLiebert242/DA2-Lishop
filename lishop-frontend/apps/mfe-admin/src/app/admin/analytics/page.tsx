@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatVND } from '@lishop/shared';
 import { adminApi } from '../../../lib/admin-api';
@@ -20,6 +20,10 @@ export default function AnalyticsPage() {
     queryFn: () => adminApi.getAnalytics(),
   });
 
+  const insightsMutation = useMutation({
+    mutationFn: () => adminApi.getAiAnalyticsInsights(30),
+  });
+
   const kpis = [
     { label: 'Doanh thu 30 ngay', value: analytics ? formatVND(analytics.summary.revenueVnd) : '...' },
     { label: 'Don hang 30 ngay', value: analytics ? analytics.summary.orderCount.toLocaleString('vi-VN') : '...' },
@@ -37,6 +41,82 @@ export default function AnalyticsPage() {
           </div>
         ))}
       </div>
+
+      <section
+        data-testid="admin-analytics-ai"
+        className="rounded-xl border border-sky-200 bg-white p-5 shadow-sm"
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="mr-auto">
+            <h2 className="text-sm font-semibold text-gray-900">AI insights</h2>
+            <p className="mt-1 text-xs text-gray-500">Phan tich nhanh tu du lieu 30 ngay gan nhat.</p>
+          </div>
+          {insightsMutation.data?.fallback && (
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
+              fallback
+            </span>
+          )}
+          <button
+            type="button"
+            data-testid="admin-analytics-ai-run"
+            onClick={() => insightsMutation.mutate()}
+            disabled={insightsMutation.isPending || isLoading}
+            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+          >
+            {insightsMutation.isPending ? 'Dang phan tich...' : insightsMutation.data ? 'Lam moi' : 'Tao insight'}
+          </button>
+        </div>
+
+        {insightsMutation.isPending && (
+          <p className="mt-4 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-800">Dang phan tich...</p>
+        )}
+
+        {insightsMutation.data && (
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-md border border-gray-200 p-3">
+              <h3 className="text-xs font-semibold uppercase text-gray-500">Highlights</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                {insightsMutation.data.highlights.map((item, index) => (
+                  <li key={`highlight-${index}`}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-md border border-gray-200 p-3">
+              <h3 className="text-xs font-semibold uppercase text-gray-500">Risks</h3>
+              {insightsMutation.data.risks.length > 0 ? (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                  {insightsMutation.data.risks.map((item, index) => (
+                    <li key={`risk-${index}`}>{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-gray-400">Chua co rui ro noi bat.</p>
+              )}
+            </div>
+            <div className="rounded-md border border-gray-200 p-3 lg:col-span-2">
+              <h3 className="text-xs font-semibold uppercase text-gray-500">Actions</h3>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                {insightsMutation.data.actions.map((action, index) => (
+                  <div key={`action-${index}`} className="rounded-md bg-gray-50 p-3">
+                    <p className="text-sm font-semibold text-gray-900">{action.title}</p>
+                    <p className="mt-1 text-xs text-gray-600">{action.rationale}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {insightsMutation.data.questions.length > 0 && (
+              <div className="rounded-md border border-gray-200 p-3 lg:col-span-2">
+                <h3 className="text-xs font-semibold uppercase text-gray-500">Questions</h3>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                  {insightsMutation.data.questions.map((question, index) => (
+                    <li key={`question-${index}`}>{question}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Doanh thu 30 ngay gan nhat</h2>

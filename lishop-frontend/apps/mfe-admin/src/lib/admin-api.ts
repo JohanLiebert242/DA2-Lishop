@@ -84,6 +84,19 @@ export interface AdminAnalytics {
   lowStockProducts: { id: string; name: string; slug: string; stock: number }[];
 }
 
+export interface AiAnalyticsAction {
+  title: string;
+  rationale: string;
+}
+
+export interface AiAnalyticsInsightsResponse {
+  highlights: string[];
+  risks: string[];
+  actions: AiAnalyticsAction[];
+  questions: string[];
+  fallback: boolean;
+}
+
 // Inventory types
 export interface ProductStock {
   id: string;
@@ -138,6 +151,11 @@ export const adminApi = {
   toggleCoupon: (id: string) =>
     apiFetch<AdminCoupon>(`/admin/coupons/${id}/toggle`, { method: 'PATCH' }),
   getAnalytics: () => apiFetch<AdminAnalytics>('/admin/analytics'),
+  getAiAnalyticsInsights: (rangeDays = 30) =>
+    apiFetch<AiAnalyticsInsightsResponse>('/admin/analytics/ai-insights', {
+      method: 'POST',
+      body: JSON.stringify({ rangeDays }),
+    }),
   getInventory: () => apiFetch<ProductStock[]>('/admin/inventory'),
   adjustStock: (productId: string, delta: number, note?: string) =>
     apiFetch<{ id: string; name: string; stock: number }>(`/admin/inventory/${productId}/adjust`, {
