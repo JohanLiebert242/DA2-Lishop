@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { ProductsService } from './products.service';
 import { ProductsRepository } from './products.repository';
 import { CategoriesService } from '../categories/categories.service';
+import { WishlistService } from '../wishlist/wishlist.service';
+import { OrdersService } from '../orders/orders.service';
 
 const mockProduct = {
   id: 'p1',
@@ -26,6 +28,8 @@ const mockProduct = {
 describe('ProductsService', () => {
   let service: ProductsService;
   const originalFetch = global.fetch;
+  const wishlistService = { getWishlistProducts: jest.fn() };
+  const ordersService = { findMyOrders: jest.fn() };
   const repo = {
     findMany: jest.fn(),
     findBySlug: jest.fn(),
@@ -51,6 +55,8 @@ describe('ProductsService', () => {
         { provide: ProductsRepository, useValue: repo },
         { provide: CategoriesService, useValue: categoriesService },
         { provide: ConfigService, useValue: config },
+        { provide: WishlistService, useValue: wishlistService },
+        { provide: OrdersService, useValue: ordersService },
       ],
     }).compile();
     service = module.get(ProductsService);
@@ -168,6 +174,76 @@ describe('ProductsService', () => {
 
     expect(result.fallback).toBe(true);
     expect(result.items).toHaveLength(1);
+  });
+
+  describe('recommendations', () => {
+    const productA = { ...mockProduct, id: 'pA', slug: 'product-a', name: 'Product A' };
+    const productB = { ...mockProduct, id: 'pB', slug: 'product-b', name: 'Product B' };
+
+    beforeEach(() => {
+      wishlistService.getWishlistProducts.mockResolvedValue([productA]);
+      ordersService.findMyOrders.mockResolvedValue([
+        {
+          id: 'o1',
+          items: [{ productSlug: 'product-b' }],
+        },
+      ]);
+      repo.findBySlug.mockImplementation(async (slug: string) => {
+        if (slug === 'product-a') return productA as any;
+        if (slug === 'product-b') return productB as any;
+        return null;
+      });
+    });
+
+    it('no key -> fallback true returns items', async () => {
+      config.get.mockImplementation((key: string) => (key === 'OPENAI_API_KEY' ? '' : key === 'OPENAI_MODEL' ? 'gpt-5.2' : ''));
+      repo.findFeatured.mockResolvedValue([productA, productB] as any);
+
+      const result = await service.recommendations({ userId: 'u1', limit: 2, context: 'c' });
+      expect(result.fallback).toBe(true);
+      expect(result.items).toHaveLength(2);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('key set but OpenAI fails -> fallback true', async () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'OPENAI_API_KEY') return 'sk-test';
+        if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+        return '';
+      });
+
+      repo.findFeatured.mockResolvedValue([productA, productB] as any);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 429 });
+
+      const result = await service.recommendations({ userId: 'u1', limit: 2 });
+      expect(global.fetch).toHaveBeenCalled();
+      expect(result.fallback).toBe(true);
+      expect(result.items).toHaveLength(2);
+    });
+
+    it('key set and OpenAI returns valid JSON -> fallback false and items in AI order', async () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'OPENAI_API_KEY') return 'sk-test';
+        if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+        return '';
+      });
+
+      repo.findFeatured.mockResolvedValue([productA, productB] as any);
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          output_text: JSON.stringify({
+            orderedSlugs: ['product-b', 'product-a'],
+            reason: 'Cá nhân hóa theo wishlist và lịch sử mua gần đây.',
+          }),
+        }),
+      });
+
+      const result = await service.recommendations({ userId: 'u1', limit: 2, context: 'need' });
+      expect(result.fallback).toBe(false);
+      expect(result.reason).toBeDefined();
+      expect(result.items.map((i) => i.slug)).toEqual(['product-b', 'product-a']);
+    });
   });
 
   it('discoverWithAi detects product comparison intent', async () => {

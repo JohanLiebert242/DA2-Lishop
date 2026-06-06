@@ -6,6 +6,8 @@ import { CategoriesService } from '../categories/categories.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductListQueryDto } from './dto/product-list-query.dto';
+import { WishlistService } from '../wishlist/wishlist.service';
+import { OrdersService } from '../orders/orders.service';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
@@ -31,12 +33,20 @@ export interface AiDiscoveryResponse {
   fallback: boolean;
 }
 
+export interface RecommendationsResponse {
+  items: AiDiscoveryProduct[];
+  reason?: string;
+  fallback: boolean;
+}
+
 @Injectable()
 export class ProductsService {
   constructor(
     private readonly repo: ProductsRepository,
     private readonly categoriesService: CategoriesService,
     private readonly config: ConfigService,
+    private readonly wishlistService: WishlistService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   async findMany(query: ProductListQueryDto): Promise<{ items: ProductWithDetails[]; nextCursor: string | null }> {
@@ -114,6 +124,152 @@ export class ProductsService {
       console.error('[ProductsService] AI discovery failed; returning fallback', err);
       return this.discoveryFallback(normalizedMessage, mode, items, true);
     }
+  }
+
+  async recommendations(params: {
+    userId?: string;
+    limit?: number;
+    context?: string;
+  }): Promise<RecommendationsResponse> {
+    const limit = params.limit && Number.isFinite(params.limit) ? params.limit : 8;
+    const isAuthed = !!params.userId;
+
+    let candidates: AiDiscoveryProduct[] = [];
+
+    if (isAuthed) {
+      const wishlistProducts = await this.wishlistService.getWishlistProducts(params.userId!);
+      const wishlistSlugs = Array.isArray(wishlistProducts)
+        ? wishlistProducts.map((p: any) => p?.slug).filter(Boolean)
+        : [];
+
+      const recentOrders = await this.ordersService.findMyOrders(params.userId!);
+      const recentOrderSlugs = Array.isArray(recentOrders)
+        ? recentOrders.flatMap((o: any) => (o?.items ?? []).map((it: any) => it?.productSlug).filter(Boolean))
+        : [];
+
+      const uniqueSlugs = [...wishlistSlugs, ...recentOrderSlugs].filter(
+        (s: string, idx: number, arr: string[]) => arr.indexOf(s) === idx,
+      );
+
+      if (uniqueSlugs.length >= 2) {
+        const products = await Promise.all(
+          uniqueSlugs.slice(0, Math.max(6, limit * 2)).map(async (slug: string) => {
+            const p = await this.repo.findBySlug(slug);
+            return p ? this.toAiDiscoveryProduct(p) : null;
+          }),
+        );
+        candidates = products.filter(Boolean) as AiDiscoveryProduct[];
+      }
+    }
+
+    if (candidates.length < 2) {
+      candidates = (await this.repo.findFeatured(limit)).map((p) => this.toAiDiscoveryProduct(p));
+    } else {
+      candidates = candidates.slice(0, Math.max(limit, candidates.length));
+    }
+
+    const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
+    if (!apiKey) {
+      return { items: candidates.slice(0, limit), fallback: true };
+    }
+
+    try {
+      const reranked = await this.rerankWithAi({
+        apiKey,
+        limit,
+        context: params.context,
+        candidates,
+      });
+      return reranked;
+    } catch (err) {
+      console.error('[ProductsService] AI rerank failed; returning fallback', err);
+      return { items: candidates.slice(0, limit), fallback: true };
+    }
+  }
+
+  private async rerankWithAi(params: {
+    apiKey: string;
+    limit: number;
+    context?: string;
+    candidates: AiDiscoveryProduct[];
+  }): Promise<RecommendationsResponse> {
+    const candidateSlugs = params.candidates.map((c) => c.slug);
+
+    const response = await fetch(OPENAI_RESPONSES_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${params.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
+        instructions: [
+          'Bạn là trợ lý cá nhân hóa mua sắm của Lishop.',
+          'Hãy sắp xếp lại các sản phẩm theo mức độ phù hợp nhất với nhu cầu của khách hàng dựa trên context (nếu có).',
+          'Chỉ được trả về JSON hợp lệ theo schema: { "orderedSlugs": string[], "reason": string }',
+          'orderedSlugs chỉ bao gồm các slug có trong danh sách candidate.',
+          'reason phải ngắn gọn (1-2 câu).',
+        ].join('\n'),
+        input: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'input_text',
+                text: [
+                  `context: ${params.context ?? '(không có)'} `,
+                  '',
+                  'candidate_slugs:',
+                  JSON.stringify(candidateSlugs, null, 2),
+                ].join('\n'),
+              },
+            ],
+          },
+        ],
+        max_output_tokens: 250,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI request failed with status ${response.status}`);
+    }
+
+    const payload = await response.json() as { output_text?: string; output?: unknown };
+    const outputText = this.extractOutputText(payload).trim();
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(outputText);
+    } catch {
+      // Some models might wrap JSON; attempt to recover first {...}
+      const start = outputText.indexOf('{');
+      const end = outputText.lastIndexOf('}');
+      if (start !== -1 && end !== -1 && end > start) {
+        parsed = JSON.parse(outputText.slice(start, end + 1));
+      } else {
+        throw new Error('Could not parse AI JSON output');
+      }
+    }
+
+    if (!parsed || !Array.isArray(parsed.orderedSlugs)) {
+      throw new Error('AI JSON missing orderedSlugs');
+    }
+
+    const orderedSlugs: string[] = parsed.orderedSlugs.filter((s: any) => typeof s === 'string');
+    const allowed = new Set(candidateSlugs);
+    const safeOrdered = orderedSlugs.filter((s) => allowed.has(s));
+    const fallbackOrdered = candidateSlugs.filter((s) => safeOrdered.indexOf(s) === -1);
+    const finalSlugs = [...safeOrdered, ...fallbackOrdered].slice(0, params.limit);
+
+    const items = finalSlugs
+      .map((slug) => params.candidates.find((c) => c.slug === slug))
+      .filter(Boolean) as AiDiscoveryProduct[];
+
+    return {
+      items,
+      reason: typeof parsed.reason === 'string' ? parsed.reason.trim() : undefined,
+      fallback: false,
+    };
   }
 
   async create(dto: CreateProductDto): Promise<ProductWithDetails> {

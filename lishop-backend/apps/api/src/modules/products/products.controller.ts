@@ -18,19 +18,25 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductListQueryDto } from './dto/product-list-query.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@lishop/contracts';
 import { IsString } from 'class-validator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 class AiProductDiscoveryDto {
   @IsString()
   message!: string;
 }
 
+class RecommendationsQueryDto {
+  @IsString()
+  context?: string;
+}
+
 @ApiTags('products')
 @Controller('products')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
@@ -70,9 +76,27 @@ export class ProductsController {
     return this.productsService.discoverWithAi(dto.message ?? '');
   }
 
+  @Public()
+  @Get('recommendations')
+  @UseGuards(OptionalJwtAuthGuard, RolesGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Personalized product recommendations' })
+  async recommendations(
+    @Query('limit') limit?: string,
+    @Query() query?: RecommendationsQueryDto,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return this.productsService.recommendations({
+      userId,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      context: query?.context,
+    });
+  }
+
   @Post()
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create product (admin)' })
   async create(@Body() dto: CreateProductDto) {
@@ -82,6 +106,7 @@ export class ProductsController {
   @Patch(':id')
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Update product (admin)' })
   async update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
@@ -90,6 +115,7 @@ export class ProductsController {
   @Delete(':id')
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete product (admin)' })
   async remove(@Param('id') id: string) {
