@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lishop - Mockup: AI Recommendation Ca Nhan Hoa</title>
+    <style>
+      :root {
+        --bg: #0b0c10;
+        --panel: #12141a;
+        --panel2: #171a22;
+        --text: #e8eaf0;
+        --muted: #a7aebe;
+        --line: #24293a;
+        --primary: #3b82f6;
+        --chip: #1f2a44;
+        --ok: #22c55e;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background: radial-gradient(1200px 700px at 20% 0%, #111827 0%, var(--bg) 55%);
+        color: var(--text);
+      }
+      .shell {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 20px 16px 40px;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(18, 20, 26, 0.9);
+        position: sticky;
+        top: 12px;
+        backdrop-filter: blur(10px);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        letter-spacing: 0;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--ok);
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+      }
+      .search {
+        flex: 1;
+        max-width: 560px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .input {
+        flex: 1;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        background: var(--panel2);
+        border-radius: 10px;
+        color: var(--text);
+        outline: none;
+      }
+      .btn {
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+        color: var(--text);
+        border-radius: 10px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .btnPrimary {
+        border-color: rgba(59, 130, 246, 0.45);
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.35) 0%, rgba(59, 130, 246, 0.15) 100%);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 16px;
+        margin-top: 18px;
+      }
+      @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+      .panel {
+        border: 1px solid var(--line);
+        background: rgba(18, 20, 26, 0.92);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .panelHeader {
+        padding: 14px 14px 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .panelHeader h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .panelHeader .sub {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .panelBody { padding: 14px; }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+      @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(23, 26, 34, 0.95);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 190px;
+      }
+      .thumb {
+        height: 92px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(34, 197, 94, 0.14));
+        border-bottom: 1px solid var(--line);
+      }
+      .meta { padding: 10px 10px 12px; display: grid; gap: 6px; }
+      .name { font-size: 12px; font-weight: 650; line-height: 1.25; }
+      .row { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 11px; }
+      .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+      .chip { font-size: 10px; color: #cfe3ff; background: rgba(31, 42, 68, 0.8); border: 1px solid rgba(59, 130, 246, 0.2); padding: 4px 6px; border-radius: 999px; }
+      .aiBox {
+        border: 1px dashed rgba(59, 130, 246, 0.45);
+        border-radius: 10px;
+        padding: 10px;
+        background: rgba(59, 130, 246, 0.09);
+        display: grid;
+        gap: 8px;
+      }
+      .aiTitle { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .aiTitle strong { font-size: 12px; }
+      .aiNote { color: var(--muted); font-size: 11px; }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        background: rgba(17, 24, 39, 0.8);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .seg button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      .seg button.active {
+        background: rgba(59, 130, 246, 0.2);
+        color: var(--text);
+      }
+      .statusRow { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--muted); }
+      .skeleton {
+        height: 10px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+        background-size: 200% 100%;
+        animation: shimmer 1.2s infinite linear;
+      }
+      @keyframes shimmer { 0% { background-position: 0 0; } 100% { background-position: -200% 0; } }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="topbar">
+        <div class="brand">
+          <span class="dot"></span>
+          Lishop Catalog (mock)
+        </div>
+        <div class="search">
+          <input class="input" value="tim kiem san pham..." />
+          <button class="btn">Loc</button>
+          <button class="btn btnPrimary">AI goi y</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Danh sach san pham</h2>
+              <div class="sub">Trang danh sach/featured (vi du)</div>
+            </div>
+            <div class="sub">24 ket qua</div>
+          </div>
+          <div class="panelBody">
+            <div class="cards">
+              <div class="card"><div class="thumb"></div><div class="meta"><div class="name">Tra xanh sua</div><div class="row"><span>59,000 VND</span><span>4.6 (120)</span></div></div></div>
+              <div class="card"><div class="thumb"></div><div class="meta"><div class="name">Ca phe rang xay</div><div class="row"><span>149,000 VND</span><span>4.8 (44)</span></div></div></div>
+              <div class="card"><div class="thumb"></div><div class="meta"><div class="name">Banh quy bo</div><div class="row"><span>79,000 VND</span><span>4.4 (9)</span></div></div></div>
+              <div class="card"><div class="thumb"></div><div class="meta"><div class="name">Mi goi cao cap</div><div class="row"><span>35,000 VND</span><span>4.2 (70)</span></div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Danh cho ban</h2>
+              <div class="sub">AI recommendation ca nhan hoa</div>
+            </div>
+            <div class="seg" aria-label="mode">
+              <button class="active" type="button">Tu dong</button>
+              <button type="button">Giai thich</button>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="aiBox">
+              <div class="aiTitle">
+                <strong>Goi y hom nay</strong>
+                <button class="btn btnPrimary" type="button">Lam moi</button>
+              </div>
+              <div class="aiNote">
+                Dua tren lich su mua/da xem (neu co). Neu chua dang nhap, dung session.
+              </div>
+              <div class="chips">
+                <span class="chip">Do uong</span>
+                <span class="chip">An vat</span>
+                <span class="chip">Gia 0-200k</span>
+              </div>
+              <div class="statusRow">
+                <span>State: loaded</span>
+                <span>fallback: false</span>
+              </div>
+            </div>
+
+            <div style="height: 12px;"></div>
+
+            <div class="cards" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+              <div class="card"><div class="thumb"></div><div class="meta"><div class="name">Tra sua it duong</div><div class="row"><span>55,000 VND</span><span>4.7 (31)</span></div><div class="chips"><span class="chip">Vi ban hay mua</span></div></div></div>
+              <div class="card"><div class="thumb"></div><div class="meta"><div class="name">Banh hanh nhan</div><div class="row"><span>89,000 VND</span><span>4.6 (18)</span></div><div class="chips"><span class="chip">Cung danh muc</span></div></div></div>
+              <div class="card"><div class="thumb"></div><div class="meta"><div class="name">Ca phe sua</div><div class="row"><span>69,000 VND</span><span>4.5 (52)</span></div><div class="chips"><span class="chip">Da xem gan day</span></div></div></div>
+              <div class="card"><div class="thumb"></div><div class="meta"><div class="name">Banh quy gion</div><div class="row"><span>75,000 VND</span><span>4.3 (9)</span></div><div class="chips"><span class="chip">Pho bien</span></div></div></div>
+            </div>
+
+            <div style="height: 12px;"></div>
+
+            <div class="aiBox" style="opacity: 0.85;">
+              <div class="aiTitle"><strong>State: loading (vi du)</strong></div>
+              <div class="skeleton" style="width: 80%;"></div>
+              <div class="skeleton" style="width: 55%;"></div>
+              <div class="skeleton" style="width: 70%;"></div>
+            </div>
+
+            <div style="height: 12px;"></div>
+
+            <div class="aiBox" style="opacity: 0.85;">
+              <div class="aiTitle"><strong>State: empty (vi du)</strong></div>
+              <div class="aiNote">Chua du du lieu ca nhan hoa. Hien thi featured/pho bien.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
