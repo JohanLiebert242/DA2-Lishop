@@ -17,14 +17,18 @@ export class OptionalJwtAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAccessToken(token);
+      if (!payload) return true;
+
       if (payload.jti) {
         const blacklisted = await this.redisService.exists(`blacklist:token:${payload.jti}`);
         if (blacklisted) return true;
       }
+
       (request as any).user = { id: payload.sub, email: payload.email, role: payload.role };
     } catch {
-      return true;
+      // Optional auth never blocks the request; bad tokens are treated as guests.
     }
+
     return true;
   }
 
