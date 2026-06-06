@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminApi, AdminTicket, TicketStatus } from '../../../lib/admin-api';
+import { adminApi, AdminTicket, TicketAiAssistResponse, TicketStatus } from '../../../lib/admin-api';
 import {
   TICKET_STATUS_COLORS,
   TICKET_STATUS_LABELS,
@@ -15,6 +15,7 @@ function TicketRow({ ticket }: { ticket: AdminTicket }) {
   const [status, setStatus] = useState<TicketStatus>(ticket.status);
   const [showReply, setShowReply] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [aiAssist, setAiAssist] = useState<TicketAiAssistResponse | null>(null);
 
   const statusMutation = useMutation({
     mutationFn: (s: TicketStatus) => adminApi.updateTicketStatus(ticket.id, s),
@@ -27,6 +28,15 @@ function TicketRow({ ticket }: { ticket: AdminTicket }) {
       queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
       setShowReply(false);
       setReplyText('');
+      setAiAssist(null);
+    },
+  });
+
+  const assistMutation = useMutation({
+    mutationFn: () => adminApi.generateTicketAssist(ticket.id),
+    onSuccess: (result) => {
+      setAiAssist(result);
+      setReplyText(result.replyDraft);
     },
   });
 
@@ -86,6 +96,26 @@ function TicketRow({ ticket }: { ticket: AdminTicket }) {
                 <p className="text-sm text-gray-700 line-clamp-3">{lastMessage.content}</p>
               </div>
             )}
+            {aiAssist && (
+              <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 p-3">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                    AI goi y
+                  </span>
+                  <span className="text-xs text-emerald-700">
+                    {TICKET_CATEGORY_LABELS[aiAssist.suggestedCategory] ?? aiAssist.suggestedCategory}
+                    {' / '}
+                    {TICKET_STATUS_LABELS[aiAssist.suggestedStatus] ?? aiAssist.suggestedStatus}
+                  </span>
+                  {aiAssist.fallback && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      fallback
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-emerald-950">{aiAssist.summary}</p>
+              </div>
+            )}
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
@@ -96,6 +126,14 @@ function TicketRow({ ticket }: { ticket: AdminTicket }) {
             <div className="mt-2 flex gap-2">
               <button
                 type="button"
+                onClick={() => assistMutation.mutate()}
+                disabled={assistMutation.isPending}
+                className="rounded-md border border-emerald-300 bg-white px-4 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+              >
+                {assistMutation.isPending ? 'AI dang goi y...' : 'AI goi y'}
+              </button>
+              <button
+                type="button"
                 onClick={() => replyMutation.mutate()}
                 disabled={!replyText.trim() || replyMutation.isPending}
                 className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
@@ -104,7 +142,7 @@ function TicketRow({ ticket }: { ticket: AdminTicket }) {
               </button>
               <button
                 type="button"
-                onClick={() => { setShowReply(false); setReplyText(''); }}
+                onClick={() => { setShowReply(false); setReplyText(''); setAiAssist(null); }}
                 className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Hủy

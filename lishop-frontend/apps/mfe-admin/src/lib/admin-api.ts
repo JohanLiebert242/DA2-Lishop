@@ -166,6 +166,8 @@ export const adminApi = {
       `/admin/tickets/${id}/messages`,
       { method: 'POST', body: JSON.stringify({ content }) },
     ),
+  generateTicketAssist: (id: string) =>
+    apiFetch<TicketAiAssistResponse>(`/admin/tickets/${id}/ai-assist`, { method: 'POST' }),
 
   // FAQ
   getAllFaq: () => apiFetch<FAQ[]>('/admin/faq'),
@@ -288,6 +290,14 @@ export interface AdminTicket {
   user: { email: string; firstName: string; lastName: string };
   _count: { messages: number };
   messages: { content: string; createdAt: string; isAdmin: boolean }[];
+}
+
+export interface TicketAiAssistResponse {
+  summary: string;
+  suggestedCategory: TicketCategory;
+  suggestedStatus: TicketStatus;
+  replyDraft: string;
+  fallback: boolean;
 }
 
 export interface FAQ {
