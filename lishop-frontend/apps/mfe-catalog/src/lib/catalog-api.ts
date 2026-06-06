@@ -67,6 +67,27 @@ export interface ProductListResponse {
   nextCursor: string | null;
 }
 
+export interface AiDiscoveryProduct {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  priceVnd: number;
+  stock: number;
+  averageRating: number;
+  reviewCount: number;
+  brand?: string;
+  category: CategoryInfo;
+  images: ProductImage[];
+}
+
+export interface AiDiscoveryResponse {
+  reply: string;
+  mode: 'advice' | 'compare';
+  items: AiDiscoveryProduct[];
+  fallback: boolean;
+}
+
 export interface ProductListParams {
   cursor?: string;
   limit?: number;
@@ -112,6 +133,12 @@ export const catalogApi = {
     if (params.sort) qs.set('sort', params.sort);
     return apiFetch<ProductListResponse>(`/products?${qs}`);
   },
+
+  discoverProducts: (message: string) =>
+    apiFetch<AiDiscoveryResponse>('/products/ai-discovery', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
 
   getProduct: (slug: string) =>
     apiFetch<ProductDetail>(`/products/${slug}`),
