@@ -94,6 +94,41 @@ export interface PersonalizedRecommendationResponse {
   fallback: boolean;
 }
 
+export interface ConciergeCartItem {
+  productId: string;
+  name: string;
+  slug: string;
+  quantity: number;
+  priceVnd: number;
+  imageUrl: string | null;
+  reason: string;
+}
+
+export interface ConciergeAction {
+  type: 'ADD_TO_CART' | 'VIEW_PRODUCT' | 'ASK_CLARIFYING_QUESTION';
+  label: string;
+  productId?: string;
+}
+
+export interface ShoppingConciergeResponse {
+  reply: string;
+  items: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    priceVnd: number;
+    stock: number;
+    averageRating: number;
+    reviewCount: number;
+    brand?: string;
+    imageUrl: string | null;
+  }>;
+  cartPlan: ConciergeCartItem[];
+  actions: ConciergeAction[];
+  fallback: boolean;
+}
+
 export interface ProductListParams {
   cursor?: string;
   limit?: number;
@@ -142,6 +177,12 @@ export const catalogApi = {
 
   discoverProducts: (message: string) =>
     apiFetch<AiDiscoveryResponse>('/products/ai-discovery', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+
+  shoppingConcierge: (message: string) =>
+    apiFetch<ShoppingConciergeResponse>('/shopping/concierge', {
       method: 'POST',
       body: JSON.stringify({ message }),
     }),
