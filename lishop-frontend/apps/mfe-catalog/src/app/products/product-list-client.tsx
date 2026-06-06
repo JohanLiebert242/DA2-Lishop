@@ -61,7 +61,6 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
   const [onSale, setOnSale] = useState(false);
   const [freeShipping, setFreeShipping] = useState(false);
   const [cursor, setCursor] = useState<string | undefined>();
-  const [aiPrompt, setAiPrompt] = useState('');
   const aiPromptRef = useRef<HTMLTextAreaElement | null>(null);
   const [aiHydrated, setAiHydrated] = useState(false);
   const [aiResult, setAiResult] = useState<AiDiscoveryResponse | null>(null);
@@ -129,7 +128,7 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
 
   const handleAiDiscovery = useCallback(async () => {
     // Read from DOM first to avoid hydration/timing race in E2E when clicking quickly after filling.
-    const message = (aiPromptRef.current?.value ?? aiPrompt).trim();
+    const message = (aiPromptRef.current?.value ?? '').trim();
     if (!message || aiLoading) return;
 
     setAiLoading(true);
@@ -142,7 +141,7 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
     } finally {
       setAiLoading(false);
     }
-  }, [aiLoading, aiPrompt]);
+  }, [aiLoading]);
 
   useEffect(() => {
     setAiHydrated(true);
@@ -189,8 +188,6 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
                     </div>
                   </div>
                   <textarea
-                    value={aiPrompt}
-                    onChange={(event) => setAiPrompt(event.target.value)}
                     ref={aiPromptRef}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {

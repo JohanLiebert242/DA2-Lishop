@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { prisma, OrderStatus, ReturnStatus, PaymentMethod, RefundMethod } from '@lishop/database';
+import { ConfigService } from '@nestjs/config';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { ReturnsRepository, ReturnRequestDetail } from './returns.repository';
 import { RefundsService } from '../refunds/refunds.service';
@@ -13,6 +14,8 @@ import { CreateReturnDto } from './dto/create-return.dto';
 import { UpdateReturnStatusDto } from './dto/update-return-status.dto';
 
 const RETURN_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
+const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
 
 @Injectable()
 export class ReturnsService {
@@ -20,6 +23,7 @@ export class ReturnsService {
     private readonly repo: ReturnsRepository,
     private readonly notifRepo: NotificationsRepository,
     private readonly refundsService: RefundsService,
+    private readonly config: ConfigService,
   ) {}
 
   async createReturn(userId: string, dto: CreateReturnDto): Promise<ReturnRequestDetail> {
@@ -160,6 +164,144 @@ export class ReturnsService {
     }
 
     return updated;
+  }
+
+  async generateAdminAssist(id: string): Promise<{
+    suggestedStatus: ReturnStatus;
+    adminNote?: string;
+    summary: string;
+    reasons: string[];
+    fallback: boolean;
+  }> {
+    const ret = await this.repo.findById(id);
+    if (!ret) throw new NotFoundException('KhÃ´ng tÃ¬m tháº¥y yÃªu cáº§u Ä‘á»•i tráº£');
+
+    const next = this.getNextStatuses(ret.status);
+    const fallbackSuggestion = this.buildReturnFallbackSuggestion(ret, next);
+
+    const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
+    if (!apiKey) return { ...fallbackSuggestion, fallback: true };
+
+    try {
+      const response = await fetch(OPENAI_RESPONSES_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
+          instructions: this.buildReturnAssistPrompt(),
+          input: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: [
+                    'Thong tin return request:',
+                    JSON.stringify({ ...ret, nextStatuses: next }, null, 2),
+                  ].join('\n'),
+                },
+              ],
+            },
+          ],
+          max_output_tokens: 700,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`OpenAI request failed with status ${response.status}`);
+      const payload = await response.json() as { output_text?: string; output?: unknown };
+      const text = this.extractOutputText(payload).trim();
+      if (!text) throw new Error('OpenAI response did not include text output');
+
+      const parsed = JSON.parse(text) as Partial<{
+        suggestedStatus: ReturnStatus;
+        adminNote: string;
+        summary: string;
+        reasons: string[];
+      }>;
+
+      const suggestedStatus = (parsed.suggestedStatus && next.includes(parsed.suggestedStatus))
+        ? parsed.suggestedStatus
+        : fallbackSuggestion.suggestedStatus;
+
+      return {
+        suggestedStatus,
+        adminNote: parsed.adminNote?.toString().trim() || undefined,
+        summary: parsed.summary?.toString().trim() || fallbackSuggestion.summary,
+        reasons: Array.isArray(parsed.reasons) ? parsed.reasons.map((r) => String(r)).slice(0, 6) : fallbackSuggestion.reasons,
+        fallback: false,
+      };
+    } catch (err) {
+      console.error('[ReturnsService] AI return assist failed; returning fallback', err);
+      return { ...fallbackSuggestion, fallback: true };
+    }
+  }
+
+  private getNextStatuses(status: ReturnStatus): ReturnStatus[] {
+    switch (status) {
+      case ReturnStatus.PENDING:
+        return [ReturnStatus.APPROVED, ReturnStatus.REJECTED];
+      case ReturnStatus.APPROVED:
+        return [ReturnStatus.RECEIVED, ReturnStatus.REJECTED];
+      case ReturnStatus.RECEIVED:
+        return [ReturnStatus.COMPLETED];
+      default:
+        return [];
+    }
+  }
+
+  private buildReturnAssistPrompt(): string {
+    return [
+      'Ban la tro ly AI cho admin Lishop xu ly doi tra (returns).',
+      'Hay dua ra goi y trang thai tiep theo va ghi chu ngan cho admin.',
+      'Chi duoc chon suggestedStatus trong danh sach nextStatuses duoc cung cap.',
+      'Tra ve DUY NHAT JSON object theo schema:',
+      '{"suggestedStatus":"APPROVED|REJECTED|RECEIVED|COMPLETED","adminNote":"...","summary":"...","reasons":["..."]}',
+      'adminNote viet tieng Viet, 1-2 cau, khong markdown, khong emoji.',
+    ].join('\n');
+  }
+
+  private buildReturnFallbackSuggestion(ret: ReturnRequestDetail, nextStatuses: ReturnStatus[]) {
+    const baseReasons = [
+      `Ly do: ${ret.reason}`,
+      ret.description ? `Mo ta: ${ret.description}` : 'Khong co mo ta chi tiet',
+    ];
+
+    const suggestedStatus = nextStatuses[0] ?? ret.status;
+
+    const noteByStatus: Partial<Record<ReturnStatus, string>> = {
+      [ReturnStatus.APPROVED]: 'Chap nhan doi tra. Huong dan khach dong goi va gui hang ve kho.',
+      [ReturnStatus.REJECTED]: 'Tu choi doi tra do khong du dieu kien. Vui long ghi ro ly do neu can.',
+      [ReturnStatus.RECEIVED]: 'Da nhan hang tra. Dang kiem tra va xu ly hoan tien.',
+      [ReturnStatus.COMPLETED]: 'Hoan tat doi tra va hoan tien theo chinh sach.',
+    };
+
+    return {
+      suggestedStatus,
+      adminNote: noteByStatus[suggestedStatus] ?? undefined,
+      summary: `De xuat: ${suggestedStatus}`,
+      reasons: baseReasons,
+    };
+  }
+
+  private extractOutputText(payload: { output_text?: string; output?: unknown }): string {
+    if (typeof payload.output_text === 'string') return payload.output_text;
+    if (!Array.isArray(payload.output)) return '';
+
+    const parts: string[] = [];
+    for (const item of payload.output) {
+      if (!item || typeof item !== 'object') continue;
+      const content = (item as { content?: unknown }).content;
+      if (!Array.isArray(content)) continue;
+      for (const contentItem of content) {
+        if (!contentItem || typeof contentItem !== 'object') continue;
+        const text = (contentItem as { text?: unknown }).text;
+        if (typeof text === 'string') parts.push(text);
+      }
+    }
+    return parts.join('\n');
   }
 
   private getNotificationData(

@@ -5,6 +5,7 @@ import { ReturnsRepository } from './returns.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { RefundsService } from '../refunds/refunds.service';
 import { OrderStatus, ReturnStatus } from '@lishop/database';
+import { ConfigService } from '@nestjs/config';
 
 jest.mock('@lishop/database', () => ({
   prisma: {
@@ -79,6 +80,7 @@ const createDto = {
 
 describe('ReturnsService', () => {
   let service: ReturnsService;
+  const originalFetch = global.fetch;
   const repo = {
     create: jest.fn(),
     findByUserId: jest.fn(),
@@ -88,10 +90,16 @@ describe('ReturnsService', () => {
   };
   const notifRepo = { createNotification: jest.fn() };
   const refundsService = { createRefund: jest.fn() };
+  const config = { get: jest.fn() };
 
   beforeEach(async () => {
     notifRepo.createNotification.mockResolvedValue({});
     refundsService.createRefund.mockResolvedValue({});
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    global.fetch = jest.fn();
 
     const module = await Test.createTestingModule({
       providers: [
@@ -99,12 +107,16 @@ describe('ReturnsService', () => {
         { provide: ReturnsRepository, useValue: repo },
         { provide: NotificationsRepository, useValue: notifRepo },
         { provide: RefundsService, useValue: refundsService },
+        { provide: ConfigService, useValue: config },
       ],
     }).compile();
     service = module.get(ReturnsService);
   });
 
-  afterEach(() => jest.resetAllMocks());
+  afterEach(() => {
+    jest.resetAllMocks();
+    global.fetch = originalFetch;
+  });
 
   describe('createReturn', () => {
     it('throws NotFoundException when order not found', async () => {
@@ -231,6 +243,51 @@ describe('ReturnsService', () => {
         'ORDER_STATUS',
         'order1',
       );
+    });
+  });
+
+  describe('generateAdminAssist', () => {
+    it('returns fallback when OpenAI key is missing', async () => {
+      repo.findById.mockResolvedValue({ ...mockReturn, status: ReturnStatus.PENDING });
+
+      const result = await service.generateAdminAssist('ret1');
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result.fallback).toBe(true);
+      expect(result.suggestedStatus).toBe(ReturnStatus.APPROVED);
+      expect(result.reasons.length).toBeGreaterThan(0);
+    });
+
+    it('uses OpenAI when configured', async () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'OPENAI_API_KEY') return 'sk-test';
+        if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+        return '';
+      });
+      repo.findById.mockResolvedValue({ ...mockReturn, status: ReturnStatus.PENDING });
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          output_text: JSON.stringify({
+            suggestedStatus: 'REJECTED',
+            adminNote: 'Tu choi do qua han hoac thong tin khong day du.',
+            summary: 'Nen tu choi doi tra.',
+            reasons: ['Qua han doi tra'],
+          }),
+        }),
+      });
+
+      const result = await service.generateAdminAssist('ret1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.openai.com/v1/responses',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer sk-test' }),
+        }),
+      );
+      expect(result.fallback).toBe(false);
+      expect(result.suggestedStatus).toBe(ReturnStatus.REJECTED);
     });
   });
 });

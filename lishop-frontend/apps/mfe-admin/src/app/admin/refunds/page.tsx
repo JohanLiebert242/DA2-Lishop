@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatVND } from '@lishop/shared';
 import { adminApi, AdminRefund } from '../../../lib/admin-api';
@@ -7,6 +8,7 @@ import { REFUND_METHOD_LABELS, REFUND_STATUS_COLORS, REFUND_STATUS_LABELS } from
 
 export default function RefundsPage() {
   const queryClient = useQueryClient();
+  const [aiNotes, setAiNotes] = useState<Record<string, string>>({});
 
   const { data: adminRefunds = [], isLoading } = useQuery({
     queryKey: ['admin-refunds'],
@@ -16,6 +18,15 @@ export default function RefundsPage() {
   const processRefundMutation = useMutation({
     mutationFn: ({ id, note }: { id: string; note?: string }) => adminApi.processRefund(id, note),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-refunds'] }),
+  });
+
+  const aiAssistMutation = useMutation({
+    mutationFn: (id: string) => adminApi.generateRefundAiAssist(id),
+    onSuccess: (result, id) => {
+      const text = result.fallback ? `AI fallback: ${result.summary}` : result.summary;
+      setAiNotes((prev) => ({ ...prev, [id]: result.adminNote ? `${text} - ${result.adminNote}` : text }));
+    },
+    onError: (err: Error, id) => setAiNotes((prev) => ({ ...prev, [id]: err.message })),
   });
 
   return (
@@ -59,7 +70,17 @@ export default function RefundsPage() {
                 </td>
                 <td className="px-4 py-3">
                   {refund.status === 'PENDING' && (
-                    <button
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => aiAssistMutation.mutate(refund.id)}
+                        disabled={aiAssistMutation.isPending}
+                        data-testid={`refund-ai-${refund.id}`}
+                        className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                      >
+                        {aiAssistMutation.isPending ? 'AI dang goi y...' : 'AI goi y'}
+                      </button>
+                      <button
                       type="button"
                       onClick={() => processRefundMutation.mutate({ id: refund.id })}
                       disabled={processRefundMutation.isPending}
@@ -67,6 +88,10 @@ export default function RefundsPage() {
                     >
                       {processRefundMutation.isPending ? 'Đang xử lý...' : 'Xử lý'}
                     </button>
+                    </div>
+                  )}
+                  {aiNotes[refund.id] && (
+                    <p className="mt-1 text-xs font-medium text-emerald-700">{aiNotes[refund.id]}</p>
                   )}
                 </td>
               </tr>

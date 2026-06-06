@@ -162,6 +162,13 @@ export class AdminController {
     return this.returnsService.updateReturnStatus(id, dto);
   }
 
+  @Post('returns/:id/ai-assist')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate AI suggestion for a return request (status + note)' })
+  generateReturnAiAssist(@Param('id', ParseUUIDPipe) id: string) {
+    return this.returnsService.generateAdminAssist(id);
+  }
+
   // ---- Support tickets ----
 
   @Get('tickets')
@@ -329,6 +336,13 @@ export class AdminController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body('adminNote') adminNote?: string,
   ) { return this.refundsService.processRefund(id, adminNote); }
+
+  @Post('refunds/:id/ai-assist')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate AI suggestion for a refund (note + whether to process now)' })
+  generateRefundAiAssist(@Param('id', ParseUUIDPipe) id: string) {
+    return this.refundsService.generateAdminAssist(id);
+  }
 
   // ---- Invoices ----
 

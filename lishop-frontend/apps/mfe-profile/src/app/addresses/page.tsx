@@ -551,7 +551,7 @@ export default function AddressesPage() {
             <h1 className="text-xl font-black tracking-tight text-stone-900">Dia chi giao hang</h1>
             <p className="mt-0.5 text-sm text-muted">Tim dia chi, dat pin tren ban do va luu toa do de san sang cho giao van sau nay.</p>
           </div>
-          {!showAddForm && (
+          {!showAddForm && addresses.length > 0 && (
             <button
               type="button"
               onClick={() => { setShowAddForm(true); setEditingId(null); setFormError(''); }}

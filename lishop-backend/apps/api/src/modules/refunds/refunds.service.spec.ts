@@ -5,6 +5,7 @@ import { RefundsRepository } from './refunds.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { WalletService } from '../wallet/wallet.service';
 import { RefundMethod, RefundStatus } from '@lishop/database';
+import { ConfigService } from '@nestjs/config';
 
 jest.mock('@lishop/database', () => ({
   RefundMethod: { WALLET: 'WALLET', ORIGINAL_PAYMENT: 'ORIGINAL_PAYMENT', MANUAL: 'MANUAL' },
@@ -25,6 +26,7 @@ const mockRefund: any = {
 
 describe('RefundsService', () => {
   let service: RefundsService;
+  const originalFetch = global.fetch;
   const repo = {
     findByUserId: jest.fn(),
     findById: jest.fn(),
@@ -34,21 +36,31 @@ describe('RefundsService', () => {
   };
   const walletService = { refundToWallet: jest.fn() };
   const notifRepo = { createNotification: jest.fn() };
+  const config = { get: jest.fn() };
 
   beforeEach(async () => {
     notifRepo.createNotification.mockResolvedValue({});
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    global.fetch = jest.fn();
     const module = await Test.createTestingModule({
       providers: [
         RefundsService,
         { provide: RefundsRepository, useValue: repo },
         { provide: WalletService, useValue: walletService },
         { provide: NotificationsRepository, useValue: notifRepo },
+        { provide: ConfigService, useValue: config },
       ],
     }).compile();
     service = module.get(RefundsService);
   });
 
-  afterEach(() => jest.resetAllMocks());
+  afterEach(() => {
+    jest.resetAllMocks();
+    global.fetch = originalFetch;
+  });
 
   it('getUserRefunds delegates to repo', async () => {
     repo.findByUserId.mockResolvedValue([mockRefund]);
@@ -127,6 +139,50 @@ describe('RefundsService', () => {
       notifRepo.createNotification.mockRejectedValue(new Error('notif failed'));
 
       await expect(service.processRefund('ref1')).resolves.not.toThrow();
+    });
+  });
+
+  describe('generateAdminAssist', () => {
+    it('returns fallback when OpenAI key is missing', async () => {
+      repo.findById.mockResolvedValue(mockRefund);
+
+      const result = await service.generateAdminAssist('ref1');
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result.fallback).toBe(true);
+      expect(typeof result.shouldProcess).toBe('boolean');
+    });
+
+    it('uses OpenAI when configured', async () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'OPENAI_API_KEY') return 'sk-test';
+        if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+        return '';
+      });
+      repo.findById.mockResolvedValue(mockRefund);
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          output_text: JSON.stringify({
+            shouldProcess: true,
+            adminNote: 'Xu ly hoan tien theo chinh sach.',
+            summary: 'Nen xu ly ngay.',
+            reasons: ['Refund pending'],
+          }),
+        }),
+      });
+
+      const result = await service.generateAdminAssist('ref1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.openai.com/v1/responses',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer sk-test' }),
+        }),
+      );
+      expect(result.fallback).toBe(false);
+      expect(result.shouldProcess).toBe(true);
     });
   });
 });

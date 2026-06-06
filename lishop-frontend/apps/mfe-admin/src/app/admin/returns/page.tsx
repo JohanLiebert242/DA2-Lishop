@@ -15,6 +15,7 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [adminNote, setAdminNote] = useState('');
   const [showUpdate, setShowUpdate] = useState(false);
+  const [aiSummary, setAiSummary] = useState('');
 
   const nextStatuses = RETURN_NEXT_STATUSES[ret.status] ?? [];
 
@@ -26,7 +27,18 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
       setShowUpdate(false);
       setSelectedStatus('');
       setAdminNote('');
+      setAiSummary('');
     },
+  });
+
+  const aiMutation = useMutation({
+    mutationFn: () => adminApi.generateReturnAiAssist(ret.id),
+    onSuccess: (result) => {
+      if (result.adminNote) setAdminNote(result.adminNote);
+      if (result.suggestedStatus) setSelectedStatus(result.suggestedStatus);
+      setAiSummary(result.fallback ? `AI fallback: ${result.summary}` : result.summary);
+    },
+    onError: (err: Error) => setAiSummary(err.message),
   });
 
   const userName =
@@ -61,6 +73,7 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
                 setShowUpdate((v) => !v);
                 setSelectedStatus(nextStatuses[0] ?? '');
               }}
+              data-testid={`return-update-${ret.id}`}
               className={`rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
                 showUpdate
                   ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
@@ -105,6 +118,15 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
                   />
                 </div>
               )}
+              <button
+                type="button"
+                onClick={() => aiMutation.mutate()}
+                disabled={aiMutation.isPending}
+                data-testid={`return-ai-${ret.id}`}
+                className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+              >
+                {aiMutation.isPending ? 'AI dang goi y...' : 'AI goi y'}
+              </button>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -123,6 +145,7 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
                 </button>
               </div>
             </div>
+            {aiSummary && <p className="mt-2 text-xs font-medium text-emerald-700">{aiSummary}</p>}
           </td>
         </tr>
       )}

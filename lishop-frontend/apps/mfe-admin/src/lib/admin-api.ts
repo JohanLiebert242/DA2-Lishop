@@ -152,6 +152,8 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify({ status, adminNote }),
     }),
+  generateReturnAiAssist: (id: string) =>
+    apiFetch<ReturnAiAssistResponse>(`/admin/returns/${id}/ai-assist`, { method: 'POST' }),
 
   // Support tickets
   getTickets: (status?: string) =>
@@ -280,6 +282,8 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify({ adminNote }),
     }),
+  generateRefundAiAssist: (id: string) =>
+    apiFetch<RefundAiAssistResponse>(`/admin/refunds/${id}/ai-assist`, { method: 'POST' }),
 };
 
 // ─── Support / FAQ types ──────────────────────────────────────────────────────
@@ -395,6 +399,22 @@ export interface ImportProductsResult {
   created: number;
   failed: number;
   errors: { index: number; name: string; message: string }[];
+}
+
+export interface ReturnAiAssistResponse {
+  suggestedStatus: string;
+  adminNote?: string;
+  summary: string;
+  reasons: string[];
+  fallback: boolean;
+}
+
+export interface RefundAiAssistResponse {
+  shouldProcess: boolean;
+  adminNote?: string;
+  summary: string;
+  reasons: string[];
+  fallback: boolean;
 }
 
 // ─── Payments ────────────────────────────────────────────────────────────────
