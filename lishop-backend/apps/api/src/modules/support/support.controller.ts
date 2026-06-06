@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SupportTicketsService } from './support-tickets.service';
@@ -101,9 +102,13 @@ export class SupportController {
 
   @Post('chat')
   @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Chat with rule-based bot' })
-  chat(@Body() dto: ChatRequestDto) {
-    return this.chatbotService.reply(dto.message ?? '');
+  @ApiOperation({ summary: 'Chat with AI shopping assistant' })
+  chat(
+    @Body() dto: ChatRequestDto,
+    @CurrentUser('id') userId?: string,
+  ) {
+    return this.chatbotService.reply(dto.message ?? '', { userId });
   }
 }

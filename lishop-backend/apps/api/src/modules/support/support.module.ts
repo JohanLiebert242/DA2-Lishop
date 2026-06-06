@@ -7,9 +7,10 @@ import { ChatbotService } from './chatbot.service';
 import { SupportController } from './support.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ProductsModule } from '../products/products.module';
+import { OrdersModule } from '../orders/orders.module';
 
 @Module({
-  imports: [NotificationsModule, ProductsModule],
+  imports: [NotificationsModule, ProductsModule, OrdersModule],
   providers: [
     SupportTicketsRepository,
     SupportTicketsService,

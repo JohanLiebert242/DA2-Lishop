@@ -26,6 +26,8 @@ import * as Joi from 'joi';
         GOOGLE_CLIENT_SECRET: Joi.string().allow('').optional().default(''),
         FACEBOOK_CLIENT_ID: Joi.string().allow('').optional().default(''),
         FACEBOOK_CLIENT_SECRET: Joi.string().allow('').optional().default(''),
+        OPENAI_API_KEY: Joi.string().allow('').optional().default(''),
+        OPENAI_MODEL: Joi.string().default('gpt-5.2'),
       }),
     }),
   ],

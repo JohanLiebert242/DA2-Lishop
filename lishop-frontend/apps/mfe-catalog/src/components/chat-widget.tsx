@@ -192,6 +192,7 @@ export function ChatWidget() {
       const res = await fetch(`${API_URL}/support/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ message: text }),
       });
       const json = await res.json();
