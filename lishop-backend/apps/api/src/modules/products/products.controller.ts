@@ -21,6 +21,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@lishop/contracts';
+import { IsString } from 'class-validator';
+
+class AiProductDiscoveryDto {
+  @IsString()
+  message!: string;
+}
 
 @ApiTags('products')
 @Controller('products')
@@ -54,6 +60,14 @@ export class ProductsController {
   @ApiOperation({ summary: 'Get product by slug' })
   async findOne(@Param('slug') slug: string) {
     return this.productsService.findBySlug(slug);
+  }
+
+  @Public()
+  @Post('ai-discovery')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'AI-assisted product discovery from a natural-language request' })
+  async discoverWithAi(@Body() dto: AiProductDiscoveryDto) {
+    return this.productsService.discoverWithAi(dto.message ?? '');
   }
 
   @Post()

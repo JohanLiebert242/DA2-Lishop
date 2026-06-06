@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ProductsService } from './products.service';
 import { ProductsRepository } from './products.repository';
 import { CategoriesService } from '../categories/categories.service';
@@ -24,6 +25,7 @@ const mockProduct = {
 
 describe('ProductsService', () => {
   let service: ProductsService;
+  const originalFetch = global.fetch;
   const repo = {
     findMany: jest.fn(),
     findBySlug: jest.fn(),
@@ -35,19 +37,29 @@ describe('ProductsService', () => {
     findRelated: jest.fn(),
   };
   const categoriesService = { findBySlug: jest.fn(), create: jest.fn() };
+  const config = { get: jest.fn() };
 
   beforeEach(async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    global.fetch = jest.fn();
     const module = await Test.createTestingModule({
       providers: [
         ProductsService,
         { provide: ProductsRepository, useValue: repo },
         { provide: CategoriesService, useValue: categoriesService },
+        { provide: ConfigService, useValue: config },
       ],
     }).compile();
     service = module.get(ProductsService);
   });
 
-  afterEach(() => jest.resetAllMocks());
+  afterEach(() => {
+    jest.resetAllMocks();
+    global.fetch = originalFetch;
+  });
 
   it('findMany returns items and nextCursor', async () => {
     repo.findMany.mockResolvedValue({ items: [mockProduct], nextCursor: null });
@@ -100,5 +112,69 @@ describe('ProductsService', () => {
     repo.findBySlug.mockResolvedValue(null);
     await expect(service.findRelated('unknown')).rejects.toThrow(NotFoundException);
     expect(repo.findRelated).not.toHaveBeenCalled();
+  });
+
+  it('discoverWithAi uses OpenAI with grounded product context', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    repo.findMany.mockResolvedValue({ items: [mockProduct], nextCursor: null });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ output_text: 'iPhone 15 phu hop voi nhu cau chup anh va ngan sach cua ban.' }),
+    });
+
+    const result = await service.discoverWithAi('tu van dien thoai chup anh dep');
+
+    expect(repo.findMany).toHaveBeenCalledWith({ q: 'tu van dien thoai chup anh dep', limit: 6 });
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/responses',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer sk-test' }),
+      }),
+    );
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(JSON.stringify(body)).toContain('iPhone 15');
+    expect(result.fallback).toBe(false);
+    expect(result.mode).toBe('advice');
+    expect(result.reply).toContain('iPhone 15');
+    expect(result.items).toHaveLength(1);
+  });
+
+  it('discoverWithAi returns fallback results without OpenAI key', async () => {
+    repo.findMany.mockResolvedValue({ items: [mockProduct], nextCursor: null });
+
+    const result = await service.discoverWithAi('can dien thoai tot');
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.fallback).toBe(true);
+    expect(result.reply).toContain('AI');
+    expect(result.items[0]!.name).toBe('iPhone 15');
+  });
+
+  it('discoverWithAi falls back when OpenAI request fails', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    repo.findMany.mockResolvedValue({ items: [mockProduct], nextCursor: null });
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 429 });
+
+    const result = await service.discoverWithAi('goi y san pham');
+
+    expect(result.fallback).toBe(true);
+    expect(result.items).toHaveLength(1);
+  });
+
+  it('discoverWithAi detects product comparison intent', async () => {
+    repo.findMany.mockResolvedValue({ items: [mockProduct], nextCursor: null });
+
+    const result = await service.discoverWithAi('so sanh iphone 15 voi samsung s24');
+
+    expect(result.mode).toBe('compare');
   });
 });
