@@ -208,6 +208,8 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+  generateReviewModeration: (id: string) =>
+    apiFetch<ReviewAiModerationResponse>(`/admin/reviews/${id}/ai-moderation`, { method: 'POST' }),
 
   // Flash sales
   getFlashSales: () => apiFetch<AdminFlashSale[]>('/admin/flash-sales'),
@@ -421,6 +423,14 @@ export interface AdminReview {
   createdAt: string;
   product: { name: string; slug: string };
   user: { email: string; firstName: string; lastName: string };
+}
+
+export interface ReviewAiModerationResponse {
+  suggestedStatus: ReviewStatus;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  summary: string;
+  reasons: string[];
+  fallback: boolean;
 }
 
 // ─── Flash Sales ─────────────────────────────────────────────────────────────
