@@ -179,6 +179,7 @@ describe('ProductsService', () => {
   describe('recommendations', () => {
     const productA = { ...mockProduct, id: 'pA', slug: 'product-a', name: 'Product A' };
     const productB = { ...mockProduct, id: 'pB', slug: 'product-b', name: 'Product B' };
+    const featured = [productA, productB];
 
     beforeEach(() => {
       wishlistService.getWishlistProducts.mockResolvedValue([productA]);
@@ -193,6 +194,7 @@ describe('ProductsService', () => {
         if (slug === 'product-b') return productB as any;
         return null;
       });
+      repo.findRelated.mockResolvedValue([productB] as any);
     });
 
     it('no key -> fallback true returns items', async () => {
@@ -203,6 +205,18 @@ describe('ProductsService', () => {
       expect(result.fallback).toBe(true);
       expect(result.items).toHaveLength(2);
       expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('guest (no userId) -> featured, fallback true when no OPENAI key', async () => {
+      config.get.mockImplementation((key: string) => (key === 'OPENAI_API_KEY' ? '' : key === 'OPENAI_MODEL' ? 'gpt-5.2' : ''));
+      repo.findFeatured.mockResolvedValue(featured as any);
+
+      const result = await service.recommendations({ userId: undefined, limit: 2 });
+      expect(wishlistService.getWishlistProducts).not.toHaveBeenCalled();
+      expect(ordersService.findMyOrders).not.toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result.fallback).toBe(true);
+      expect(result.items.map((i) => i.slug)).toEqual(['product-a', 'product-b']);
     });
 
     it('key set but OpenAI fails -> fallback true', async () => {
@@ -243,6 +257,36 @@ describe('ProductsService', () => {
       expect(result.fallback).toBe(false);
       expect(result.reason).toBeDefined();
       expect(result.items.map((i) => i.slug)).toEqual(['product-b', 'product-a']);
+    });
+
+    it('adversarial AI returns non-candidate slugs -> ignore and fallback true', async () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'OPENAI_API_KEY') return 'sk-test';
+        if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+        return '';
+      });
+
+      repo.findFeatured.mockResolvedValue(featured as any);
+      repo.findBySlug.mockImplementation(async (slug: string) => {
+        if (slug === 'product-a') return productA as any;
+        if (slug === 'product-b') return productB as any;
+        return null;
+      });
+      repo.findRelated.mockResolvedValue([productB] as any);
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          output_text: JSON.stringify({
+            orderedSlugs: ['not-a-candidate', 'also-not-a-candidate'],
+            reason: 'AI suggested items outside the candidate set.',
+          }),
+        }),
+      });
+
+      const result = await service.recommendations({ userId: 'u1', limit: 2, context: 'need' });
+      expect(result.fallback).toBe(true);
+      expect(result.items.map((i) => i.slug)).toEqual(['product-a', 'product-b']);
     });
   });
 

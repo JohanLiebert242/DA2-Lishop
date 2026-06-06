@@ -151,21 +151,42 @@ export class ProductsService {
         (s: string, idx: number, arr: string[]) => arr.indexOf(s) === idx,
       );
 
-      if (uniqueSlugs.length >= 2) {
-        const products = await Promise.all(
-          uniqueSlugs.slice(0, Math.max(6, limit * 2)).map(async (slug: string) => {
+      if (uniqueSlugs.length >= 1) {
+        const primarySlugs = uniqueSlugs.slice(0, Math.max(2, Math.min(6, limit)));
+        const primaryProducts = await Promise.all(
+          primarySlugs.map(async (slug: string) => {
             const p = await this.repo.findBySlug(slug);
             return p ? this.toAiDiscoveryProduct(p) : null;
           }),
         );
-        candidates = products.filter(Boolean) as AiDiscoveryProduct[];
+
+        const primary = primaryProducts.filter(Boolean) as AiDiscoveryProduct[];
+        candidates.push(...primary);
+
+        if (primary.length > 0) {
+          const primaryFull = await this.repo.findBySlug(primary[0]!.slug);
+          if (primaryFull) {
+            const related = await this.repo.findRelated(
+              primaryFull.id,
+              primaryFull.categoryId,
+              primaryFull.tags.map((pt) => pt.tagId),
+              limit - candidates.length,
+            );
+            candidates.push(...related.map((p) => this.toAiDiscoveryProduct(p)));
+          }
+        }
       }
     }
 
-    if (candidates.length < 2) {
+    // Deduplicate by slug and enforce length
+    const dedup = new Map<string, AiDiscoveryProduct>();
+    for (const c of candidates) dedup.set(c.slug, c);
+    candidates = Array.from(dedup.values());
+
+    if (candidates.length === 0) {
       candidates = (await this.repo.findFeatured(limit)).map((p) => this.toAiDiscoveryProduct(p));
     } else {
-      candidates = candidates.slice(0, Math.max(limit, candidates.length));
+      candidates = candidates.slice(0, limit);
     }
 
     const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
@@ -258,6 +279,10 @@ export class ProductsService {
     const orderedSlugs: string[] = parsed.orderedSlugs.filter((s: any) => typeof s === 'string');
     const allowed = new Set(candidateSlugs);
     const safeOrdered = orderedSlugs.filter((s) => allowed.has(s));
+    if (safeOrdered.length === 0) {
+      return { items: params.candidates.slice(0, params.limit), fallback: true };
+    }
+
     const fallbackOrdered = candidateSlugs.filter((s) => safeOrdered.indexOf(s) === -1);
     const finalSlugs = [...safeOrdered, ...fallbackOrdered].slice(0, params.limit);
 

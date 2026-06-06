@@ -6,5 +6,6 @@ import { WishlistController } from './wishlist.controller';
 @Module({
   providers: [WishlistRepository, WishlistService],
   controllers: [WishlistController],
+  exports: [WishlistService, WishlistRepository],
 })
 export class WishlistModule {}
