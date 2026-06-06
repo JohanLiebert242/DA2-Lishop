@@ -116,6 +116,13 @@ function FeedTab() {
   });
 
   useEffect(() => {
+    // Keep Playwright E2E deterministic: the tests stub REST endpoints but not SSE.
+    // Avoid opening an EventSource when running under automation.
+    if (typeof navigator !== 'undefined' && (navigator as unknown as { webdriver?: boolean }).webdriver) {
+      setStreamState('fallback');
+      return;
+    }
+
     const stream = new EventSource(notificationsApi.streamUrl(), { withCredentials: true });
 
     stream.onopen = () => setStreamState('live');

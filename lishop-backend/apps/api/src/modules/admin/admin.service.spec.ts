@@ -219,4 +219,51 @@ describe('AdminService', () => {
     expect(result.fallback).toBe(true);
     expect(result.description).toContain('Tai nghe Bluetooth');
   });
+
+  it('aiImportEnrichProducts returns fallback enriched products when OpenAI key is missing', async () => {
+    const csv = [
+      'name,sku,description,priceVnd,priceUsd,stock,weightGrams,categorySlug,imageUrl,tags',
+      'Ao thun,TS-001,,199000,799,10,200,thoi-trang,https://example.com/a.jpg,ao|thun',
+    ].join('\n');
+
+    const result = await service.aiImportEnrichProducts({ rawText: csv });
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.fallback).toBe(true);
+    expect(result.products).toHaveLength(1);
+    expect(result.products[0]?.name).toBe('Ao thun');
+    expect(result.products[0]?.description).toContain('Ao thun');
+    expect(result.products[0]?.priceVnd).toBe(199000);
+  });
+
+  it('aiImportEnrichProducts uses OpenAI when configured', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({
+          products: [
+            { name: 'Balo AI', description: 'Mo ta ngan.', priceVnd: 299000, priceUsd: 1199, stock: 7 },
+          ],
+        }),
+      }),
+    });
+
+    const result = await service.aiImportEnrichProducts({ rawText: 'Balo du lich gia 299k ton 7' });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/responses',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer sk-test' }),
+      }),
+    );
+    expect(result.fallback).toBe(false);
+    expect(result.products).toHaveLength(1);
+    expect(result.products[0]?.name).toBe('Balo AI');
+  });
 });

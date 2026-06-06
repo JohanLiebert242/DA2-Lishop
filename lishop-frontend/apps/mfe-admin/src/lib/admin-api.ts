@@ -248,6 +248,11 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  aiImportEnrichProducts: (rawText: string) =>
+    apiFetch<AiImportEnrichProductsResult>('/admin/products/ai-import-enrich', {
+      method: 'POST',
+      body: JSON.stringify({ rawText }),
+    }),
 
   // Wallets
   getWallets: () => apiFetch<AdminWallet[]>('/admin/wallets'),
@@ -378,6 +383,11 @@ export interface GenerateProductCopyInput {
 
 export interface GenerateProductCopyResponse {
   description: string;
+  fallback: boolean;
+}
+
+export interface AiImportEnrichProductsResult {
+  products: CreateProductInput[];
   fallback: boolean;
 }
 

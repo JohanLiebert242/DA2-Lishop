@@ -369,10 +369,120 @@ function ProductImportModal({
   );
 }
 
+function ProductAiImportEnrichModal({
+  onClose,
+  onImported,
+}: {
+  onClose: () => void;
+  onImported: () => void;
+}) {
+  const [rawText, setRawText] = useState('');
+  const [preview, setPreview] = useState<CreateProductInput[]>([]);
+  const [error, setError] = useState('');
+  const [aiNotice, setAiNotice] = useState('');
+
+  const analyzeMutation = useMutation({
+    mutationFn: () => {
+      if (!rawText.trim()) throw new Error('Vui long nhap du lieu can AI phan tich');
+      return adminApi.aiImportEnrichProducts(rawText);
+    },
+    onSuccess: (result) => {
+      setPreview(result.products ?? []);
+      setAiNotice(result.fallback ? 'AI fallback da tu dong chuan hoa/enrich. Hay xem lai truoc khi import.' : 'AI da phan tich va enrich. Hay xem lai truoc khi import.');
+      setError('');
+    },
+    onError: (err: Error) => {
+      setPreview([]);
+      setAiNotice('');
+      setError(err.message);
+    },
+  });
+
+  const importMutation = useMutation({
+    mutationFn: () => {
+      if (preview.length === 0) throw new Error('Chua co san pham de import');
+      return adminApi.importProducts(preview);
+    },
+    onSuccess: () => onImported(),
+    onError: (err: Error) => setError(err.message),
+  });
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    setRawText(await file.text());
+  }
+
+  const sample = [
+    'Danh sach san pham can import:',
+    '- Ao thun nam gia 199k ton 20, danh muc thoi-trang',
+    '- Tai nghe Bluetooth gia 399k ton 8',
+  ].join('\n');
+
+  return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <h3 className="mb-4 text-base font-semibold text-gray-900">AI import/enrich san pham</h3>
+        <div className="space-y-3">
+          <input
+            type="file"
+            accept=".txt,.json,.csv,text/plain,text/csv,application/json"
+            onChange={(event) => handleFile(event.target.files?.[0])}
+            className="block w-full cursor-pointer rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
+          />
+          <textarea
+            value={rawText}
+            onChange={(event) => setRawText(event.target.value)}
+            rows={10}
+            className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+            placeholder={sample}
+          />
+          <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+            Dan CSV/JSON hoac mo ta tu do. AI se co gang chuan hoa du lieu thanh danh sach san pham de import.
+          </div>
+          {aiNotice && <p className="text-xs font-medium text-emerald-700">{aiNotice}</p>}
+          {preview.length > 0 && (
+            <div className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+              Da chuan bi {preview.length} san pham. (Preview: {preview.slice(0, 3).map((p) => p.name).join(', ')}{preview.length > 3 ? ', ...' : ''})
+            </div>
+          )}
+          {importMutation.data && (
+            <div className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+              Tao thanh cong {importMutation.data.created}, loi {importMutation.data.failed}.
+            </div>
+          )}
+          {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="cursor-pointer rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Dong
+          </button>
+          <button
+            type="button"
+            onClick={() => analyzeMutation.mutate()}
+            disabled={!rawText.trim() || analyzeMutation.isPending}
+            className="cursor-pointer rounded-md border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+          >
+            {analyzeMutation.isPending ? 'AI dang phan tich...' : 'AI phan tich'}
+          </button>
+          <button
+            type="button"
+            onClick={() => importMutation.mutate()}
+            disabled={preview.length === 0 || importMutation.isPending}
+            className="cursor-pointer rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {importMutation.isPending ? 'Dang import...' : 'Import'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductsPage() {
   const queryClient = useQueryClient();
   const [showProductModal, setShowProductModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showAiImportModal, setShowAiImportModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [productSearch, setProductSearch] = useState('');
 
@@ -415,6 +525,13 @@ export default function ProductsPage() {
           className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 whitespace-nowrap"
         >
           Import
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowAiImportModal(true)}
+          className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap"
+        >
+          AI import/enrich
         </button>
         <button
           type="button"
@@ -510,6 +627,12 @@ export default function ProductsPage() {
       {showImportModal && (
         <ProductImportModal
           onClose={() => setShowImportModal(false)}
+          onImported={() => queryClient.invalidateQueries({ queryKey: ['admin-products'] })}
+        />
+      )}
+      {showAiImportModal && (
+        <ProductAiImportEnrichModal
+          onClose={() => setShowAiImportModal(false)}
           onImported={() => queryClient.invalidateQueries({ queryKey: ['admin-products'] })}
         />
       )}

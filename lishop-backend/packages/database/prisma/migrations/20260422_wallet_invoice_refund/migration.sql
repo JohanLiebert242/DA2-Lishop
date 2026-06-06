@@ -111,5 +111,13 @@ ALTER TABLE "Refund" ADD CONSTRAINT "Refund_orderId_fkey"
 ALTER TABLE "Refund" ADD CONSTRAINT "Refund_userId_fkey"
   FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
-ALTER TABLE "Refund" ADD CONSTRAINT "Refund_returnId_fkey"
-  FOREIGN KEY ("returnId") REFERENCES "ReturnRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- Some environments were created via `prisma db push` and include ReturnRequest;
+-- the migrations folder historically did not include ReturnRequest creation.
+-- Make this FK best-effort so `migrate reset` can run on a fresh database.
+DO $$ BEGIN
+  ALTER TABLE "Refund" ADD CONSTRAINT "Refund_returnId_fkey"
+    FOREIGN KEY ("returnId") REFERENCES "ReturnRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+  WHEN undefined_table THEN null;
+  WHEN duplicate_object THEN null;
+END $$;

@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { FormEvent, useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 const CATALOG_URL = process.env['NEXT_PUBLIC_MFE_CATALOG_URL'] ?? 'http://localhost:3002';
 const ORDERS_URL = process.env['NEXT_PUBLIC_MFE_ORDERS_URL'] ?? 'http://localhost:3005';
@@ -107,6 +107,7 @@ function CategoryIcon({ icon, tone }: { icon: (typeof categories)[number]['icon'
 
 export default function SupportPage() {
   const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const filteredFaqs = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -114,13 +115,8 @@ export default function SupportPage() {
     return faqs.filter((faq) => faq.toLowerCase().includes(keyword));
   }, [query]);
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const params = new URLSearchParams();
-    const keyword = query.trim();
-    if (keyword) params.set('q', keyword);
-    window.history.pushState(null, '', params.size > 0 ? `/support?${params.toString()}` : '/support');
-  }
+  // Note: navigation uses a plain GET form submit (see below) so E2E can
+  // navigate even before client hydration finishes.
 
   return (
     <div className="bg-white text-stone-900">
@@ -143,11 +139,13 @@ export default function SupportPage() {
       <section data-testid="support-hero" className="bg-[#ee4d2d] px-4 py-12 text-white sm:py-14">
         <div className="mx-auto max-w-[980px] text-center">
           <h1 className="text-3xl font-medium tracking-normal sm:text-4xl">Xin chào, Lishop có thể giúp gì cho bạn?</h1>
-          <form onSubmit={submitSearch} className="mx-auto mt-8 flex h-16 max-w-[680px] overflow-hidden rounded-sm bg-white shadow-sm">
+          <form method="GET" action="/support" className="mx-auto mt-8 flex h-16 max-w-[680px] overflow-hidden rounded-sm bg-white shadow-sm">
             <input
               data-testid="support-search-input"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
+              ref={inputRef}
+              name="q"
               type="search"
               placeholder="Nhập từ khóa hoặc nội dung cần tìm"
               className="min-w-0 flex-1 px-5 text-lg font-medium text-stone-800 outline-none placeholder:text-stone-400"

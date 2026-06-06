@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { formatVND, useDebounce } from '@lishop/shared';
@@ -62,6 +62,8 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
   const [freeShipping, setFreeShipping] = useState(false);
   const [cursor, setCursor] = useState<string | undefined>();
   const [aiPrompt, setAiPrompt] = useState('');
+  const aiPromptRef = useRef<HTMLTextAreaElement | null>(null);
+  const [aiHydrated, setAiHydrated] = useState(false);
   const [aiResult, setAiResult] = useState<AiDiscoveryResponse | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
@@ -126,7 +128,8 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
   }, []);
 
   const handleAiDiscovery = useCallback(async () => {
-    const message = aiPrompt.trim();
+    // Read from DOM first to avoid hydration/timing race in E2E when clicking quickly after filling.
+    const message = (aiPromptRef.current?.value ?? aiPrompt).trim();
     if (!message || aiLoading) return;
 
     setAiLoading(true);
@@ -140,6 +143,10 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
       setAiLoading(false);
     }
   }, [aiLoading, aiPrompt]);
+
+  useEffect(() => {
+    setAiHydrated(true);
+  }, []);
 
   const items = data?.items ?? [];
   const nextCursor = data?.nextCursor;
@@ -184,6 +191,7 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
                   <textarea
                     value={aiPrompt}
                     onChange={(event) => setAiPrompt(event.target.value)}
+                    ref={aiPromptRef}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
                         event.preventDefault();
@@ -195,14 +203,18 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
                     placeholder="VD: dien thoai chup anh dep duoi 20 trieu, hoac so sanh iphone 15 voi samsung s24"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAiDiscovery}
-                  disabled={!aiPrompt.trim() || aiLoading}
-                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-emerald-900 px-4 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 lg:mt-11"
-                >
-                  {aiLoading ? 'Dang tu van...' : 'Tu van'}
-                </button>
+                {aiHydrated ? (
+                  <button
+                    type="button"
+                    onClick={handleAiDiscovery}
+                    disabled={aiLoading}
+                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-emerald-900 px-4 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 lg:mt-11"
+                  >
+                    {aiLoading ? 'Dang tu van...' : 'Tu van'}
+                  </button>
+                ) : (
+                  <div className="h-10 shrink-0 lg:mt-11" />
+                )}
               </div>
 
               {aiError && (

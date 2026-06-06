@@ -106,6 +106,10 @@ const childCategorySeeds = [
 ] as const;
 
 const productSeeds: ProductSeed[] = [
+  // Deterministic slug for E2E layout test: /products/layout-product
+  ...makeProducts('phones', 'phones', 'tech', [
+    ['Layout Product', 19900000],
+  ], 12),
   ...makeProducts('phones', 'phones', 'tech', [
     ['iPhone 15 Pro Max 256GB', 34990000],
     ['Samsung Galaxy S24 Ultra', 31990000],
@@ -273,40 +277,51 @@ function inferBrand(productName: string) {
 }
 
 async function cleanup() {
-  await prisma.refund.deleteMany({});
-  await prisma.returnItem.deleteMany({});
-  await prisma.returnRequest.deleteMany({});
-  await prisma.invoice.deleteMany({});
-  await prisma.walletTransaction.deleteMany({});
-  await prisma.wallet.deleteMany({});
-  await prisma.ticketMessage.deleteMany({});
-  await prisma.supportTicket.deleteMany({});
-  await prisma.fAQ.deleteMany({});
-  await prisma.wishlist.deleteMany({});
-  await prisma.cartItem.deleteMany({});
-  await prisma.notificationPreference.deleteMany({});
-  await prisma.deviceToken.deleteMany({});
-  await prisma.notification.deleteMany({});
-  await prisma.loyaltyPoint.deleteMany({});
-  await prisma.review.deleteMany({});
-  await prisma.shipmentEvent.deleteMany({});
-  await prisma.shipment.deleteMany({});
-  await prisma.payment.deleteMany({});
-  await prisma.orderItem.deleteMany({});
-  await prisma.order.deleteMany({});
-  await prisma.couponUsage.deleteMany({});
-  await prisma.coupon.deleteMany({});
-  await prisma.flashSaleItem.deleteMany({});
-  await prisma.flashSale.deleteMany({});
-  await prisma.stockMovement.deleteMany({});
-  await prisma.productTag.deleteMany({});
-  await prisma.tag.deleteMany({});
-  await prisma.productVariant.deleteMany({});
-  await prisma.productImage.deleteMany({});
-  await prisma.product.deleteMany({});
-  await prisma.category.deleteMany({});
-  await prisma.address.deleteMany({});
-  await prisma.user.deleteMany({});
+  async function safe(op: () => Promise<unknown>) {
+    try {
+      await op();
+    } catch (err) {
+      // When the Prisma schema contains models that haven't been migrated yet,
+      // Prisma throws P2021 (table does not exist). Keep the seed resilient.
+      if (err && typeof err === 'object' && (err as { code?: unknown }).code === 'P2021') return;
+      throw err;
+    }
+  }
+
+  await safe(() => prisma.refund.deleteMany({}));
+  await safe(() => prisma.returnItem.deleteMany({}));
+  await safe(() => prisma.returnRequest.deleteMany({}));
+  await safe(() => prisma.invoice.deleteMany({}));
+  await safe(() => prisma.walletTransaction.deleteMany({}));
+  await safe(() => prisma.wallet.deleteMany({}));
+  await safe(() => prisma.ticketMessage.deleteMany({}));
+  await safe(() => prisma.supportTicket.deleteMany({}));
+  await safe(() => prisma.fAQ.deleteMany({}));
+  await safe(() => prisma.wishlist.deleteMany({}));
+  await safe(() => prisma.cartItem.deleteMany({}));
+  await safe(() => prisma.notificationPreference.deleteMany({}));
+  await safe(() => prisma.deviceToken.deleteMany({}));
+  await safe(() => prisma.notification.deleteMany({}));
+  await safe(() => prisma.loyaltyPoint.deleteMany({}));
+  await safe(() => prisma.review.deleteMany({}));
+  await safe(() => prisma.shipmentEvent.deleteMany({}));
+  await safe(() => prisma.shipment.deleteMany({}));
+  await safe(() => prisma.payment.deleteMany({}));
+  await safe(() => prisma.orderItem.deleteMany({}));
+  await safe(() => prisma.order.deleteMany({}));
+  await safe(() => prisma.couponUsage.deleteMany({}));
+  await safe(() => prisma.coupon.deleteMany({}));
+  await safe(() => prisma.flashSaleItem.deleteMany({}));
+  await safe(() => prisma.flashSale.deleteMany({}));
+  await safe(() => prisma.stockMovement.deleteMany({}));
+  await safe(() => prisma.productTag.deleteMany({}));
+  await safe(() => prisma.tag.deleteMany({}));
+  await safe(() => prisma.productVariant.deleteMany({}));
+  await safe(() => prisma.productImage.deleteMany({}));
+  await safe(() => prisma.product.deleteMany({}));
+  await safe(() => prisma.category.deleteMany({}));
+  await safe(() => prisma.address.deleteMany({}));
+  await safe(() => prisma.user.deleteMany({}));
 }
 
 async function createUsers() {
@@ -1114,7 +1129,15 @@ async function main() {
   await createReturnsAndRefunds(orders);
   await createReviews(customers, products);
   await createCustomerActivity(customers, products, variants);
-  await createSupport(customers, admin, orders);
+  try {
+    await createSupport(customers, admin, orders);
+  } catch (err) {
+    if (err && typeof err === 'object' && (err as { code?: unknown }).code === 'P2021') {
+      console.warn('[seed] support ticket tables missing; skipping support seed');
+    } else {
+      throw err;
+    }
+  }
 
   const counts = {
     users: await prisma.user.count(),
@@ -1127,8 +1150,8 @@ async function main() {
     wallets: await prisma.wallet.count(),
     invoices: await prisma.invoice.count(),
     refunds: await prisma.refund.count(),
-    supportTickets: await prisma.supportTicket.count(),
-    faqs: await prisma.fAQ.count(),
+    supportTickets: await prisma.supportTicket.count().catch(() => 0),
+    faqs: await prisma.fAQ.count().catch(() => 0),
   };
 
   console.warn('Seed hoàn tất. Tài khoản demo:');

@@ -7,6 +7,7 @@ import { CreateCouponDto } from './dto/create-coupon.dto';
 import { ModerateReviewDto } from './dto/moderate-review.dto';
 import { ImportProductsDto } from './dto/import-products.dto';
 import { GenerateProductCopyDto } from './dto/generate-product-copy.dto';
+import { AiImportEnrichProductsDto } from './dto/ai-import-enrich-products.dto';
 import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -137,6 +138,13 @@ export class AdminController {
   @ApiOperation({ summary: 'Generate AI product description copy for admin review' })
   generateProductCopy(@Body() dto: GenerateProductCopyDto) {
     return this.adminService.generateProductCopy(dto);
+  }
+
+  @Post('products/ai-import-enrich')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'AI import/enrich products from raw CSV/JSON/free text for admin review' })
+  aiImportEnrichProducts(@Body() dto: AiImportEnrichProductsDto) {
+    return this.adminService.aiImportEnrichProducts(dto);
   }
 
   @Get('returns')

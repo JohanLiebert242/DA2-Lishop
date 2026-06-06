@@ -10,11 +10,13 @@ import { UserRole } from '@lishop/contracts';
 import { ProductsService } from '../products/products.service';
 import { ImportProductDto, ImportProductsDto } from './dto/import-products.dto';
 import { GenerateProductCopyDto } from './dto/generate-product-copy.dto';
+import { AiImportEnrichProductsDto } from './dto/ai-import-enrich-products.dto';
 
 const STATS_CACHE_KEY = 'cache:admin:stats';
 const STATS_TTL = 300; // 5 minutes
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
+const MAX_AI_IMPORT_PRODUCTS = 200;
 
 const VALID_ORDER_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
   [OrderStatus.PENDING]:    [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
@@ -272,6 +274,60 @@ export class AdminService {
     return { created, failed: errors.length, errors };
   }
 
+  async aiImportEnrichProducts(dto: AiImportEnrichProductsDto): Promise<{ products: ImportProductDto[]; fallback: boolean }> {
+    const raw = dto.rawText?.trim() ?? '';
+    if (!raw) throw new BadRequestException('rawText is required');
+
+    const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
+    if (!apiKey) {
+      return { products: this.enrichImportedProducts(this.parseImportTextFallback(raw)), fallback: true };
+    }
+
+    try {
+      const response = await fetch(OPENAI_RESPONSES_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
+          instructions: this.buildAiImportEnrichPrompt(),
+          input: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: [
+                    'Du lieu dau vao (CSV/JSON/free text) de tao danh sach san pham:',
+                    raw,
+                  ].join('\n'),
+                },
+              ],
+            },
+          ],
+          max_output_tokens: 1500,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI request failed with status ${response.status}`);
+      }
+
+      const payload = await response.json() as { output_text?: string; output?: unknown };
+      const text = this.extractOutputText(payload).trim();
+      if (!text) throw new Error('OpenAI response did not include text output');
+
+      const parsed = this.safeParseAiProductsJson(text);
+      const limited = parsed.slice(0, MAX_AI_IMPORT_PRODUCTS);
+      return { products: this.enrichImportedProducts(limited), fallback: false };
+    } catch (err) {
+      console.error('[AdminService] AI import/enrich failed; returning fallback', err);
+      return { products: this.enrichImportedProducts(this.parseImportTextFallback(raw)), fallback: true };
+    }
+  }
+
   private async resolveImportCategory(product: ImportProductDto): Promise<string> {
     if (product.categoryId) return product.categoryId;
     if (!product.categorySlug) {
@@ -313,6 +369,124 @@ export class AdminService {
       'Khong bia thong so ky thuat, khuyen mai, bao hanh, giao hang, chat lieu, xuat xu hoac cam ket neu du lieu khong co.',
       'Khong dung markdown, khong chen emoji, chi tra ve phan mo ta cuoi cung.',
     ].join('\n');
+  }
+
+  private buildAiImportEnrichPrompt(): string {
+    return [
+      'Ban la tro ly AI cho admin Lishop.',
+      'Nhiem vu: tu du lieu CSV/JSON hoac doan van tu do, hay tao danh sach san pham de admin import.',
+      'Tra ve DUY NHAT mot JSON object theo schema: {"products":[{...}]} .',
+      'Moi san pham bat buoc co: name, description, priceVnd, priceUsd, stock.',
+      'Co the co them: sku, weightGrams, categorySlug, imageUrl, imageAlt, tags (mang string).',
+      'Neu thieu gia, stock, weight thi suy doan hop ly (gia >= 0, stock >= 0, weightGrams >= 1).',
+      'Mo ta (description) viet tieng Viet, 1-3 cau, khong markdown, khong emoji.',
+      `Toi da ${MAX_AI_IMPORT_PRODUCTS} san pham.`,
+    ].join('\n');
+  }
+
+  private safeParseAiProductsJson(text: string): ImportProductDto[] {
+    const trimmed = text.trim();
+    if (!trimmed) return [];
+
+    // Allow either a raw array or {"products":[...]} for resiliency.
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (Array.isArray(parsed)) return parsed as ImportProductDto[];
+    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { products?: unknown }).products)) {
+      return (parsed as { products: ImportProductDto[] }).products;
+    }
+    throw new Error('AI output JSON schema is invalid');
+  }
+
+  private parseImportTextFallback(raw: string): ImportProductDto[] {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+
+    // JSON
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      const parsed = JSON.parse(trimmed) as ImportProductDto[] | { products: ImportProductDto[] };
+      const products = Array.isArray(parsed) ? parsed : parsed.products;
+      return Array.isArray(products) ? products : [];
+    }
+
+    // CSV (minimal, matches frontend headers)
+    const lines = trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = this.splitCsvLine(lines[0]!).map((h) => h.trim());
+
+    return lines.slice(1).map((line) => {
+      const values = this.splitCsvLine(line);
+      const row = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']));
+      const imageUrl = (row['imageUrl'] ?? '').trim();
+      const tags = (row['tags'] ?? '').split('|').map((t) => t.trim()).filter(Boolean);
+
+      const product: ImportProductDto = {
+        name: (row['name'] ?? '').trim(),
+        ...(row['sku'] ? { sku: String(row['sku']).trim() } : {}),
+        description: (row['description'] ?? '').trim(),
+        priceVnd: Number(row['priceVnd'] ?? 0),
+        priceUsd: Number(row['priceUsd'] ?? 0),
+        stock: Number(row['stock'] ?? 0),
+        weightGrams: Number(row['weightGrams'] ?? 500),
+        ...(row['categoryId'] ? { categoryId: String(row['categoryId']).trim() } : {}),
+        ...(row['categorySlug'] ? { categorySlug: String(row['categorySlug']).trim() } : {}),
+        ...(imageUrl ? { images: [{ url: imageUrl, alt: String(row['imageAlt'] ?? ''), isPrimary: true }] } : {}),
+        ...(tags.length > 0 ? { tags } : {}),
+      };
+
+      return product;
+    }).filter((p) => p.name);
+  }
+
+  private splitCsvLine(line: string): string[] {
+    const values: string[] = [];
+    let current = '';
+    let quoted = false;
+
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      const next = line[i + 1];
+      if (char === '"' && quoted && next === '"') {
+        current += '"';
+        i += 1;
+      } else if (char === '"') {
+        quoted = !quoted;
+      } else if (char === ',' && !quoted) {
+        values.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    values.push(current.trim());
+    return values;
+  }
+
+  private enrichImportedProducts(products: ImportProductDto[]): ImportProductDto[] {
+    return products
+      .slice(0, MAX_AI_IMPORT_PRODUCTS)
+      .filter((p) => !!p && typeof p === 'object' && typeof (p as ImportProductDto).name === 'string')
+      .map((p) => {
+        const name = p.name.trim();
+        const priceVnd = Number.isFinite(Number(p.priceVnd)) ? Number(p.priceVnd) : 0;
+        const priceUsd = Number.isFinite(Number(p.priceUsd)) ? Number(p.priceUsd) : 0;
+        const stock = Number.isFinite(Number(p.stock)) ? Number(p.stock) : 0;
+        const weightGrams = Number.isFinite(Number(p.weightGrams)) ? Number(p.weightGrams) : 500;
+        const description = (p.description ?? '').toString().trim();
+
+        const enrichedDescription = description
+          ? description
+          : this.buildFallbackProductCopy({ name });
+
+        return {
+          ...p,
+          name,
+          priceVnd: Math.max(0, priceVnd),
+          priceUsd: Math.max(0, priceUsd),
+          stock: Math.max(0, stock),
+          weightGrams: Math.max(1, weightGrams),
+          description: enrichedDescription,
+        };
+      });
   }
 
   private buildFallbackProductCopy(dto: GenerateProductCopyDto): string {
