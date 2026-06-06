@@ -12,6 +12,16 @@ interface ProductListPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => resolve(fallback), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 function toUrlSearchParams(params: Record<string, string | string[] | undefined> = {}) {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -27,8 +37,12 @@ function toUrlSearchParams(params: Record<string, string | string[] | undefined>
 export default async function ProductListPage({ searchParams }: ProductListPageProps) {
   const initialFilters = getProductListFiltersFromSearchParams(toUrlSearchParams(await searchParams));
   const [initialCategories, initialProducts] = await Promise.all([
-    catalogApi.getCategories().catch(() => []),
-    catalogApi.getProducts({ sort: initialFilters.sort ?? 'newest', limit: 20, ...initialFilters }).catch(() => ({ items: [], nextCursor: null })),
+    withTimeout(catalogApi.getCategories(), 5000, []).catch(() => []),
+    withTimeout(
+      catalogApi.getProducts({ sort: initialFilters.sort ?? 'newest', limit: 20, ...initialFilters }),
+      5000,
+      { items: [], nextCursor: null },
+    ).catch(() => ({ items: [], nextCursor: null })),
   ]);
 
   return (

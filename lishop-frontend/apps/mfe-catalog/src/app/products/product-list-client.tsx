@@ -9,6 +9,7 @@ import { catalogApi, AiDiscoveryProduct, AiDiscoveryResponse, CategoryItem, Prod
 import { ProductCard } from '../../components/product-card';
 import { CategorySidebar } from '../../components/category-sidebar';
 import { ProductFilters } from '../../components/product-filters';
+import { PersonalizedRecommendations } from '../../components/personalized-recommendations';
 
 interface Props {
   initialCategories: CategoryItem[];
@@ -243,6 +244,8 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
                 </div>
               )}
             </section>
+
+            <PersonalizedRecommendations context="products" />
 
             <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
               <ProductFilters

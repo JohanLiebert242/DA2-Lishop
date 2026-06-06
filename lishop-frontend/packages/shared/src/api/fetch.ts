@@ -7,14 +7,27 @@ export function hasSessionCookie(): boolean {
 
 export function createApiFetch(apiUrl: string, authUrl = DEFAULT_AUTH_URL) {
   async function doRequest(path: string, init: RequestInit): Promise<Response> {
-    return fetch(`${apiUrl}${path}`, {
-      credentials: 'include',
-      ...init,
-      headers: {
-        ...(init.body != null ? { 'Content-Type': 'application/json' } : {}),
-        ...(init.headers as Record<string, string> | undefined),
-      },
-    });
+    // Avoid hanging SSR (and E2E) when the API is down by applying a bounded timeout
+    // unless the caller already provided a signal.
+    const timeoutMs = 8000;
+    const controller = init.signal ? null : new AbortController();
+    const timeoutId = controller
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : null;
+
+    try {
+      return await fetch(`${apiUrl}${path}`, {
+        credentials: 'include',
+        ...init,
+        signal: init.signal ?? controller?.signal,
+        headers: {
+          ...(init.body != null ? { 'Content-Type': 'application/json' } : {}),
+          ...(init.headers as Record<string, string> | undefined),
+        },
+      });
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
   }
 
   return async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {

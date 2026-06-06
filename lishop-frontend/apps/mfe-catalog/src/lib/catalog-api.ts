@@ -88,6 +88,12 @@ export interface AiDiscoveryResponse {
   fallback: boolean;
 }
 
+export interface PersonalizedRecommendationResponse {
+  items: AiDiscoveryProduct[];
+  reason?: string;
+  fallback: boolean;
+}
+
 export interface ProductListParams {
   cursor?: string;
   limit?: number;
@@ -139,6 +145,11 @@ export const catalogApi = {
       method: 'POST',
       body: JSON.stringify({ message }),
     }),
+
+  getRecommendations: (limit = 8, context: 'products' | 'home' = 'products') =>
+    apiFetch<PersonalizedRecommendationResponse>(
+      `/products/recommendations?limit=${limit}&context=${context}`,
+    ),
 
   getProduct: (slug: string) =>
     apiFetch<ProductDetail>(`/products/${slug}`),
