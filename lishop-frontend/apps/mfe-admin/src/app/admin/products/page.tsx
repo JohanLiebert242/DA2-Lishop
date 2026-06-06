@@ -92,6 +92,7 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newImageAlt, setNewImageAlt] = useState('');
   const [error, setError] = useState('');
+  const [aiNotice, setAiNotice] = useState('');
 
   function addImage() {
     if (!newImageUrl.trim()) return;
@@ -130,6 +131,29 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
     onError: (err: Error) => setError(err.message),
   });
 
+  const copyMutation = useMutation({
+    mutationFn: () => {
+      const categoryName = categories.find((category) => category.id === categoryId)?.name;
+      return adminApi.generateProductCopy({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        categoryName,
+        priceVnd,
+        stock,
+        sku: sku.trim() || undefined,
+      });
+    },
+    onSuccess: (result) => {
+      setDescription(result.description);
+      setAiNotice(result.fallback ? 'AI fallback da tao mo ta. Ban co the chinh sua truoc khi luu.' : 'AI da tao mo ta. Ban co the chinh sua truoc khi luu.');
+      setError('');
+    },
+    onError: (err: Error) => {
+      setAiNotice('');
+      setError(err.message);
+    },
+  });
+
   const inputCls = 'w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none';
 
   return (
@@ -148,12 +172,23 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
             <input value={sku} onChange={(e) => setSku(e.target.value)} className={inputCls} placeholder="VD: PROD-001" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Mô tả</label>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="block text-xs font-medium text-gray-700">Mô tả</label>
+              <button
+                type="button"
+                onClick={() => copyMutation.mutate()}
+                disabled={!name.trim() || copyMutation.isPending}
+                className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {copyMutation.isPending ? 'AI dang viet...' : 'AI viet mo ta'}
+              </button>
+            </div>
             <textarea
               value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
               className="w-full resize-none rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
               placeholder="Mô tả sản phẩm..."
             />
+            {aiNotice && <p className="mt-1 text-xs font-medium text-emerald-700">{aiNotice}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

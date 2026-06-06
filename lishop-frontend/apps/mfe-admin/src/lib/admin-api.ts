@@ -239,6 +239,11 @@ export const adminApi = {
     apiFetch<void>(`/products/${id}`, { method: 'DELETE' }),
   listCategories: () =>
     apiFetch<AdminCategory[]>('/categories'),
+  generateProductCopy: (data: GenerateProductCopyInput) =>
+    apiFetch<GenerateProductCopyResponse>('/admin/products/ai-copy', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   // Wallets
   getWallets: () => apiFetch<AdminWallet[]>('/admin/wallets'),
@@ -348,6 +353,20 @@ export interface ProductVariantInput {
   imageUrl?: string;
   isDefault?: boolean;
   isActive?: boolean;
+}
+
+export interface GenerateProductCopyInput {
+  name: string;
+  description?: string;
+  categoryName?: string;
+  priceVnd?: number;
+  stock?: number;
+  sku?: string;
+}
+
+export interface GenerateProductCopyResponse {
+  description: string;
+  fallback: boolean;
 }
 
 export interface ImportProductsResult {
