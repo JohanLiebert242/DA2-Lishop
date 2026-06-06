@@ -18,6 +18,19 @@ const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
 const MAX_AI_IMPORT_PRODUCTS = 200;
 
+export interface AiAnalyticsAction {
+  title: string;
+  rationale: string;
+}
+
+export interface AiAnalyticsInsights {
+  highlights: string[];
+  risks: string[];
+  actions: AiAnalyticsAction[];
+  questions: string[];
+  fallback: boolean;
+}
+
 const VALID_ORDER_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
   [OrderStatus.PENDING]:    [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
   [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
@@ -186,6 +199,61 @@ export class AdminService {
 
   getAnalytics(): Promise<AdminAnalytics> {
     return this.repo.getAnalytics();
+  }
+
+  async generateAnalyticsInsights(options: { rangeDays?: number } = {}): Promise<AiAnalyticsInsights> {
+    const analytics = await this.repo.getAnalytics();
+    const rangeDays = Number.isFinite(Number(options.rangeDays))
+      ? Math.max(1, Math.min(90, Math.round(Number(options.rangeDays))))
+      : 30;
+    const features = this.buildAnalyticsInsightFeatures(analytics, rangeDays);
+
+    const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
+    if (!apiKey) {
+      return this.buildAnalyticsInsightsFallback(analytics, features);
+    }
+
+    try {
+      const response = await fetch(OPENAI_RESPONSES_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
+          instructions: this.buildAnalyticsInsightsPrompt(),
+          input: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: [
+                    `Du lieu analytics admin Lishop trong ${rangeDays} ngay:`,
+                    JSON.stringify({ analytics, features }, null, 2),
+                  ].join('\n'),
+                },
+              ],
+            },
+          ],
+          max_output_tokens: 700,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI request failed with status ${response.status}`);
+      }
+
+      const payload = await response.json() as { output_text?: string; output?: unknown };
+      const text = this.extractOutputText(payload).trim();
+      if (!text) throw new Error('OpenAI response did not include text output');
+
+      return { ...this.parseAnalyticsInsightsJson(text), fallback: false };
+    } catch (err) {
+      console.error('[AdminService] AI analytics insights failed; returning fallback', err);
+      return this.buildAnalyticsInsightsFallback(analytics, features);
+    }
   }
 
   async generateProductCopy(dto: GenerateProductCopyDto): Promise<{ description: string; fallback: boolean }> {
@@ -382,6 +450,141 @@ export class AdminService {
       'Mo ta (description) viet tieng Viet, 1-3 cau, khong markdown, khong emoji.',
       `Toi da ${MAX_AI_IMPORT_PRODUCTS} san pham.`,
     ].join('\n');
+  }
+
+  private buildAnalyticsInsightsPrompt(): string {
+    return [
+      'Ban la tro ly AI phan tich kinh doanh cho admin Lishop.',
+      'Hay doc du lieu analytics va tra ve DUY NHAT mot JSON object hop le.',
+      'Schema: {"highlights":["string"],"risks":["string"],"actions":[{"title":"string","rationale":"string"}],"questions":["string"]}.',
+      'Viet tieng Viet khong dau hoac ASCII de tranh loi hien thi.',
+      'Highlights 3-6 muc, risks 0-3 muc, actions 2-5 muc, questions 0-2 muc.',
+      'Chi dua ra nhan dinh dua tren du lieu duoc cung cap. Khong bia doanh thu, ty le, san pham, khuyen mai, kenh marketing.',
+      'Actions phai cu the, thuc dung cho admin thuong mai dien tu.',
+    ].join('\n');
+  }
+
+  private parseAnalyticsInsightsJson(text: string): Omit<AiAnalyticsInsights, 'fallback'> {
+    const parsed = JSON.parse(text) as Partial<AiAnalyticsInsights>;
+    const highlights = this.toStringList(parsed.highlights).slice(0, 6);
+    const risks = this.toStringList(parsed.risks).slice(0, 3);
+    const questions = this.toStringList(parsed.questions).slice(0, 2);
+    const actions = Array.isArray(parsed.actions)
+      ? parsed.actions
+          .filter((action): action is AiAnalyticsAction =>
+            !!action
+            && typeof action === 'object'
+            && typeof (action as AiAnalyticsAction).title === 'string'
+            && typeof (action as AiAnalyticsAction).rationale === 'string',
+          )
+          .map((action) => ({ title: action.title.trim(), rationale: action.rationale.trim() }))
+          .filter((action) => action.title && action.rationale)
+          .slice(0, 5)
+      : [];
+
+    if (highlights.length === 0 || actions.length === 0) {
+      throw new Error('AI analytics insights schema is incomplete');
+    }
+
+    return { highlights, risks, actions, questions };
+  }
+
+  private buildAnalyticsInsightFeatures(analytics: AdminAnalytics, rangeDays: number) {
+    const sortedRevenue = [...analytics.dailyRevenue].sort((a, b) => a.date.localeCompare(b.date));
+    const last7 = sortedRevenue.slice(-7).reduce((sum, item) => sum + item.amount, 0);
+    const previous7 = sortedRevenue.slice(-14, -7).reduce((sum, item) => sum + item.amount, 0);
+    const trendPercent = previous7 > 0 ? Math.round(((last7 - previous7) / previous7) * 100) : null;
+    const topRevenue = analytics.topProducts.reduce((sum, product) => sum + product.revenue, 0);
+    const topProductSharePercent = analytics.summary.revenueVnd > 0 && analytics.topProducts[0]
+      ? Math.round((analytics.topProducts[0].revenue / analytics.summary.revenueVnd) * 100)
+      : 0;
+    const cancelledOrRefunded = analytics.orderStatusBreakdown
+      .filter((item) => item.status === OrderStatus.CANCELLED || item.status === OrderStatus.REFUNDED)
+      .reduce((sum, item) => sum + item.count, 0);
+    const issueRatePercent = analytics.summary.orderCount > 0
+      ? Math.round((cancelledOrRefunded / analytics.summary.orderCount) * 100)
+      : 0;
+
+    return {
+      rangeDays,
+      last7RevenueVnd: last7,
+      previous7RevenueVnd: previous7,
+      revenueTrendPercent: trendPercent,
+      topRevenueVnd: topRevenue,
+      topProductSharePercent,
+      lowStockCount: analytics.lowStockProducts.length,
+      issueRatePercent,
+    };
+  }
+
+  private buildAnalyticsInsightsFallback(
+    analytics: AdminAnalytics,
+    features: ReturnType<AdminService['buildAnalyticsInsightFeatures']>,
+  ): AiAnalyticsInsights {
+    const highlights = [
+      `Doanh thu ${features.rangeDays} ngay dat ${analytics.summary.revenueVnd.toLocaleString('vi-VN')} VND tu ${analytics.summary.orderCount} don hang.`,
+      `Gia tri don trung binh la ${analytics.summary.averageOrderValueVnd.toLocaleString('vi-VN')} VND.`,
+    ];
+    if (features.revenueTrendPercent !== null) {
+      highlights.push(
+        features.revenueTrendPercent >= 0
+          ? `Doanh thu 7 ngay gan nhat tang ${features.revenueTrendPercent}% so voi 7 ngay truoc.`
+          : `Doanh thu 7 ngay gan nhat giam ${Math.abs(features.revenueTrendPercent)}% so voi 7 ngay truoc.`,
+      );
+    }
+    if (analytics.topProducts[0]) {
+      highlights.push(`San pham doanh thu cao nhat la ${analytics.topProducts[0].productName}.`);
+    }
+
+    const risks: string[] = [];
+    if (features.lowStockCount > 0) {
+      risks.push(`${features.lowStockCount} san pham sap het hang co the lam mat doanh thu.`);
+    }
+    if (features.topProductSharePercent >= 50) {
+      risks.push(`Doanh thu phu thuoc manh vao san pham top 1 (${features.topProductSharePercent}%).`);
+    }
+    if (features.issueRatePercent >= 20) {
+      risks.push(`Ty le don huy/hoan tien dang cao (${features.issueRatePercent}%).`);
+    }
+
+    const actions: AiAnalyticsAction[] = [
+      {
+        title: 'Kiem tra va bo sung ton kho',
+        rationale: features.lowStockCount > 0
+          ? 'Cac san pham sap het hang nen duoc uu tien nhap them de tranh dut doanh thu.'
+          : 'Duy tri ton kho on dinh giup tranh mat co hoi ban hang khi nhu cau tang.',
+      },
+      {
+        title: 'Tang hien thi san pham dang ban tot',
+        rationale: analytics.topProducts[0]
+          ? `San pham ${analytics.topProducts[0].productName} dang tao doanh thu tot, co the dua vao banner hoac goi y mua kem.`
+          : 'Khi co du lieu san pham ban chay, hay dua chung vao khu vuc noi bat.',
+      },
+    ];
+    if (features.revenueTrendPercent !== null && features.revenueTrendPercent < 0) {
+      actions.push({
+        title: 'Kich hoat chien dich phuc hoi doanh thu',
+        rationale: 'Doanh thu 7 ngay gan nhat dang giam, nen thu khuyen mai ngan han hoac remarketing.',
+      });
+    }
+    if (features.issueRatePercent >= 20) {
+      actions.push({
+        title: 'Ra soat ly do huy va hoan tien',
+        rationale: 'Ty le van de don hang cao co the anh huong trai nghiem va loi nhuan.',
+      });
+    }
+
+    const questions = analytics.summary.orderCount === 0
+      ? ['Kenh nao se duoc uu tien de tao don hang dau tien?']
+      : ['Nhom san pham nao dang co bien loi nhuan tot nhat?'];
+
+    return { highlights, risks, actions, questions, fallback: true };
+  }
+
+  private toStringList(value: unknown): string[] {
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean)
+      : [];
   }
 
   private safeParseAiProductsJson(text: string): ImportProductDto[] {

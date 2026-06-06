@@ -31,6 +31,26 @@ const mockAnalytics = {
   topProducts: [{ productId: 'p1', productName: 'Sản phẩm A', revenue: 500000 }],
 };
 
+const mockAnalyticsInsights = {
+  summary: {
+    revenueVnd: 5000000,
+    orderCount: 10,
+    averageOrderValueVnd: 500000,
+    newUsers: 4,
+  },
+  dailyRevenue: [{ date: '2026-04-10', amount: 500000 }],
+  topProducts: [{ productId: 'p1', productName: 'San pham A', revenue: 500000 }],
+  orderStatusBreakdown: [
+    { status: OrderStatus.PENDING, count: 2 },
+    { status: OrderStatus.PROCESSING, count: 2 },
+    { status: OrderStatus.SHIPPED, count: 1 },
+    { status: OrderStatus.DELIVERED, count: 4 },
+    { status: OrderStatus.CANCELLED, count: 1 },
+    { status: OrderStatus.REFUNDED, count: 0 },
+  ],
+  lowStockProducts: [{ id: 'low-1', name: 'Ao sap het', slug: 'ao-sap-het', stock: 3 }],
+};
+
 describe('AdminService', () => {
   let service: AdminService;
   const originalFetch = global.fetch;
@@ -265,5 +285,70 @@ describe('AdminService', () => {
     expect(result.fallback).toBe(false);
     expect(result.products).toHaveLength(1);
     expect(result.products[0]?.name).toBe('Balo AI');
+  });
+
+  it('generateAnalyticsInsights returns fallback insights when OpenAI key is missing', async () => {
+    repo.getAnalytics.mockResolvedValue(mockAnalyticsInsights);
+
+    const result = await service.generateAnalyticsInsights({ rangeDays: 30 });
+
+    expect(repo.getAnalytics).toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.fallback).toBe(true);
+    expect(result.highlights.length).toBeGreaterThan(0);
+    expect(result.actions.length).toBeGreaterThan(0);
+  });
+
+  it('generateAnalyticsInsights uses OpenAI when configured', async () => {
+    repo.getAnalytics.mockResolvedValue(mockAnalyticsInsights);
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({
+          highlights: ['Doanh thu 30 ngay dang co tin hieu tot.'],
+          risks: ['Mot san pham sap het hang.'],
+          actions: [{ title: 'Bo sung ton kho', rationale: 'Giam nguy co mat doanh thu.' }],
+          questions: ['Kenh nao dang tao don hang tot nhat?'],
+        }),
+      }),
+    });
+
+    const result = await service.generateAnalyticsInsights({ rangeDays: 30 });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/responses',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer sk-test' }),
+      }),
+    );
+    expect(result).toEqual({
+      highlights: ['Doanh thu 30 ngay dang co tin hieu tot.'],
+      risks: ['Mot san pham sap het hang.'],
+      actions: [{ title: 'Bo sung ton kho', rationale: 'Giam nguy co mat doanh thu.' }],
+      questions: ['Kenh nao dang tao don hang tot nhat?'],
+      fallback: false,
+    });
+  });
+
+  it('generateAnalyticsInsights falls back when OpenAI fails', async () => {
+    repo.getAnalytics.mockResolvedValue(mockAnalyticsInsights);
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
+
+    const result = await service.generateAnalyticsInsights({ rangeDays: 30 });
+
+    expect(result.fallback).toBe(true);
+    expect(result.highlights.length).toBeGreaterThan(0);
+    expect(result.actions.length).toBeGreaterThan(0);
   });
 });

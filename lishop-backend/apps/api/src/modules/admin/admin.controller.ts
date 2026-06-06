@@ -126,6 +126,13 @@ export class AdminController {
     return this.adminService.getAnalytics();
   }
 
+  @Post('analytics/ai-insights')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate AI insights from admin analytics' })
+  generateAnalyticsInsights(@Body('rangeDays') rangeDays?: number) {
+    return this.adminService.generateAnalyticsInsights({ rangeDays });
+  }
+
   @Post('products/import')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Import products in bulk from parsed JSON or CSV data' })
