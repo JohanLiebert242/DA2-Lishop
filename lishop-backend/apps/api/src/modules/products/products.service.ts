@@ -59,6 +59,12 @@ export class ProductsService {
     return product;
   }
 
+  async findById(id: string): Promise<ProductWithDetails> {
+    const product = await this.repo.findById(id);
+    if (!product) throw new NotFoundException(`Không tìm thấy sản phẩm: ${id}`);
+    return product;
+  }
+
   async findFeatured(limit = 8): Promise<ProductWithDetails[]> {
     return this.repo.findFeatured(limit);
   }

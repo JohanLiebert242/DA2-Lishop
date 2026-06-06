@@ -108,8 +108,12 @@ export class ProductsRepository {
     return product ? this.withBrand(product) : null;
   }
 
-  async findById(id: string): Promise<Product | null> {
-    return prisma.product.findUnique({ where: { id } });
+  async findById(id: string): Promise<ProductWithDetails | null> {
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: PRODUCT_INCLUDE,
+    }) as ProductWithDetails | null;
+    return product ? this.withBrand(product) : null;
   }
 
   async create(data: Prisma.ProductCreateInput): Promise<ProductWithDetails> {

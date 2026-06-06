@@ -129,6 +129,29 @@ export interface ShoppingConciergeResponse {
   fallback: boolean;
 }
 
+export type PreferredFit = 'slim' | 'regular' | 'relaxed' | 'oversized';
+
+export interface StyleFitAdvisorRequest {
+  productId: string;
+  heightCm: number;
+  weightKg: number;
+  preferredFit: PreferredFit;
+  bodyShape?: string;
+  occasion?: string;
+  notes?: string;
+}
+
+export interface StyleFitAdvisorResponse {
+  recommendedVariantId?: string;
+  recommendedSize?: string;
+  confidence: 'low' | 'medium' | 'high';
+  fitSummary: string;
+  reasons: string[];
+  styleTips: string[];
+  warnings: string[];
+  fallback: boolean;
+}
+
 export interface ProductListParams {
   cursor?: string;
   limit?: number;
@@ -185,6 +208,12 @@ export const catalogApi = {
     apiFetch<ShoppingConciergeResponse>('/shopping/concierge', {
       method: 'POST',
       body: JSON.stringify({ message }),
+    }),
+
+  styleFitAdvisor: (payload: StyleFitAdvisorRequest) =>
+    apiFetch<StyleFitAdvisorResponse>('/shopping/style-fit-advisor', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 
   getRecommendations: (limit = 8, context: 'products' | 'home' = 'products') =>

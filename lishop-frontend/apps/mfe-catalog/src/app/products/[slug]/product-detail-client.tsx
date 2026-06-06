@@ -6,7 +6,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { formatVND } from '@lishop/shared';
 import { toast } from '@lishop/ui';
-import { catalogApi, ProductDetail, ProductImage, ProductVariant, ReviewInfo } from '../../../lib/catalog-api';
+import {
+  catalogApi,
+  PreferredFit,
+  ProductDetail,
+  ProductImage,
+  ProductVariant,
+  ReviewInfo,
+  StyleFitAdvisorResponse,
+} from '../../../lib/catalog-api';
 import { RelatedProducts } from '../../../components/related-products';
 import { addToCart, flyToCart } from '../../../lib/cart-helper';
 import { getWishlist, addToWishlist, removeFromWishlist, isLoggedIn } from '../../../lib/wishlist-api';
@@ -440,6 +448,15 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(() => new Set());
   const [addingToCart, setAddingToCart] = useState(false);
   const [qty, setQty] = useState(1);
+  const [showStyleFitAdvisor, setShowStyleFitAdvisor] = useState(false);
+  const [advisorHeightCm, setAdvisorHeightCm] = useState('');
+  const [advisorWeightKg, setAdvisorWeightKg] = useState('');
+  const [advisorPreferredFit, setAdvisorPreferredFit] = useState<PreferredFit>('regular');
+  const [advisorBodyShape, setAdvisorBodyShape] = useState('');
+  const [advisorOccasion, setAdvisorOccasion] = useState('');
+  const [advisorNotes, setAdvisorNotes] = useState('');
+  const [advisorResult, setAdvisorResult] = useState<StyleFitAdvisorResponse | null>(null);
+  const [advisorError, setAdvisorError] = useState('');
   const addToCartBtnRef = useRef<HTMLButtonElement>(null);
   const sizeGuideRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
@@ -464,6 +481,43 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
   });
 
+  const styleFitAdvisorMutation = useMutation({
+    mutationFn: async () => {
+      if (!product) throw new Error('Khong tim thay san pham de tu van size');
+
+      const heightCm = Number(advisorHeightCm);
+      const weightKg = Number(advisorWeightKg);
+      if (!Number.isFinite(heightCm) || !Number.isFinite(weightKg)) {
+        throw new Error('Vui long nhap chieu cao va can nang hop le');
+      }
+
+      return catalogApi.styleFitAdvisor({
+        productId: product.id,
+        heightCm,
+        weightKg,
+        preferredFit: advisorPreferredFit,
+        ...(advisorBodyShape.trim() ? { bodyShape: advisorBodyShape.trim() } : {}),
+        ...(advisorOccasion.trim() ? { occasion: advisorOccasion.trim() } : {}),
+        ...(advisorNotes.trim() ? { notes: advisorNotes.trim() } : {}),
+      });
+    },
+    onSuccess: (result) => {
+      setAdvisorError('');
+      setAdvisorResult(result);
+      const recommendedVariant = resolveRecommendedVariant(variants, result);
+      if (recommendedVariant) {
+        setSelectedVariantId(recommendedVariant.id);
+        setSelectedAttributes(recommendedVariant.attributes ?? {});
+        setQty(1);
+      }
+      toast.success(result.fallback ? 'Da nhan goi y fit fallback.' : 'AI da goi y size phu hop.');
+    },
+    onError: (err: Error) => {
+      setAdvisorResult(null);
+      setAdvisorError(err.message || 'Khong the lay goi y size luc nay');
+    },
+  });
+
   function handleToggleWishlist() {
     if (!isLoggedIn()) {
       window.location.href = `${AUTH_URL}/login`;
@@ -478,6 +532,21 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
         toast.error((err as Error).message || 'Có lỗi xảy ra, vui lòng thử lại');
       },
     });
+  }
+
+  function resolveRecommendedVariant(
+    productVariants: ProductVariant[],
+    result: Pick<StyleFitAdvisorResponse, 'recommendedVariantId' | 'recommendedSize'>,
+  ) {
+    if (result.recommendedVariantId) {
+      const matchedById = productVariants.find((variant) => variant.id === result.recommendedVariantId);
+      if (matchedById) return matchedById;
+    }
+
+    const normalizedSize = result.recommendedSize?.trim().toLowerCase();
+    if (!normalizedSize) return undefined;
+
+    return productVariants.find((variant) => variant.attributes?.size?.trim().toLowerCase() === normalizedSize);
   }
 
   const variants = product?.variants ?? [];
@@ -832,6 +901,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                           type="button"
                           onClick={() => handleAttributeSelect(key, value)}
                           disabled={!isAvailable}
+                          aria-pressed={isSelected}
                           className={`min-w-14 rounded-xl border px-4 py-2 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
                             isSelected
                               ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm'
@@ -853,13 +923,176 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
               )}
 
               {hasSizeGuide && (
-                <button
-                  type="button"
-                  onClick={scrollToSizeGuide}
-                  className="text-sm font-bold text-indigo-600 transition hover:text-indigo-700"
-                >
-                  Huong dan chon size
-                </button>
+                <div data-testid="style-fit-advisor" className="space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowStyleFitAdvisor((current) => !current)}
+                      className="text-sm font-bold text-indigo-700 transition hover:text-indigo-800"
+                    >
+                      AI chon size
+                    </button>
+                    <button
+                      type="button"
+                      onClick={scrollToSizeGuide}
+                      className="text-sm font-bold text-indigo-600 transition hover:text-indigo-700"
+                    >
+                      Huong dan chon size
+                    </button>
+                  </div>
+
+                  <p className="text-sm text-stone-600">
+                    Nhap so do co ban de nhan goi y fit va tu dong chon bien the phu hop neu AI tim thay.
+                  </p>
+
+                  {showStyleFitAdvisor && (
+                    <div className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-indigo-100">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-height">
+                          Chieu cao (cm)
+                          <input
+                            id="advisor-height"
+                            type="number"
+                            min={80}
+                            max={230}
+                            value={advisorHeightCm}
+                            onChange={(event) => setAdvisorHeightCm(event.target.value)}
+                            className="mt-1 w-full rounded-xl border border-warm bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                          />
+                        </label>
+                        <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-weight">
+                          Can nang (kg)
+                          <input
+                            id="advisor-weight"
+                            type="number"
+                            min={20}
+                            max={250}
+                            value={advisorWeightKg}
+                            onChange={(event) => setAdvisorWeightKg(event.target.value)}
+                            className="mt-1 w-full rounded-xl border border-warm bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-fit">
+                          Kieu fit
+                          <select
+                            id="advisor-fit"
+                            value={advisorPreferredFit}
+                            onChange={(event) => setAdvisorPreferredFit(event.target.value as PreferredFit)}
+                            className="mt-1 w-full rounded-xl border border-warm bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                          >
+                            <option value="slim">Slim</option>
+                            <option value="regular">Regular</option>
+                            <option value="relaxed">Relaxed</option>
+                            <option value="oversized">Oversized</option>
+                          </select>
+                        </label>
+                        <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-occasion">
+                          Dip mac
+                          <input
+                            id="advisor-occasion"
+                            value={advisorOccasion}
+                            onChange={(event) => setAdvisorOccasion(event.target.value)}
+                            placeholder="Di lam, di choi, du lich..."
+                            className="mt-1 w-full rounded-xl border border-warm bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                          />
+                        </label>
+                      </div>
+
+                      <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-body-shape">
+                        Dang nguoi
+                        <input
+                          id="advisor-body-shape"
+                          value={advisorBodyShape}
+                          onChange={(event) => setAdvisorBodyShape(event.target.value)}
+                          placeholder="Vai rong, bung nho, dang thao..."
+                          className="mt-1 w-full rounded-xl border border-warm bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                        />
+                      </label>
+
+                      <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-notes">
+                        Ghi chu them
+                        <textarea
+                          id="advisor-notes"
+                          value={advisorNotes}
+                          onChange={(event) => setAdvisorNotes(event.target.value)}
+                          rows={3}
+                          placeholder="Ban thich mac rong hon o vai, can de layer..."
+                          className="mt-1 w-full resize-none rounded-xl border border-warm bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                        />
+                      </label>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => styleFitAdvisorMutation.mutate()}
+                          disabled={styleFitAdvisorMutation.isPending}
+                          className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {styleFitAdvisorMutation.isPending ? 'Dang xin goi y...' : 'Nhan goi y AI'}
+                        </button>
+                        {advisorResult?.recommendedSize && (
+                          <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
+                            AI de xuat: Size {advisorResult.recommendedSize}
+                          </span>
+                        )}
+                        {advisorResult?.fallback && (
+                          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
+                            Dang dung fallback
+                          </span>
+                        )}
+                      </div>
+
+                      {advisorError && (
+                        <p className="text-sm font-semibold text-red-600">{advisorError}</p>
+                      )}
+
+                      {advisorResult && (
+                        <div className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-wide text-stone-500">Tom tat fit</p>
+                            <p className="mt-1 text-sm text-stone-700">{advisorResult.fitSummary}</p>
+                          </div>
+
+                          {advisorResult.reasons.length > 0 && (
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">Ly do</p>
+                              <ul className="mt-2 space-y-1 text-sm text-stone-700">
+                                {advisorResult.reasons.map((reason) => (
+                                  <li key={reason}>- {reason}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {advisorResult.styleTips.length > 0 && (
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">Goi y phoi do</p>
+                              <ul className="mt-2 space-y-1 text-sm text-stone-700">
+                                {advisorResult.styleTips.map((tip) => (
+                                  <li key={tip}>- {tip}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {advisorResult.warnings.length > 0 && (
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">Luu y</p>
+                              <ul className="mt-2 space-y-1 text-sm text-amber-700">
+                                {advisorResult.warnings.map((warning) => (
+                                  <li key={warning}>- {warning}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
