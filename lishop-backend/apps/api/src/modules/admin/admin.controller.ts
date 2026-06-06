@@ -182,6 +182,13 @@ export class AdminController {
     return this.ticketsService.addAdminMessage(adminId, id, dto);
   }
 
+  @Post('tickets/:id/ai-assist')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate AI summary and reply draft for a support ticket' })
+  generateTicketAssist(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ticketsService.generateAdminAssist(id);
+  }
+
   // ---- FAQ ----
 
   @Get('faq')

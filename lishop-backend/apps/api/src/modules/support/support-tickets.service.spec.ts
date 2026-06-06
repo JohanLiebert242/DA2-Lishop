@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SupportTicketsService } from './support-tickets.service';
 import { SupportTicketsRepository } from './support-tickets.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
@@ -40,6 +41,7 @@ const mockMessage: any = {
 
 describe('SupportTicketsService', () => {
   let service: SupportTicketsService;
+  const originalFetch = global.fetch;
   const repo = {
     create: jest.fn(),
     findByUserId: jest.fn(),
@@ -50,22 +52,32 @@ describe('SupportTicketsService', () => {
     hasAdminMessages: jest.fn(),
   };
   const notifRepo = { createNotification: jest.fn() };
+  const config = { get: jest.fn() };
 
   beforeEach(async () => {
     notifRepo.createNotification.mockResolvedValue({});
     (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: 'admin1' }]);
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    global.fetch = jest.fn();
 
     const module = await Test.createTestingModule({
       providers: [
         SupportTicketsService,
         { provide: SupportTicketsRepository, useValue: repo },
         { provide: NotificationsRepository, useValue: notifRepo },
+        { provide: ConfigService, useValue: config },
       ],
     }).compile();
     service = module.get(SupportTicketsService);
   });
 
-  afterEach(() => jest.resetAllMocks());
+  afterEach(() => {
+    jest.resetAllMocks();
+    global.fetch = originalFetch;
+  });
 
   it('createTicket creates ticket and notifies admins', async () => {
     repo.create.mockResolvedValue(mockTicket);
@@ -213,6 +225,88 @@ describe('SupportTicketsService', () => {
         'SUPPORT',
         'ticket1',
       );
+    });
+  });
+
+  describe('generateAdminAssist', () => {
+    const detailTicket: any = {
+      ...mockTicket,
+      orderRef: 'LS-1',
+      updatedAt: new Date(),
+      user: { id: 'u1', email: 'a@b.com', firstName: 'A', lastName: 'B' },
+      messages: [
+        { id: 'm1', content: 'Don hang cua toi chua duoc giao', isAdmin: false, createdAt: new Date(), ticketId: 'ticket1', userId: 'u1' },
+      ],
+    };
+
+    it('uses OpenAI and parses structured ticket assistance', async () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'OPENAI_API_KEY') return 'sk-test';
+        if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+        return '';
+      });
+      repo.findById.mockResolvedValue(detailTicket);
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          output_text: JSON.stringify({
+            summary: 'Khach hoi ve don hang chua giao.',
+            suggestedCategory: 'SHIPPING',
+            suggestedStatus: 'IN_PROGRESS',
+            replyDraft: 'Chao ban, Lishop se kiem tra van chuyen va phan hoi som.',
+          }),
+        }),
+      });
+
+      const result = await service.generateAdminAssist('ticket1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.openai.com/v1/responses',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer sk-test' }),
+        }),
+      );
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(JSON.stringify(body)).toContain('Don hang cua toi chua duoc giao');
+      expect(result).toEqual({
+        summary: 'Khach hoi ve don hang chua giao.',
+        suggestedCategory: 'SHIPPING',
+        suggestedStatus: 'IN_PROGRESS',
+        replyDraft: 'Chao ban, Lishop se kiem tra van chuyen va phan hoi som.',
+        fallback: false,
+      });
+    });
+
+    it('returns fallback when OpenAI key is missing', async () => {
+      repo.findById.mockResolvedValue(detailTicket);
+
+      const result = await service.generateAdminAssist('ticket1');
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result.fallback).toBe(true);
+      expect(result.summary).toContain('Đơn hàng chưa nhận được');
+      expect(result.replyDraft).toContain('Lishop');
+    });
+
+    it('falls back when OpenAI fails', async () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'OPENAI_API_KEY') return 'sk-test';
+        if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+        return '';
+      });
+      repo.findById.mockResolvedValue(detailTicket);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
+
+      const result = await service.generateAdminAssist('ticket1');
+
+      expect(result.fallback).toBe(true);
+      expect(result.suggestedStatus).toBe('IN_PROGRESS');
+    });
+
+    it('throws NotFoundException when ticket is missing', async () => {
+      repo.findById.mockResolvedValue(null);
+      await expect(service.generateAdminAssist('missing')).rejects.toThrow(NotFoundException);
     });
   });
 });
