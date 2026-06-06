@@ -21,7 +21,21 @@ test.describe('notifications feed', () => {
     let markAllCalled = false;
     await addLoginCookie(page);
 
-    await page.route(`${API_URL}/notifications?*`, async (route) => {
+    await page.route('**/auth/me', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: 'user-1',
+            email: 'buyer@example.com',
+            role: 'CUSTOMER',
+          },
+        }),
+      });
+    });
+
+    await page.route('**/notifications?*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -52,7 +66,7 @@ test.describe('notifications feed', () => {
       });
     });
 
-    await page.route(`${API_URL}/notifications/read-all`, async (route) => {
+    await page.route('**/notifications/read-all', async (route) => {
       markAllCalled = true;
       await route.fulfill({
         status: 200,

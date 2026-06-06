@@ -23,7 +23,11 @@ test.describe('my orders actions', () => {
     let createdTicketPayload: Record<string, unknown> | null = null;
     await addLoginCookie(page);
 
-    await page.route(`${API_URL}/orders`, async (route) => {
+    await page.route('**/orders', async (route) => {
+      if (route.request().resourceType() === 'document') return route.fallback();
+      // Only stub backend API calls (not MFE page navigations).
+      if (!route.request().url().includes(':4000/')) return route.fallback();
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -71,7 +75,9 @@ test.describe('my orders actions', () => {
       });
     });
 
-    await page.route(`${API_URL}/support/tickets`, async (route) => {
+    await page.route('**/support/tickets', async (route) => {
+      if (route.request().resourceType() === 'document') return route.fallback();
+      if (!route.request().url().includes(':4000/')) return route.fallback();
       if (route.request().method() !== 'POST') {
         await route.continue();
         return;
@@ -115,7 +121,7 @@ test.describe('my orders actions', () => {
     await page.goto(`${ORDERS_URL}/orders`);
     await expect(page.getByText('iPhone 15 Pro')).toBeVisible();
 
-    await page.getByRole('link', { name: /mua/i }).click();
+    await page.getByRole('link', { name: /mua/i }).first().click();
     await expect(page).toHaveURL(`${CATALOG_URL}/products/iphone-15-pro`);
 
     await page.goto(`${ORDERS_URL}/orders`);
