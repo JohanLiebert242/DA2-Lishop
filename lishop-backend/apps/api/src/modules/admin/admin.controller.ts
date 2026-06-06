@@ -6,6 +6,7 @@ import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { ModerateReviewDto } from './dto/moderate-review.dto';
 import { ImportProductsDto } from './dto/import-products.dto';
+import { GenerateProductCopyDto } from './dto/generate-product-copy.dto';
 import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -129,6 +130,13 @@ export class AdminController {
   @ApiOperation({ summary: 'Import products in bulk from parsed JSON or CSV data' })
   importProducts(@Body() dto: ImportProductsDto) {
     return this.adminService.importProducts(dto);
+  }
+
+  @Post('products/ai-copy')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate AI product description copy for admin review' })
+  generateProductCopy(@Body() dto: GenerateProductCopyDto) {
+    return this.adminService.generateProductCopy(dto);
   }
 
   @Get('returns')

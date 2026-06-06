@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AdminService } from './admin.service';
 import { AdminRepository } from './admin.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
@@ -32,6 +33,7 @@ const mockAnalytics = {
 
 describe('AdminService', () => {
   let service: AdminService;
+  const originalFetch = global.fetch;
   const repo = {
     getStats: jest.fn(),
     findAllOrders: jest.fn(),
@@ -47,12 +49,18 @@ describe('AdminService', () => {
   const invoicesService = { generateForOrder: jest.fn() };
   const redisService = { get: jest.fn(), setex: jest.fn() };
   const productsService = { create: jest.fn() };
+  const config = { get: jest.fn() };
 
   beforeEach(async () => {
     notifRepo.createNotification.mockResolvedValue(undefined);
     invoicesService.generateForOrder.mockResolvedValue(undefined);
     redisService.get.mockResolvedValue(null);
     redisService.setex.mockResolvedValue(undefined);
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    global.fetch = jest.fn();
     const module = await Test.createTestingModule({
       providers: [
         AdminService,
@@ -61,12 +69,16 @@ describe('AdminService', () => {
         { provide: InvoicesService, useValue: invoicesService },
         { provide: RedisService, useValue: redisService },
         { provide: ProductsService, useValue: productsService },
+        { provide: ConfigService, useValue: config },
       ],
     }).compile();
     service = module.get(AdminService);
   });
 
-  afterEach(() => jest.resetAllMocks());
+  afterEach(() => {
+    jest.resetAllMocks();
+    global.fetch = originalFetch;
+  });
 
   it('getStats returns platform stats', async () => {
     repo.getStats.mockResolvedValue(mockStats);
@@ -145,5 +157,66 @@ describe('AdminService', () => {
       weightGrams: 500,
     }));
     expect(result).toEqual({ created: 1, failed: 0, errors: [] });
+  });
+
+  it('generateProductCopy uses OpenAI when configured', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ output_text: 'Mo ta AI cho Ao khoac Lishop voi chat lieu mem va form gon.' }),
+    });
+
+    const result = await service.generateProductCopy({
+      name: 'Ao khoac Lishop',
+      categoryName: 'Thoi trang',
+      priceVnd: 399000,
+      stock: 12,
+      description: 'chat lieu mem',
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/responses',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer sk-test' }),
+      }),
+    );
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(JSON.stringify(body)).toContain('Ao khoac Lishop');
+    expect(result).toEqual({
+      description: 'Mo ta AI cho Ao khoac Lishop voi chat lieu mem va form gon.',
+      fallback: false,
+    });
+  });
+
+  it('generateProductCopy returns fallback when OpenAI key is missing', async () => {
+    const result = await service.generateProductCopy({
+      name: 'Balo du lich',
+      categoryName: 'Phu kien',
+      priceVnd: 299000,
+      stock: 6,
+    });
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.fallback).toBe(true);
+    expect(result.description).toContain('Balo du lich');
+  });
+
+  it('generateProductCopy falls back when OpenAI fails', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
+
+    const result = await service.generateProductCopy({ name: 'Tai nghe Bluetooth' });
+
+    expect(result.fallback).toBe(true);
+    expect(result.description).toContain('Tai nghe Bluetooth');
   });
 });

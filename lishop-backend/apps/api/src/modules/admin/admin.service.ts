@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AdminRepository, AdminStats, AdminOrderItem, AdminUserItem, AdminCoupon, AdminAnalytics } from './admin.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { InvoicesService } from '../invoices/invoices.service';
@@ -8,9 +9,12 @@ import { OrderStatus, prisma } from '@lishop/database';
 import { UserRole } from '@lishop/contracts';
 import { ProductsService } from '../products/products.service';
 import { ImportProductDto, ImportProductsDto } from './dto/import-products.dto';
+import { GenerateProductCopyDto } from './dto/generate-product-copy.dto';
 
 const STATS_CACHE_KEY = 'cache:admin:stats';
 const STATS_TTL = 300; // 5 minutes
+const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
+const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
 
 const VALID_ORDER_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
   [OrderStatus.PENDING]:    [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
@@ -29,6 +33,7 @@ export class AdminService {
     private readonly invoicesService: InvoicesService,
     private readonly redis: RedisService,
     private readonly productsService: ProductsService,
+    private readonly config: ConfigService,
   ) {}
 
   async getStats(): Promise<AdminStats> {
@@ -181,6 +186,55 @@ export class AdminService {
     return this.repo.getAnalytics();
   }
 
+  async generateProductCopy(dto: GenerateProductCopyDto): Promise<{ description: string; fallback: boolean }> {
+    const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
+    if (!apiKey) {
+      return { description: this.buildFallbackProductCopy(dto), fallback: true };
+    }
+
+    try {
+      const response = await fetch(OPENAI_RESPONSES_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
+          instructions: this.buildProductCopyPrompt(),
+          input: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: [
+                    'Thong tin san pham dang nhap tren admin Lishop:',
+                    JSON.stringify(dto, null, 2),
+                  ].join('\n'),
+                },
+              ],
+            },
+          ],
+          max_output_tokens: 500,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI request failed with status ${response.status}`);
+      }
+
+      const payload = await response.json() as { output_text?: string; output?: unknown };
+      const description = this.extractOutputText(payload).trim();
+      if (!description) throw new Error('OpenAI response did not include text output');
+
+      return { description, fallback: false };
+    } catch (err) {
+      console.error('[AdminService] AI product copy failed; returning fallback', err);
+      return { description: this.buildFallbackProductCopy(dto), fallback: true };
+    }
+  }
+
   async importProducts(dto: ImportProductsDto): Promise<{
     created: number;
     failed: number;
@@ -249,5 +303,48 @@ export class AdminService {
         createdAt: true,
       },
     }) as Promise<AdminUserItem>;
+  }
+
+  private buildProductCopyPrompt(): string {
+    return [
+      'Ban la tro ly AI viet noi dung san pham cho admin Lishop.',
+      'Hay viet mo ta san pham bang tieng Viet, 2-4 cau, phu hop san thuong mai dien tu.',
+      'Neu co mo ta tho, hay bien no thanh noi dung gon, ro loi ich va de doc.',
+      'Khong bia thong so ky thuat, khuyen mai, bao hanh, giao hang, chat lieu, xuat xu hoac cam ket neu du lieu khong co.',
+      'Khong dung markdown, khong chen emoji, chi tra ve phan mo ta cuoi cung.',
+    ].join('\n');
+  }
+
+  private buildFallbackProductCopy(dto: GenerateProductCopyDto): string {
+    const parts = [
+      dto.name,
+      dto.categoryName ? `thuoc danh muc ${dto.categoryName}` : '',
+      dto.priceVnd !== undefined ? `co gia ${dto.priceVnd.toLocaleString('vi-VN')} VND` : '',
+      dto.stock !== undefined ? `hien con ${dto.stock} san pham trong kho` : '',
+    ].filter(Boolean);
+
+    const base = parts.join(', ');
+    const rough = dto.description?.trim();
+    return rough
+      ? `${base}. ${rough}`
+      : `${base}. San pham phu hop cho khach hang can mot lua chon de su dung hang ngay, de tham khao va dat mua tai Lishop.`;
+  }
+
+  private extractOutputText(payload: { output_text?: string; output?: unknown }): string {
+    if (typeof payload.output_text === 'string') return payload.output_text;
+    if (!Array.isArray(payload.output)) return '';
+
+    const parts: string[] = [];
+    for (const item of payload.output) {
+      if (!item || typeof item !== 'object') continue;
+      const content = (item as { content?: unknown }).content;
+      if (!Array.isArray(content)) continue;
+      for (const contentItem of content) {
+        if (!contentItem || typeof contentItem !== 'object') continue;
+        const text = (contentItem as { text?: unknown }).text;
+        if (typeof text === 'string') parts.push(text);
+      }
+    }
+    return parts.join('\n');
   }
 }
