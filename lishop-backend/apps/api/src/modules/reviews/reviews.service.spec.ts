@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ReviewsService } from './reviews.service';
 import { ReviewsRepository } from './reviews.repository';
 import { ReviewStatus } from '@lishop/database';
@@ -16,22 +17,36 @@ const mockReview: any = {
 
 describe('ReviewsService', () => {
   let service: ReviewsService;
+  let originalFetch: typeof global.fetch;
   const repo = {
     findByProductId: jest.fn(),
     findByProductIdAndUserId: jest.fn(),
+    findByIdAdmin: jest.fn(),
     hasDeliveredOrderWithProduct: jest.fn(),
     create: jest.fn(),
     refreshProductReviewStats: jest.fn(),
   };
+  const config = {
+    get: jest.fn(),
+  };
 
   beforeEach(async () => {
+    originalFetch = global.fetch;
+    global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
     const module = await Test.createTestingModule({
-      providers: [ReviewsService, { provide: ReviewsRepository, useValue: repo }],
+      providers: [
+        ReviewsService,
+        { provide: ReviewsRepository, useValue: repo },
+        { provide: ConfigService, useValue: config },
+      ],
     }).compile();
     service = module.get(ReviewsService);
   });
 
-  afterEach(() => jest.resetAllMocks());
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.resetAllMocks();
+  });
 
   it('getProductReviews returns reviews from repo', async () => {
     repo.findByProductId.mockResolvedValue([mockReview]);
@@ -75,5 +90,84 @@ describe('ReviewsService', () => {
     repo.create.mockResolvedValue({ ...mockReview, verifiedPurchase: true });
     await service.createReview('u1', 'p1', { rating: 4, content: 'Good' });
     expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ verifiedPurchase: true }));
+  });
+
+  describe('generateModerationAssist', () => {
+    const adminReview = {
+      id: 'r1',
+      productId: 'p1',
+      userId: 'u1',
+      rating: 1,
+      content: 'Spam link http://bad.test mua ngay',
+      status: ReviewStatus.PENDING,
+      verifiedPurchase: false,
+      createdAt: new Date('2026-06-06T00:00:00.000Z'),
+      product: { name: 'Ao khoac AI', slug: 'ao-khoac-ai' },
+      user: { email: 'buyer@lishop.test', firstName: 'Buyer', lastName: 'Test' },
+    };
+
+    it('uses OpenAI to suggest a moderation decision', async () => {
+      repo.findByIdAdmin.mockResolvedValue(adminReview);
+      config.get.mockReturnValue('test-key');
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          output_text: JSON.stringify({
+            suggestedStatus: 'REJECTED',
+            riskLevel: 'HIGH',
+            summary: 'Review co dau hieu spam link.',
+            reasons: ['Chua duong link ben ngoai', 'Khong tap trung vao san pham'],
+          }),
+        }),
+      });
+
+      const result = await service.generateModerationAssist('r1');
+
+      expect(result).toEqual({
+        suggestedStatus: ReviewStatus.REJECTED,
+        riskLevel: 'HIGH',
+        summary: 'Review co dau hieu spam link.',
+        reasons: ['Chua duong link ben ngoai', 'Khong tap trung vao san pham'],
+        fallback: false,
+      });
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.openai.com/v1/responses',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-key' }),
+        }),
+      );
+    });
+
+    it('returns fallback moderation when OpenAI is not configured', async () => {
+      repo.findByIdAdmin.mockResolvedValue(adminReview);
+      config.get.mockReturnValue(undefined);
+
+      const result = await service.generateModerationAssist('r1');
+
+      expect(result.fallback).toBe(true);
+      expect(result.suggestedStatus).toBe(ReviewStatus.REJECTED);
+      expect(result.riskLevel).toBe('HIGH');
+      expect(result.reasons.join(' ')).toContain('link');
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('falls back when OpenAI returns an error', async () => {
+      repo.findByIdAdmin.mockResolvedValue({ ...adminReview, content: 'San pham dep, giao hang nhanh' });
+      config.get.mockReturnValue('test-key');
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
+
+      const result = await service.generateModerationAssist('r1');
+
+      expect(result.fallback).toBe(true);
+      expect(result.suggestedStatus).toBe(ReviewStatus.APPROVED);
+      expect(result.riskLevel).toBe('LOW');
+    });
+
+    it('throws NotFoundException when review does not exist', async () => {
+      repo.findByIdAdmin.mockResolvedValue(null);
+
+      await expect(service.generateModerationAssist('missing')).rejects.toThrow(NotFoundException);
+    });
   });
 });

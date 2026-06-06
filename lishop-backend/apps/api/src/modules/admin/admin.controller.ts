@@ -237,6 +237,13 @@ export class AdminController {
     return this.reviewsService.moderateReview(id, dto.status);
   }
 
+  @Post('reviews/:id/ai-moderation')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate AI moderation guidance for a review' })
+  generateReviewModeration(@Param('id', ParseUUIDPipe) id: string) {
+    return this.reviewsService.generateModerationAssist(id);
+  }
+
   // ---- Flash sale admin CRUD ----
 
   @Get('flash-sales')
