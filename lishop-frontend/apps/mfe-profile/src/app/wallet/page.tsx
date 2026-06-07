@@ -27,9 +27,45 @@ const TOPUP_STATUS_CLASS: Record<WalletTopupRequest['status'], string> = {
 };
 
 const TX_CREDIT_TYPES: WalletTx['type'][] = ['TOPUP', 'REFUND', 'POINTS_CONVERSION'];
+const TOPUP_BANK_INFO = {
+  bankName: 'Ngân hàng Demo Lishop (MB)',
+  bankCode: 'MB',
+  bankAccountNumber: '190068686868',
+  bankAccountName: 'CONG TY TNHH LISHOP',
+};
 
 function isCredit(type: WalletTx['type']) {
   return TX_CREDIT_TYPES.includes(type);
+}
+
+function digitsOnly(value: string) {
+  return value.replace(/\D/g, '');
+}
+
+function formatVietnameseNumber(value: string) {
+  const digits = digitsOnly(value);
+  if (!digits) return '';
+  return Number(digits).toLocaleString('vi-VN');
+}
+
+function parseFormattedNumber(value: string) {
+  const digits = digitsOnly(value);
+  return digits ? Number(digits) : 0;
+}
+
+function generateTransferCode() {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `LSW-${date}-${suffix}`;
+}
+
+function buildVietQrUrl(amountVnd: number, transferCode: string) {
+  const qs = new URLSearchParams({
+    amount: String(amountVnd),
+    addInfo: transferCode,
+    accountName: TOPUP_BANK_INFO.bankAccountName,
+  });
+  return `https://img.vietqr.io/image/${TOPUP_BANK_INFO.bankCode}-${TOPUP_BANK_INFO.bankAccountNumber}-compact2.png?${qs.toString()}`;
 }
 
 export default function WalletPage() {
@@ -39,7 +75,7 @@ export default function WalletPage() {
   const [pointsAmount, setPointsAmount] = useState('');
   const [topUpMsg, setTopUpMsg] = useState('');
   const [pointsMsg, setPointsMsg] = useState('');
-  const [bankTransfer, setBankTransfer] = useState<BankTransferInfo | null>(null);
+  const [bankTransfer, setBankTransfer] = useState<(BankTransferInfo & { qrUrl: string }) | null>(null);
 
   const { data: wallet, isLoading: walletLoading } = useQuery({
     queryKey: ['wallet'],
@@ -61,21 +97,6 @@ export default function WalletPage() {
     retry: false,
   });
 
-  const topUpMutation = useMutation({
-    mutationFn: (amountVnd: number) => walletApi.topUp(amountVnd),
-    onSuccess: (res) => {
-      void queryClient.invalidateQueries({ queryKey: ['wallet-topup-requests'] });
-      setTopUpAmount('');
-      setBankTransfer(res.bankTransfer);
-      setTopUpMsg('Đã tạo yêu cầu nạp tiền. Vui lòng chuyển khoản đúng nội dung để admin xác nhận.');
-      setTimeout(() => setTopUpMsg(''), 6000);
-    },
-    onError: (err: Error) => {
-      setTopUpMsg(err.message ?? 'Tạo yêu cầu nạp tiền thất bại.');
-      setTimeout(() => setTopUpMsg(''), 4000);
-    },
-  });
-
   const convertMutation = useMutation({
     mutationFn: (points: number) => walletApi.convertPoints(points),
     onSuccess: (res) => {
@@ -95,19 +116,30 @@ export default function WalletPage() {
 
   const handleTopUp = (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = parseInt(topUpAmount, 10);
+    const amount = parseFormattedNumber(topUpAmount);
     if (!amount || amount < 10000) return;
-    topUpMutation.mutate(amount);
+    const transferCode = generateTransferCode();
+    setBankTransfer({
+      bankName: TOPUP_BANK_INFO.bankName,
+      bankAccountNumber: TOPUP_BANK_INFO.bankAccountNumber,
+      bankAccountName: TOPUP_BANK_INFO.bankAccountName,
+      transferCode,
+      amountVnd: amount,
+      qrUrl: buildVietQrUrl(amount, transferCode),
+    });
+    setTopUpMsg('Quét QR hoặc chuyển khoản đúng số tiền và nội dung bên dưới. Ví sẽ được cộng sau khi giao dịch được xác nhận.');
+    setTimeout(() => setTopUpMsg(''), 6000);
   };
 
   const handleConvertPoints = (e: React.FormEvent) => {
     e.preventDefault();
-    const points = parseInt(pointsAmount, 10);
+    const points = parseFormattedNumber(pointsAmount);
     if (!points || points < 100) return;
     convertMutation.mutate(points);
   };
 
-  const pointsNum = parseInt(pointsAmount, 10);
+  const topUpAmountValue = parseFormattedNumber(topUpAmount);
+  const pointsNum = parseFormattedNumber(pointsAmount);
   const pointsEquivalent = !isNaN(pointsNum) && pointsNum >= 100 ? pointsNum * 100 : null;
 
   if (walletLoading) {
@@ -148,7 +180,7 @@ export default function WalletPage() {
             <div className="rounded-2xl border border-warm bg-white p-6 shadow-sm">
               <h2 className="mb-2 text-base font-bold text-stone-800">Nạp tiền bằng chuyển khoản</h2>
               <p className="mb-4 text-sm text-muted">
-                Tạo yêu cầu nạp tiền, chuyển khoản đúng số tiền và nội dung. Admin sẽ xác nhận trước khi cộng vào ví.
+                Nhập số tiền, quét QR và chuyển khoản đúng nội dung. Bạn không cần tạo yêu cầu trước khi chuyển khoản.
               </p>
               <form onSubmit={handleTopUp} className="space-y-3">
                 <div>
@@ -156,31 +188,32 @@ export default function WalletPage() {
                     Số tiền (VND)
                   </label>
                   <input
-                    type="number"
-                    min={10000}
-                    step={1000}
+                    type="text"
+                    inputMode="numeric"
+                    data-testid="wallet-topup-amount"
                     value={topUpAmount}
-                    onChange={(e) => setTopUpAmount(e.target.value)}
+                    onChange={(e) => setTopUpAmount(formatVietnameseNumber(e.target.value))}
                     placeholder="Tối thiểu 10.000 VND"
                     className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                   />
-                  {topUpAmount && parseInt(topUpAmount, 10) >= 10000 && (
+                  {topUpAmountValue >= 10000 && (
                     <p className="mt-1 text-xs font-medium text-indigo-600">
-                      = {formatVND(parseInt(topUpAmount, 10))}
+                      = {formatVND(topUpAmountValue)}
                     </p>
                   )}
                 </div>
                 <button
                   type="submit"
-                  disabled={topUpMutation.isPending || !topUpAmount || parseInt(topUpAmount, 10) < 10000}
+                  data-testid="wallet-topup-submit"
+                  disabled={!topUpAmount || topUpAmountValue < 10000}
                   className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {topUpMutation.isPending ? 'Đang tạo yêu cầu...' : 'Tạo yêu cầu chuyển khoản'}
+                  Hiển thị QR chuyển khoản
                 </button>
                 {topUpMsg && (
                   <p
                     className={`text-xs font-medium ${
-                      topUpMsg.includes('Đã tạo') ? 'text-emerald-600' : 'text-red-500'
+                      topUpMsg.includes('Quét QR') ? 'text-emerald-600' : 'text-red-500'
                     }`}
                   >
                     {topUpMsg}
@@ -190,31 +223,42 @@ export default function WalletPage() {
 
               {bankTransfer && (
                 <div className="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-                  <p className="text-sm font-black text-indigo-900">Thông tin chuyển khoản</p>
-                  <dl className="mt-3 space-y-2 text-sm">
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-muted">Ngân hàng</dt>
-                      <dd className="font-bold text-stone-900">{bankTransfer.bankName}</dd>
+                  <p className="text-sm font-black text-indigo-900">QR chuyển khoản</p>
+                  <div className="mt-3 grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
+                    <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-indigo-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={bankTransfer.qrUrl}
+                        alt="QR chuyển khoản nạp ví Lishop"
+                        data-testid="wallet-topup-qr"
+                        className="aspect-square w-full rounded-xl object-contain"
+                      />
                     </div>
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-muted">Số tài khoản</dt>
-                      <dd className="font-mono font-bold text-stone-900">{bankTransfer.bankAccountNumber}</dd>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-muted">Chủ tài khoản</dt>
-                      <dd className="font-bold text-stone-900">{bankTransfer.bankAccountName}</dd>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                      <dt className="text-muted">Số tiền</dt>
-                      <dd className="font-bold text-indigo-700">{formatVND(bankTransfer.amountVnd)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted">Nội dung chuyển khoản</dt>
-                      <dd className="mt-1 rounded-xl bg-white px-3 py-2 font-mono text-base font-black text-indigo-700">
-                        {bankTransfer.transferCode}
-                      </dd>
-                    </div>
-                  </dl>
+                    <dl className="space-y-2 text-sm">
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-muted">Ngân hàng</dt>
+                        <dd className="font-bold text-stone-900">{bankTransfer.bankName}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-muted">Số tài khoản</dt>
+                        <dd className="font-mono font-bold text-stone-900">{bankTransfer.bankAccountNumber}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-muted">Chủ tài khoản</dt>
+                        <dd className="font-bold text-stone-900">{bankTransfer.bankAccountName}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-muted">Số tiền</dt>
+                        <dd className="font-bold text-indigo-700">{formatVND(bankTransfer.amountVnd)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted">Nội dung chuyển khoản</dt>
+                        <dd className="mt-1 rounded-xl bg-white px-3 py-2 font-mono text-base font-black text-indigo-700">
+                          {bankTransfer.transferCode}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
                 </div>
               )}
             </div>
@@ -227,11 +271,11 @@ export default function WalletPage() {
                     Số điểm (tối thiểu 100)
                   </label>
                   <input
-                    type="number"
-                    min={100}
-                    step={1}
+                    type="text"
+                    inputMode="numeric"
+                    data-testid="wallet-points-amount"
                     value={pointsAmount}
-                    onChange={(e) => setPointsAmount(e.target.value)}
+                    onChange={(e) => setPointsAmount(formatVietnameseNumber(e.target.value))}
                     placeholder="Nhập số điểm muốn đổi"
                     className="w-full rounded-xl border border-stone-200 px-4 py-2.5 text-sm focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
                   />
@@ -244,10 +288,11 @@ export default function WalletPage() {
                 </div>
                 <button
                   type="submit"
+                  data-testid="wallet-points-submit"
                   disabled={
                     convertMutation.isPending ||
                     !pointsAmount ||
-                    parseInt(pointsAmount, 10) < 100
+                    pointsNum < 100
                   }
                   className="w-full rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >

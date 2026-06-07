@@ -97,7 +97,7 @@ export class WalletService {
 
       if (user.loyaltyPoints < points) {
         throw new BadRequestException(
-          `Insufficient loyalty points. You have ${user.loyaltyPoints} points, need ${points}`,
+          `Không đủ điểm tích lũy. Bạn hiện có ${user.loyaltyPoints} điểm, cần ${points} điểm`,
         );
       }
 

@@ -136,7 +136,9 @@ describe('WalletService', () => {
       (prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: typeof prisma) => unknown) => fn(prisma));
       (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({ loyaltyPoints: 5 });
 
-      await expect(service.convertPoints('u1', 10)).rejects.toThrow(BadRequestException);
+      await expect(service.convertPoints('u1', 10)).rejects.toThrow(
+        'Không đủ điểm tích lũy. Bạn hiện có 5 điểm, cần 10 điểm',
+      );
     });
 
     it('converts points and returns correct values', async () => {
