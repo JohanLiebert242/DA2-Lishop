@@ -37,6 +37,13 @@ export function ProductCard({ product }: { product: ProductSummary }) {
     product.variants?.find((variant) => variant.isDefault) ?? product.variants?.[0] ?? null;
   const displayPriceVnd = defaultVariant?.priceVnd ?? product.priceVnd;
   const displayStock = defaultVariant?.stock ?? product.stock;
+  const hasSaleTag = product.tags.some((entry) => entry.tag.name.toLowerCase() === 'sale');
+  const hasFreeShipping = displayPriceVnd >= 500_000;
+  const badgeItems = [
+    hasSaleTag ? 'Đang giảm giá' : null,
+    hasFreeShipping ? 'Miễn phí giao hàng' : null,
+    displayStock > 0 ? 'Còn hàng' : null,
+  ].filter(Boolean) as string[];
 
   const { data: wishlistIds = [] } = useQuery({
     queryKey: ['wishlist'],
@@ -76,7 +83,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
             />
           ) : (
             <div className="flex h-full items-center justify-center text-faint text-sm">
-              Chưa có ảnh
+              ChÆ°a cÃ³ áº£nh
             </div>
           )}
 
@@ -92,23 +99,23 @@ export function ProductCard({ product }: { product: ProductSummary }) {
             onClick={handleHeartClick}
             disabled={toggleMutation.isPending}
             className="absolute top-2.5 right-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm transition-transform hover:scale-110 disabled:opacity-60"
-            aria-label={isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
+            aria-label={isWishlisted ? 'XÃ³a khá»i yÃªu thÃ­ch' : 'ThÃªm vÃ o yÃªu thÃ­ch'}
           >
             <span className={`text-sm leading-none ${isWishlisted ? 'text-red-500' : 'text-gray-400'}`}>
-              {isWishlisted ? '♥' : '♡'}
+              {isWishlisted ? 'â™¥' : 'â™¡'}
             </span>
           </button>
 
           {displayStock === 0 && (
             <div className="absolute inset-0 flex items-center justify-center bg-stone-900/50 backdrop-blur-[1px]">
               <span className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-stone-700">
-                Hết hàng
+                Háº¿t hÃ ng
               </span>
             </div>
           )}
 
           <div className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-indigo-900/80 to-transparent px-3 py-3 transition-transform duration-200 group-hover:translate-y-0">
-            <p className="text-center text-xs font-medium text-white/90">Xem chi tiết →</p>
+            <p className="text-center text-xs font-medium text-white/90">Xem chi tiáº¿t â†’</p>
           </div>
         </div>
 
@@ -116,8 +123,20 @@ export function ProductCard({ product }: { product: ProductSummary }) {
           <h3 className="line-clamp-2 text-sm font-semibold text-stone-800 group-hover:text-indigo-700 transition-colors leading-snug">
             {product.name}
           </h3>
+          {badgeItems.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {badgeItems.map((badge) => (
+                <span
+                  key={badge}
+                  className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-semibold text-stone-600"
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
+          )}
           {product.brand && (
-            <p className="text-xs font-semibold text-stone-500">Thương hiệu: {product.brand}</p>
+            <p className="text-xs font-semibold text-stone-500">ThÆ°Æ¡ng hiá»‡u: {product.brand}</p>
           )}
           {product.averageRating > 0 && (
             <Stars rating={product.averageRating} count={product.reviewCount} />

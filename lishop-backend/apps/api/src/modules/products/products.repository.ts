@@ -73,10 +73,18 @@ export class ProductsRepository {
       ? { category: { is: { OR: [{ id: categoryId }, { parentId: categoryId }] } } }
       : {};
 
+    const ratingFilter =
+      minRating !== undefined
+        ? {
+            gte: minRating === 1 ? 1 : minRating - 0.5,
+            ...(minRating === 5 ? { lte: 5 } : { lt: minRating + 0.5 }),
+          }
+        : undefined;
+
     const where: Prisma.ProductWhereInput = {
       ...categoryFilter,
       ...(Object.keys(priceFilter).length > 0 && { priceVnd: priceFilter }),
-      ...(minRating !== undefined && { averageRating: { gte: minRating } }),
+      ...(ratingFilter && { averageRating: ratingFilter }),
       ...(inStock && { stock: { gt: 0 } }),
       ...(onSale && { tags: { some: { tag: { name: { equals: 'sale', mode: Prisma.QueryMode.insensitive } } } } }),
       ...(textFilters.length > 0 && { AND: textFilters }),

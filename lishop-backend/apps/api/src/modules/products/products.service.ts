@@ -55,13 +55,13 @@ export class ProductsService {
 
   async findBySlug(slug: string): Promise<ProductWithDetails> {
     const product = await this.repo.findBySlug(slug);
-    if (!product) throw new NotFoundException(`Không tìm thấy sản phẩm: ${slug}`);
+    if (!product) throw new NotFoundException(`KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m: ${slug}`);
     return product;
   }
 
   async findById(id: string): Promise<ProductWithDetails> {
     const product = await this.repo.findById(id);
-    if (!product) throw new NotFoundException(`Không tìm thấy sản phẩm: ${id}`);
+    if (!product) throw new NotFoundException(`KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m: ${id}`);
     return product;
   }
 
@@ -71,7 +71,7 @@ export class ProductsService {
 
   async findRelated(slug: string, limit = 6): Promise<ProductWithDetails[]> {
     const product = await this.repo.findBySlug(slug);
-    if (!product) throw new NotFoundException(`Không tìm thấy sản phẩm: ${slug}`);
+    if (!product) throw new NotFoundException(`KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m: ${slug}`);
     const tagIds = product.tags.map((pt) => pt.tagId);
     return this.repo.findRelated(product.id, product.categoryId, tagIds, limit);
   }
@@ -80,7 +80,8 @@ export class ProductsService {
     const normalizedMessage = message.trim();
     const mode = this.detectDiscoveryMode(normalizedMessage);
     const result = await this.repo.findMany({ q: normalizedMessage, limit: 6 });
-    const items = result.items.map((product) => this.toAiDiscoveryProduct(product));
+    const fallbackProducts = result.items.length > 0 ? result.items : await this.repo.findFeatured(6);
+    const items = fallbackProducts.map((product) => this.toAiDiscoveryProduct(product));
     const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
 
     if (!apiKey) {
@@ -104,9 +105,9 @@ export class ProductsService {
                 {
                   type: 'input_text',
                   text: [
-                    `Nhu cầu khách hàng: ${normalizedMessage}`,
+                    `Nhu cÃ¡ÂºÂ§u khÃƒÂ¡ch hÃƒÂ ng: ${normalizedMessage}`,
                     '',
-                    'Sản phẩm liên quan từ catalog Lishop dạng JSON:',
+                    'SÃ¡ÂºÂ£n phÃ¡ÂºÂ©m liÃƒÂªn quan tÃ¡Â»Â« catalog Lishop dÃ¡ÂºÂ¡ng JSON:',
                     JSON.stringify(items, null, 2),
                   ].join('\n'),
                 },
@@ -231,11 +232,11 @@ export class ProductsService {
       body: JSON.stringify({
         model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
         instructions: [
-          'Bạn là trợ lý cá nhân hóa mua sắm của Lishop.',
-          'Hãy sắp xếp lại các sản phẩm theo mức độ phù hợp nhất với nhu cầu của khách hàng dựa trên context (nếu có).',
-          'Chỉ được trả về JSON hợp lệ theo schema: { "orderedSlugs": string[], "reason": string }',
-          'orderedSlugs chỉ bao gồm các slug có trong danh sách candidate.',
-          'reason phải ngắn gọn (1-2 câu).',
+          'BÃ¡ÂºÂ¡n lÃƒÂ  trÃ¡Â»Â£ lÃƒÂ½ cÃƒÂ¡ nhÃƒÂ¢n hÃƒÂ³a mua sÃ¡ÂºÂ¯m cÃ¡Â»Â§a Lishop.',
+          'HÃƒÂ£y sÃ¡ÂºÂ¯p xÃ¡ÂºÂ¿p lÃ¡ÂºÂ¡i cÃƒÂ¡c sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m theo mÃ¡Â»Â©c Ã„â€˜Ã¡Â»â„¢ phÃƒÂ¹ hÃ¡Â»Â£p nhÃ¡ÂºÂ¥t vÃ¡Â»â€ºi nhu cÃ¡ÂºÂ§u cÃ¡Â»Â§a khÃƒÂ¡ch hÃƒÂ ng dÃ¡Â»Â±a trÃƒÂªn context (nÃ¡ÂºÂ¿u cÃƒÂ³).',
+          'ChÃ¡Â»â€° Ã„â€˜Ã†Â°Ã¡Â»Â£c trÃ¡ÂºÂ£ vÃ¡Â»Â JSON hÃ¡Â»Â£p lÃ¡Â»â€¡ theo schema: { "orderedSlugs": string[], "reason": string }',
+          'orderedSlugs chÃ¡Â»â€° bao gÃ¡Â»â€œm cÃƒÂ¡c slug cÃƒÂ³ trong danh sÃƒÂ¡ch candidate.',
+          'reason phÃ¡ÂºÂ£i ngÃ¡ÂºÂ¯n gÃ¡Â»Ân (1-2 cÃƒÂ¢u).',
         ].join('\n'),
         input: [
           {
@@ -244,7 +245,7 @@ export class ProductsService {
               {
                 type: 'input_text',
                 text: [
-                  `context: ${params.context ?? '(không có)'} `,
+                  `context: ${params.context ?? '(khÃƒÂ´ng cÃƒÂ³)'} `,
                   '',
                   'candidate_slugs:',
                   JSON.stringify(candidateSlugs, null, 2),
@@ -340,7 +341,7 @@ export class ProductsService {
 
   async update(id: string, dto: UpdateProductDto): Promise<ProductWithDetails> {
     const existing = await this.repo.findById(id);
-    if (!existing) throw new NotFoundException(`Không tìm thấy sản phẩm: ${id}`);
+    if (!existing) throw new NotFoundException(`KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m: ${id}`);
 
     const updateData: any = { ...dto };
     delete updateData.images;
@@ -356,7 +357,7 @@ export class ProductsService {
 
   async delete(id: string): Promise<void> {
     const existing = await this.repo.findById(id);
-    if (!existing) throw new NotFoundException(`Không tìm thấy sản phẩm: ${id}`);
+    if (!existing) throw new NotFoundException(`KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m: ${id}`);
     await this.repo.delete(id);
   }
 
@@ -390,22 +391,22 @@ export class ProductsService {
     fallback: boolean,
   ): AiDiscoveryResponse {
     const subject = mode === 'compare' ? 'so sánh' : 'tư vấn';
+    const topNames = items.slice(0, 3).map((item) => item.name).join(', ');
     const reply = items.length > 0
-      ? `AI chưa sẵn sàng, nhưng Lishop đã tìm thấy ${items.length} sản phẩm phù hợp để ${subject} cho yêu cầu "${message}".`
-      : `AI chưa sẵn sàng và chưa tìm thấy sản phẩm phù hợp. Bạn có thể thử mô tả rõ hơn về ngân sách, thương hiệu hoặc nhu cầu sử dụng.`;
+      ? `AI chưa sẵn sàng, nhưng Lishop đã tìm thấy ${items.length} sản phẩm phù hợp để ${subject} cho yêu cầu "${message}": ${topNames}.`
+      : 'AI chưa sẵn sàng và chưa tìm thấy sản phẩm phù hợp. Bạn có thể thử mô tả rõ hơn về ngân sách, thương hiệu hoặc nhu cầu sử dụng.';
     return { reply, mode, items, fallback };
   }
-
   private buildDiscoveryPrompt(mode: 'advice' | 'compare'): string {
     return [
-      'Bạn là trợ lý AI tư vấn mua sắm của Lishop.',
-      'Luôn trả lời bằng tiếng Việt tự nhiên, ngắn gọn, thực tế.',
+      'BÃ¡ÂºÂ¡n lÃƒÂ  trÃ¡Â»Â£ lÃƒÂ½ AI tÃ†Â° vÃ¡ÂºÂ¥n mua sÃ¡ÂºÂ¯m cÃ¡Â»Â§a Lishop.',
+      'LuÃƒÂ´n trÃ¡ÂºÂ£ lÃ¡Â»Âi bÃ¡ÂºÂ±ng tiÃ¡ÂºÂ¿ng ViÃ¡Â»â€¡t tÃ¡Â»Â± nhiÃƒÂªn, ngÃ¡ÂºÂ¯n gÃ¡Â»Ân, thÃ¡Â»Â±c tÃ¡ÂºÂ¿.',
       mode === 'compare'
-        ? 'Khách đang muốn so sánh sản phẩm. Hãy nêu điểm khác nhau theo giá, đánh giá, tồn kho, thương hiệu/danh mục và gợi ý nên chọn sản phẩm nào cho nhu cầu nào.'
-        : 'Khách đang muốn được tư vấn sản phẩm. Hãy chọn sản phẩm phù hợp nhất từ dữ liệu và giải thích lý do.',
-      'Chỉ dùng sản phẩm trong dữ liệu catalog được cung cấp.',
-      'Không bịa giá, tồn kho, đánh giá, tên sản phẩm, khuyến mãi hoặc thông số không có trong dữ liệu.',
-      'Nếu dữ liệu chưa đủ, hãy hỏi thêm một câu ngắn về ngân sách, thương hiệu, hoặc nhu cầu sử dụng.',
+        ? 'KhÃƒÂ¡ch Ã„â€˜ang muÃ¡Â»â€˜n so sÃƒÂ¡nh sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m. HÃƒÂ£y nÃƒÂªu Ã„â€˜iÃ¡Â»Æ’m khÃƒÂ¡c nhau theo giÃƒÂ¡, Ã„â€˜ÃƒÂ¡nh giÃƒÂ¡, tÃ¡Â»â€œn kho, thÃ†Â°Ã†Â¡ng hiÃ¡Â»â€¡u/danh mÃ¡Â»Â¥c vÃƒÂ  gÃ¡Â»Â£i ÃƒÂ½ nÃƒÂªn chÃ¡Â»Ân sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m nÃƒÂ o cho nhu cÃ¡ÂºÂ§u nÃƒÂ o.'
+        : 'KhÃƒÂ¡ch Ã„â€˜ang muÃ¡Â»â€˜n Ã„â€˜Ã†Â°Ã¡Â»Â£c tÃ†Â° vÃ¡ÂºÂ¥n sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m. HÃƒÂ£y chÃ¡Â»Ân sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m phÃƒÂ¹ hÃ¡Â»Â£p nhÃ¡ÂºÂ¥t tÃ¡Â»Â« dÃ¡Â»Â¯ liÃ¡Â»â€¡u vÃƒÂ  giÃ¡ÂºÂ£i thÃƒÂ­ch lÃƒÂ½ do.',
+      'ChÃ¡Â»â€° dÃƒÂ¹ng sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m trong dÃ¡Â»Â¯ liÃ¡Â»â€¡u catalog Ã„â€˜Ã†Â°Ã¡Â»Â£c cung cÃ¡ÂºÂ¥p.',
+      'KhÃƒÂ´ng bÃ¡Â»â€¹a giÃƒÂ¡, tÃ¡Â»â€œn kho, Ã„â€˜ÃƒÂ¡nh giÃƒÂ¡, tÃƒÂªn sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m, khuyÃ¡ÂºÂ¿n mÃƒÂ£i hoÃ¡ÂºÂ·c thÃƒÂ´ng sÃ¡Â»â€˜ khÃƒÂ´ng cÃƒÂ³ trong dÃ¡Â»Â¯ liÃ¡Â»â€¡u.',
+      'NÃ¡ÂºÂ¿u dÃ¡Â»Â¯ liÃ¡Â»â€¡u chÃ†Â°a Ã„â€˜Ã¡Â»Â§, hÃƒÂ£y hÃ¡Â»Âi thÃƒÂªm mÃ¡Â»â„¢t cÃƒÂ¢u ngÃ¡ÂºÂ¯n vÃ¡Â»Â ngÃƒÂ¢n sÃƒÂ¡ch, thÃ†Â°Ã†Â¡ng hiÃ¡Â»â€¡u, hoÃ¡ÂºÂ·c nhu cÃ¡ÂºÂ§u sÃ¡Â»Â­ dÃ¡Â»Â¥ng.',
     ].join('\n');
   }
 
@@ -432,6 +433,6 @@ export class ProductsService {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd');
+      .replace(/Ã„â€˜/g, 'd');
   }
 }

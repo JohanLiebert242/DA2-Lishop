@@ -89,10 +89,12 @@ test.describe('catalog AI shopping concierge', () => {
       });
     });
 
-    await page.goto(`${CATALOG_URL}/products`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${CATALOG_URL}/products`, { waitUntil: 'networkidle' });
     await expect(page).toHaveURL(/\/products$/);
 
-    await page.getByRole('button', { name: 'Mở trợ lý mua sắm AI' }).click();
+    const conciergeToggle = page.getByRole('button', { name: 'Mở trợ lý mua sắm AI' });
+    await expect(conciergeToggle).toBeVisible();
+    await conciergeToggle.click();
     await expect(page.getByTestId('shopping-concierge')).toBeVisible();
     await page.getByPlaceholder('Mô tả nhu cầu mua sắm...').fill('Tôi cần combo đi làm dưới 1 triệu');
     await page.getByRole('button', { name: 'Gửi yêu cầu' }).click();

@@ -77,7 +77,11 @@ async function registerCustomer(request: APIRequestContext, suffix: string) {
     },
   });
   expect(response.ok()).toBeTruthy();
-  const data = await unwrap<{ accessToken: string }>(response);
+  const loginResponse = await request.post(`${API_URL}/auth/login`, {
+    data: { email, password: PASSWORD },
+  });
+  expect(loginResponse.ok()).toBeTruthy();
+  const data = await unwrap<{ accessToken: string }>(loginResponse);
   return { email, accessToken: data.accessToken };
 }
 

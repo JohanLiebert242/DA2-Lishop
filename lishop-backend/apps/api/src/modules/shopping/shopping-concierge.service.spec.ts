@@ -46,6 +46,7 @@ describe('ShoppingConciergeService', () => {
   let originalFetch: typeof global.fetch;
   const productsService = {
     findMany: jest.fn(),
+    findFeatured: jest.fn(),
   };
   const config = {
     get: jest.fn(),
@@ -59,6 +60,7 @@ describe('ShoppingConciergeService', () => {
       return '';
     });
     productsService.findMany.mockResolvedValue({ items: [productA, productB], nextCursor: null });
+    productsService.findFeatured.mockResolvedValue([productA, productB]);
 
     const module = await Test.createTestingModule({
       providers: [
@@ -148,5 +150,16 @@ describe('ShoppingConciergeService', () => {
     expect(result.items).toHaveLength(2);
     expect(result.cartPlan).toHaveLength(1);
     expect(result.cartPlan[0]?.productId).toBe('p1');
+  });
+
+  it('falls back to featured products when keyword search returns no matches', async () => {
+    productsService.findMany.mockResolvedValue({ items: [], nextCursor: null });
+
+    const result = await service.ask('Toi can mot bo qua tang cho sep');
+
+    expect(productsService.findFeatured).toHaveBeenCalledWith(8);
+    expect(result.items).toHaveLength(2);
+    expect(result.cartPlan).toHaveLength(2);
+    expect(result.reply).toContain('goi y');
   });
 });

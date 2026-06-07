@@ -176,6 +176,18 @@ describe('ProductsService', () => {
     expect(result.items).toHaveLength(1);
   });
 
+  it('discoverWithAi falls back to featured products when direct keyword search is empty', async () => {
+    repo.findMany.mockResolvedValue({ items: [], nextCursor: null });
+    repo.findFeatured.mockResolvedValue([{ ...mockProduct, id: 'p2', slug: 'featured-phone', name: 'Featured Phone' }]);
+
+    const result = await service.discoverWithAi('dien thoai chup anh dep cho du lich');
+
+    expect(repo.findFeatured).toHaveBeenCalledWith(6);
+    expect(result.fallback).toBe(true);
+    expect(result.items).toHaveLength(1);
+    expect(result.reply).toContain('Featured Phone');
+  });
+
   describe('recommendations', () => {
     const productA = { ...mockProduct, id: 'pA', slug: 'product-a', name: 'Product A' };
     const productB = { ...mockProduct, id: 'pB', slug: 'product-b', name: 'Product B' };

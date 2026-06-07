@@ -54,7 +54,8 @@ export class ShoppingConciergeService {
   async ask(message: string): Promise<ShoppingConciergeResponse> {
     const normalizedMessage = message.trim();
     const result = await this.productsService.findMany({ q: normalizedMessage, limit: 8 });
-    const items = result.items.map((product) => this.toConciergeProduct(product));
+    const seededProducts = result.items.length > 0 ? result.items : await this.productsService.findFeatured(8);
+    const items = seededProducts.map((product) => this.toConciergeProduct(product));
     const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
 
     if (!apiKey) {
@@ -137,9 +138,10 @@ export class ShoppingConciergeService {
   private buildFallback(message: string, items: ConciergeProduct[]): ShoppingConciergeResponse {
     const inStock = items.filter((item) => item.stock > 0);
     const cartPlan = inStock.slice(0, 4).map((item) => this.toCartItem(item, 1, 'Phu hop voi yeu cau mua sam va con hang.'));
+    const topNames = cartPlan.slice(0, 3).map((item) => item.name).join(', ');
     return {
       reply: cartPlan.length > 0
-        ? this.buildDefaultReply(message, cartPlan)
+        ? `${this.buildDefaultReply(message, cartPlan)} Nen tham khao: ${topNames}.`
         : 'Lishop chua tim thay san pham con hang phu hop. Ban co the mo ta ro hon ve ngan sach, phong cach hoac nhu cau su dung.',
       items,
       cartPlan,

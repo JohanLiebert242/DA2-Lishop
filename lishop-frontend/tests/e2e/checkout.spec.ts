@@ -31,7 +31,11 @@ async function registerCustomer(page: Page): Promise<string> {
     },
   });
   expect(register.ok()).toBeTruthy();
-  const loginData = await unwrap<{ accessToken: string }>(register);
+  const login = await page.request.post(`${API_URL}/auth/login`, {
+    data: { email, password: CUSTOMER_PASSWORD },
+  });
+  expect(login.ok()).toBeTruthy();
+  const loginData = await unwrap<{ accessToken: string }>(login);
   await page.context().addCookies([
     {
       name: 'lishop_at',
