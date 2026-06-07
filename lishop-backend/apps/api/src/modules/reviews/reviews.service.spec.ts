@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ReviewsService } from './reviews.service';
 import { ReviewsRepository } from './reviews.repository';
@@ -21,9 +21,11 @@ describe('ReviewsService', () => {
   const repo = {
     findByProductId: jest.fn(),
     findByProductIdAndUserId: jest.fn(),
+    findById: jest.fn(),
     findByIdAdmin: jest.fn(),
     hasDeliveredOrderWithProduct: jest.fn(),
     create: jest.fn(),
+    updateOwnedReview: jest.fn(),
     refreshProductReviewStats: jest.fn(),
   };
   const config = {
@@ -60,17 +62,17 @@ describe('ReviewsService', () => {
     await expect(service.createReview('u1', 'p1', { rating: 5 })).rejects.toThrow(ConflictException);
   });
 
-  it('createReview sets verifiedPurchase=false when no delivered order', async () => {
+  it('createReview rejects users who have not bought the product', async () => {
     repo.findByProductIdAndUserId.mockResolvedValue(null);
     repo.hasDeliveredOrderWithProduct.mockResolvedValue(false);
-    repo.create.mockResolvedValue(mockReview);
-    await service.createReview('u1', 'p1', { rating: 5 });
-    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ verifiedPurchase: false }));
+
+    await expect(service.createReview('u1', 'p1', { rating: 5 })).rejects.toThrow(BadRequestException);
+    expect(repo.create).not.toHaveBeenCalled();
   });
 
   it('createReview approves immediately so the new feedback appears publicly', async () => {
     repo.findByProductIdAndUserId.mockResolvedValue(null);
-    repo.hasDeliveredOrderWithProduct.mockResolvedValue(false);
+    repo.hasDeliveredOrderWithProduct.mockResolvedValue(true);
     repo.create.mockResolvedValue({ ...mockReview, productId: 'p1' });
     await service.createReview('u1', 'p1', { rating: 5 });
     expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ status: ReviewStatus.APPROVED }));
@@ -78,7 +80,7 @@ describe('ReviewsService', () => {
 
   it('createReview refreshes product review statistics after creating feedback', async () => {
     repo.findByProductIdAndUserId.mockResolvedValue(null);
-    repo.hasDeliveredOrderWithProduct.mockResolvedValue(false);
+    repo.hasDeliveredOrderWithProduct.mockResolvedValue(true);
     repo.create.mockResolvedValue({ ...mockReview, productId: 'p1' });
     await service.createReview('u1', 'p1', { rating: 5 });
     expect(repo.refreshProductReviewStats).toHaveBeenCalledWith('p1');
@@ -90,6 +92,28 @@ describe('ReviewsService', () => {
     repo.create.mockResolvedValue({ ...mockReview, verifiedPurchase: true });
     await service.createReview('u1', 'p1', { rating: 4, content: 'Good' });
     expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ verifiedPurchase: true }));
+  });
+
+  it('updateReview allows the owner to edit rating and content', async () => {
+    repo.findById.mockResolvedValue({ ...mockReview, productId: 'p1', userId: 'u1' });
+    repo.updateOwnedReview.mockResolvedValue({ ...mockReview, rating: 3, content: 'Updated' });
+
+    const result = await service.updateReview('u1', 'r1', { rating: 3, content: 'Updated' });
+
+    expect(result.rating).toBe(3);
+    expect(repo.updateOwnedReview).toHaveBeenCalledWith('u1', 'r1', {
+      rating: 3,
+      content: 'Updated',
+      status: ReviewStatus.APPROVED,
+    });
+    expect(repo.refreshProductReviewStats).toHaveBeenCalledWith('p1');
+  });
+
+  it('updateReview rejects edits from another user', async () => {
+    repo.findById.mockResolvedValue({ ...mockReview, productId: 'p1', userId: 'other-user' });
+
+    await expect(service.updateReview('u1', 'r1', { rating: 4 })).rejects.toThrow(ForbiddenException);
+    expect(repo.updateOwnedReview).not.toHaveBeenCalled();
   });
 
   describe('generateModerationAssist', () => {

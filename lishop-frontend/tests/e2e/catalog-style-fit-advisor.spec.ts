@@ -17,6 +17,7 @@ type ProductSummary = {
 
 type ProductListResponse = {
   items: ProductSummary[];
+  nextCursor: string | null;
 };
 
 async function unwrap<T>(response: { json(): Promise<unknown> }): Promise<T> {
@@ -25,12 +26,18 @@ async function unwrap<T>(response: { json(): Promise<unknown> }): Promise<T> {
 }
 
 async function getSizedVariantProduct(request: APIRequestContext) {
-  const response = await request.get(`${API_URL}/products?limit=100`);
-  expect(response.ok()).toBeTruthy();
-  const products = await unwrap<ProductListResponse>(response);
-  const product = products.items.find((item) =>
-    item.variants.some((variant) => typeof variant.attributes?.size === 'string' && variant.attributes.size.trim()),
-  );
+  let cursor: string | null = null;
+  let product: ProductSummary | undefined;
+  for (let page = 0; page < 5 && !product; page += 1) {
+    const response = await request.get(`${API_URL}/products?limit=100${cursor ? `&cursor=${cursor}` : ''}`);
+    expect(response.ok()).toBeTruthy();
+    const products = await unwrap<ProductListResponse>(response);
+    product = products.items.find((item) =>
+      item.variants.some((variant) => typeof variant.attributes?.size === 'string' && variant.attributes.size.trim()),
+    );
+    cursor = products.nextCursor ?? null;
+    if (!cursor) break;
+  }
 
   expect(product, 'seeded catalog should include a product with size variants').toBeTruthy();
   return product!;

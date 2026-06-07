@@ -7,11 +7,13 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Patch,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { UpdateReviewDto } from './dto/update-review.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -39,5 +41,17 @@ export class ReviewsController {
     @Body() dto: CreateReviewDto,
   ) {
     return this.reviewsService.createReview(userId, productId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Patch(':reviewId')
+  @ApiOperation({ summary: 'Update one of my product reviews' })
+  updateReview(
+    @CurrentUser('id') userId: string,
+    @Param('reviewId', ParseUUIDPipe) reviewId: string,
+    @Body() dto: UpdateReviewDto,
+  ) {
+    return this.reviewsService.updateReview(userId, reviewId, dto);
   }
 }

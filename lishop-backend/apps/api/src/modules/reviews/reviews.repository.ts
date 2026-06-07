@@ -55,6 +55,10 @@ export class ReviewsRepository {
     });
   }
 
+  findById(id: string): Promise<Review | null> {
+    return prisma.review.findUnique({ where: { id } });
+  }
+
   async hasDeliveredOrderWithProduct(userId: string, productId: string): Promise<boolean> {
     const item = await prisma.orderItem.findFirst({
       where: {
@@ -67,6 +71,19 @@ export class ReviewsRepository {
 
   create(data: Prisma.ReviewCreateInput): Promise<Review> {
     return prisma.review.create({ data });
+  }
+
+  async updateOwnedReview(
+    userId: string,
+    id: string,
+    data: Prisma.ReviewUpdateInput,
+  ): Promise<Review> {
+    await prisma.review.updateMany({
+      where: { id, userId },
+      data,
+    });
+
+    return prisma.review.findUniqueOrThrow({ where: { id } });
   }
 
   async refreshProductReviewStats(productId: string): Promise<void> {

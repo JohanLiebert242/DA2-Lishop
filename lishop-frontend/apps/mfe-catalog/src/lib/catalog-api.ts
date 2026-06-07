@@ -177,6 +177,13 @@ export interface ReviewInfo {
   createdAt: string;
 }
 
+export interface CurrentUserInfo {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
 export const catalogApi = {
   getCategories: () =>
     apiFetch<CategoryItem[]>('/categories'),
@@ -238,4 +245,13 @@ export const catalogApi = {
       method: 'POST',
       body: JSON.stringify({ rating, content }),
     }),
+
+  updateReview: (reviewId: string, rating: number, content?: string) =>
+    apiFetch<ReviewInfo>(`/reviews/${reviewId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ rating, content }),
+    }),
+
+  getCurrentUser: () =>
+    apiFetch<CurrentUserInfo>('/auth/me'),
 };

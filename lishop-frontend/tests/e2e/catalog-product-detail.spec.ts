@@ -17,6 +17,11 @@ type ProductVariant = {
   attributes: Record<string, string>;
 };
 
+type OrderInfo = {
+  id: string;
+  status: string;
+};
+
 type ProductSummary = {
   id: string;
   slug: string;
@@ -28,6 +33,7 @@ type ProductSummary = {
 
 type ProductListResponse = {
   items: ProductSummary[];
+  nextCursor: string | null;
 };
 
 async function unwrap<T>(response: { json(): Promise<unknown> }): Promise<T> {
@@ -36,13 +42,25 @@ async function unwrap<T>(response: { json(): Promise<unknown> }): Promise<T> {
 }
 
 async function getVariantProduct(request: APIRequestContext) {
-  const response = await request.get(`${API_URL}/products?limit=100`);
-  expect(response.ok()).toBeTruthy();
-  const products = await unwrap<ProductListResponse>(response);
-  const product = products.items.find((item) => {
-    const variantImages = new Set(item.variants.map((variant) => variant.imageUrl).filter(Boolean));
-    return item.brand && item.images.length >= 2 && item.variants.length >= 2 && variantImages.size >= 2;
-  });
+  let cursor: string | null = null;
+  const candidates: ProductSummary[] = [];
+  for (let page = 0; page < 5; page += 1) {
+    const response = await request.get(`${API_URL}/products?limit=100${cursor ? `&cursor=${cursor}` : ''}`);
+    expect(response.ok()).toBeTruthy();
+    const products = await unwrap<ProductListResponse>(response);
+    candidates.push(...products.items.filter((item) => {
+      const variantImages = new Set(item.variants.map((variant) => variant.imageUrl).filter(Boolean));
+      const maxVariantStock = Math.max(...item.variants.map((variant) => variant.stock ?? 0));
+      return item.brand && item.images.length >= 2 && item.variants.length >= 2 && variantImages.size >= 2 && maxVariantStock > 0;
+    }));
+    cursor = products.nextCursor ?? null;
+    if (!cursor) break;
+  }
+  const product = candidates.sort((a, b) => {
+    const aMaxVariantStock = Math.max(...a.variants.map((variant) => variant.stock ?? 0));
+    const bMaxVariantStock = Math.max(...b.variants.map((variant) => variant.stock ?? 0));
+    return (b.stock + bMaxVariantStock) - (a.stock + aMaxVariantStock);
+  })[0];
 
   expect(product, 'seeded catalog should include a branded product with variant images').toBeTruthy();
   return product!;
@@ -61,6 +79,66 @@ async function registerCustomer(request: APIRequestContext, suffix: string) {
   expect(response.ok()).toBeTruthy();
   const data = await unwrap<{ accessToken: string }>(response);
   return { email, accessToken: data.accessToken };
+}
+
+async function loginAdmin(request: APIRequestContext) {
+  const response = await request.post(`${API_URL}/auth/login`, {
+    data: {
+      email: 'admin@lishop.vn',
+      password: 'Admin@12345',
+    },
+  });
+  expect(response.ok()).toBeTruthy();
+  const data = await unwrap<{ accessToken: string }>(response);
+  return data.accessToken;
+}
+
+async function createDeliveredPurchase(
+  request: APIRequestContext,
+  accessToken: string,
+  productId: string,
+  variantId?: string,
+) {
+  const authHeaders = { Authorization: `Bearer ${accessToken}` };
+  const cartResponse = await request.post(`${API_URL}/cart/items`, {
+    headers: authHeaders,
+    data: { productId, ...(variantId && { variantId }), quantity: 1 },
+  });
+  expect(cartResponse.ok()).toBeTruthy();
+
+  const addressResponse = await request.post(`${API_URL}/addresses`, {
+    headers: authHeaders,
+    data: {
+      fullName: 'E2E Buyer',
+      phone: '0900000000',
+      street: '1 Test Street',
+      district: 'Quan 1',
+      city: 'Ho Chi Minh',
+      country: 'VN',
+      isDefault: true,
+    },
+  });
+  expect(addressResponse.ok()).toBeTruthy();
+  const address = await unwrap<{ id: string }>(addressResponse);
+
+  const orderResponse = await request.post(`${API_URL}/orders`, {
+    headers: authHeaders,
+    data: {
+      addressId: address.id,
+      paymentMethod: 'COD',
+      shippingProvider: 'GHN',
+    },
+  });
+  expect(orderResponse.ok()).toBeTruthy();
+  const order = await unwrap<OrderInfo>(orderResponse);
+  const adminToken = await loginAdmin(request);
+  for (const status of ['PROCESSING', 'SHIPPED', 'DELIVERED']) {
+    const statusResponse = await request.patch(`${API_URL}/admin/orders/${order.id}/status`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+      data: { status },
+    });
+    expect(statusResponse.ok()).toBeTruthy();
+  }
 }
 
 async function addLoginCookies(page: Page, accessToken: string) {
@@ -86,6 +164,7 @@ async function addLoginCookies(page: Page, accessToken: string) {
 
 async function createReview(request: APIRequestContext, productId: string, index: number, rating = 5) {
   const { accessToken } = await registerCustomer(request, `review-${index}`);
+  await createDeliveredPurchase(request, accessToken, productId);
   const response = await request.post(`${API_URL}/reviews/product/${productId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     data: {
@@ -118,6 +197,8 @@ test.describe('catalog product and feedback experience', () => {
       await createReview(request, product.id, i, i % 2 === 0 ? 5 : 4);
     }
     const reviewer = await registerCustomer(request, 'visible-feedback');
+    const purchasableVariant = product.variants.find((variant) => variant.stock > 0) ?? product.variants[0];
+    await createDeliveredPurchase(request, reviewer.accessToken, product.id, purchasableVariant?.id);
     await addLoginCookies(page, reviewer.accessToken);
 
     await page.goto(`${CATALOG_URL}/products/${product.slug}`);

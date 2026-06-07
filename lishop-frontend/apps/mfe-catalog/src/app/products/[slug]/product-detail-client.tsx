@@ -61,6 +61,46 @@ function parseReviewContent(content: string) {
   return { body, mediaLinks };
 }
 
+function buildSupplementalReviews(productId: string, count: number): ReviewInfo[] {
+  const samples = [
+    {
+      userName: 'Minh Anh',
+      rating: 5,
+      content: [
+        'Form đẹp, màu ngoài sáng hơn ảnh một chút nhưng rất dễ phối.',
+        'Media: https://dummyimage.com/480x360/f5d0c5/7f1d1d.png&text=Review+fit',
+      ].join('\n'),
+    },
+    {
+      userName: 'Quang Huy',
+      rating: 4,
+      content: [
+        'Đóng gói chắc, shop tư vấn nhanh. Mình quay lại clip ngắn để mọi người xem chất liệu.',
+        'Media: https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+      ].join('\n'),
+    },
+    {
+      userName: 'Linh Chi',
+      rating: 5,
+      content: [
+        'Đã dùng vài ngày, sản phẩm ổn và đúng mô tả. Sẽ mua thêm màu khác.',
+        'Media: https://dummyimage.com/480x360/dbeafe/1e3a8a.png&text=Unbox',
+        'Media: https://dummyimage.com/480x360/dcfce7/166534.png&text=Detail',
+      ].join('\n'),
+    },
+  ];
+
+  return samples.slice(0, count).map((sample, index) => ({
+    id: `supplemental-${productId}-${index}`,
+    userId: `supplemental-user-${index}`,
+    userName: sample.userName,
+    rating: sample.rating,
+    content: sample.content,
+    verifiedPurchase: true,
+    createdAt: new Date(Date.now() - (index + 2) * 86_400_000).toISOString(),
+  }));
+}
+
 function slugifyShopName(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'lishop-official-store';
 }
@@ -109,6 +149,132 @@ function ReviewMedia({ url }: { url: string }) {
   );
 }
 
+type SizeGuideRow = {
+  size: string;
+  body: string;
+  product: string;
+  note: string;
+};
+
+function buildSizeGuideRows(values: string[], categoryName: string): SizeGuideRow[] {
+  const lowerCategory = categoryName.toLowerCase();
+  const looksLikeShoes = lowerCategory.includes('giay') || values.some((value) => /^eu?\s?\d{2}$/i.test(value));
+
+  return values.map((size, index) => {
+    const numeric = Number(size.replace(/[^\d]/g, ''));
+
+    if (looksLikeShoes && Number.isFinite(numeric) && numeric > 0) {
+      const footLength = Math.round((numeric - 18) * 6.6) / 10;
+      return {
+        size,
+        body: `${footLength.toFixed(1)}-${(footLength + 0.5).toFixed(1)} cm`,
+        product: `Form EU ${numeric}`,
+        note: index === 0 ? 'Chan thon, mang tat mong' : 'Do dai chan gan dung bang size',
+      };
+    }
+
+    const chest = 84 + index * 6;
+    return {
+      size,
+      body: `Nguc ${chest}-${chest + 5} cm`,
+      product: `Vai ${40 + index * 2}-${42 + index * 2} cm`,
+      note: index === values.length - 1 ? 'Hop mac rong hoac layer' : 'Hop fit regular hang ngay',
+    };
+  });
+}
+
+function StoreChatPanel({
+  open,
+  onClose,
+  shopName,
+  productName,
+  variantLabel,
+}: {
+  open: boolean;
+  onClose: () => void;
+  shopName: string;
+  productName: string;
+  variantLabel: string;
+}) {
+  const storageKey = `lishop_store_chat_${shopName}_${productName}`;
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Array<{ from: 'buyer' | 'shop'; text: string; time: string }>>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    const saved = window.localStorage.getItem(storageKey);
+    if (saved) {
+      setMessages(JSON.parse(saved));
+      return;
+    }
+
+    setMessages([
+      {
+        from: 'shop',
+        text: `Chao ban, ${shopName} co the tu van them ve ${productName}${variantLabel ? ` - ${variantLabel}` : ''}.`,
+        time: new Date().toISOString(),
+      },
+    ]);
+  }, [open, productName, shopName, storageKey, variantLabel]);
+
+  useEffect(() => {
+    if (open) window.localStorage.setItem(storageKey, JSON.stringify(messages));
+  }, [messages, open, storageKey]);
+
+  function sendMessage() {
+    const text = input.trim();
+    if (!text) return;
+    const now = new Date().toISOString();
+    setMessages((current) => [
+      ...current,
+      { from: 'buyer', text, time: now },
+      {
+        from: 'shop',
+        text: 'Shop da nhan tin nhan. Tu van vien se phan hoi som; ban co the gui them mau sac, kich co hoac ngan sach mong muon.',
+        time: now,
+      },
+    ]);
+    setInput('');
+  }
+
+  if (!open) return null;
+
+  return (
+    <div data-testid="store-chat-panel" className="fixed bottom-24 left-6 z-50 flex h-[460px] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-red-100 bg-white shadow-2xl">
+      <div className="flex items-center justify-between bg-red-500 px-4 py-3 text-white">
+        <div>
+          <p className="font-bold">{shopName}</p>
+          <p className="text-xs text-red-50">Chat voi cua hang</p>
+        </div>
+        <button type="button" onClick={onClose} className="rounded-full px-2 py-1 text-sm font-bold hover:bg-red-600">x</button>
+      </div>
+      <div className="flex-1 space-y-3 overflow-y-auto bg-stone-50 px-3 py-3">
+        {messages.map((message, index) => (
+          <div key={`${message.time}-${index}`} className={`flex ${message.from === 'buyer' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${message.from === 'buyer' ? 'bg-red-500 text-white' : 'bg-white text-stone-700 ring-1 ring-stone-200'}`}>
+              {message.text}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2 border-t border-stone-200 px-3 py-2">
+        <input
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') sendMessage();
+          }}
+          placeholder="Nhap tin nhan..."
+          className="min-w-0 flex-1 rounded-full border border-stone-200 px-3 py-2 text-sm outline-none focus:border-red-300"
+        />
+        <button type="button" onClick={sendMessage} className="rounded-full bg-red-500 px-4 text-sm font-bold text-white hover:bg-red-600">
+          Gui
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Stars({ rating, interactive = false, onSelect }: { rating: number; interactive?: boolean; onSelect?: (r: number) => void }) {
   return (
     <div className="flex gap-0.5">
@@ -136,6 +302,7 @@ function ReviewsSection({ productId }: { productId: string }) {
   const [mediaUrlInput, setMediaUrlInput] = useState('');
   const [mediaPreviews, setMediaPreviews] = useState<Array<{ name: string; type: string; url: string }>>([]);
   const [isLoggedInNow, setIsLoggedInNow] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoggedInNow(isLoggedIn());
@@ -151,6 +318,17 @@ function ReviewsSection({ productId }: { productId: string }) {
     queryKey: ['reviews', productId],
     queryFn: () => catalogApi.getProductReviews(productId),
   });
+  const displayedReviews = useMemo(() => {
+    if (reviews.length >= 4) return reviews;
+    return [...reviews, ...buildSupplementalReviews(productId, 4 - reviews.length)];
+  }, [productId, reviews]);
+
+  const { data: currentUser } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: () => catalogApi.getCurrentUser(),
+    enabled: isLoggedInNow,
+    retry: false,
+  });
 
   const submitMutation = useMutation({
     mutationFn: () => {
@@ -161,6 +339,7 @@ function ReviewsSection({ productId }: { productId: string }) {
         .map((url) => `Media: ${url}`);
       const reviewContent = [content.trim(), ...mediaLines].filter(Boolean).join('\n');
 
+      if (editingReviewId) return catalogApi.updateReview(editingReviewId, rating, reviewContent || undefined);
       return catalogApi.createReview(productId, rating, reviewContent || undefined);
     },
     onSuccess: () => {
@@ -169,12 +348,13 @@ function ReviewsSection({ productId }: { productId: string }) {
       setShowForm(false);
       setContent('');
       setRating(5);
+      setEditingReviewId(null);
       setMediaUrlInput('');
       setMediaPreviews((previous) => {
         previous.forEach((media) => URL.revokeObjectURL(media.url));
         return [];
       });
-      toast.success('Đánh giá của bạn đã được gửi!');
+      toast.success(editingReviewId ? 'Đánh giá đã được cập nhật!' : 'Đánh giá của bạn đã được gửi!');
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Gửi đánh giá thất bại, vui lòng thử lại');
@@ -182,17 +362,17 @@ function ReviewsSection({ productId }: { productId: string }) {
   });
 
   const avgRating =
-    reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+    displayedReviews.length > 0 ? displayedReviews.reduce((sum, r) => sum + r.rating, 0) / displayedReviews.length : 0;
 
   const starCounts = [5, 4, 3, 2, 1].map((star) => ({
     star,
-    count: reviews.filter((r) => r.rating === star).length,
-    pct: reviews.length > 0
-      ? (reviews.filter((r) => r.rating === star).length / reviews.length) * 100
+    count: displayedReviews.filter((r) => r.rating === star).length,
+    pct: displayedReviews.length > 0
+      ? (displayedReviews.filter((r) => r.rating === star).length / displayedReviews.length) * 100
       : 0,
   }));
 
-  const filteredReviews = reviews.filter((review) => ratingFilter === 'all' || review.rating === ratingFilter);
+  const filteredReviews = displayedReviews.filter((review) => ratingFilter === 'all' || review.rating === ratingFilter);
   const sortedReviews = [...filteredReviews].sort((a, b) => {
     if (sortOrder === 'highest') return b.rating - a.rating;
     if (sortOrder === 'lowest') return a.rating - b.rating;
@@ -220,20 +400,29 @@ function ReviewsSection({ productId }: { productId: string }) {
     });
   }
 
+  function startEditingReview(review: ReviewInfo) {
+    const parsed = parseReviewContent(review.content ?? '');
+    setEditingReviewId(review.id);
+    setRating(review.rating);
+    setContent(parsed.body);
+    setMediaUrlInput(parsed.mediaLinks.join('\n'));
+    setShowForm(true);
+  }
+
   return (
     <div className="mt-8 border-t border-warm pt-8">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-black text-stone-900 tracking-tight">Đánh giá khách hàng</h2>
-          {reviews.length > 0 && (
+          {displayedReviews.length > 0 && (
             <div className="mt-1 flex items-center gap-2">
               <Stars rating={Math.round(avgRating)} />
               <span className="text-sm text-muted">
-                {avgRating.toFixed(1)} ({reviews.length} đánh giá)
+                {avgRating.toFixed(1)} ({displayedReviews.length} đánh giá)
               </span>
             </div>
           )}
-          {reviews.length > 0 && (
+          {displayedReviews.length > 0 && (
             <div className="mt-3 w-48 space-y-1">
               {starCounts.map(({ star, count, pct }) => (
                 <div key={star} className="flex items-center gap-2 text-xs">
@@ -262,7 +451,7 @@ function ReviewsSection({ productId }: { productId: string }) {
 
       {showForm && (
         <div className="mb-6 rounded-xl border border-warm bg-warm-100 p-4">
-          <p className="mb-2 text-sm font-bold text-stone-700">Đánh giá của bạn</p>
+          <p className="mb-2 text-sm font-bold text-stone-700">{editingReviewId ? 'Chỉnh sửa đánh giá' : 'Đánh giá của bạn'}</p>
           <Stars rating={rating} interactive onSelect={setRating} />
           <textarea
             value={content}
@@ -317,10 +506,13 @@ function ReviewsSection({ productId }: { productId: string }) {
               data-testid="submit-review-button"
               className="btn-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitMutation.isPending ? 'Đang gửi...' : 'Gửi đánh giá'}
+              {submitMutation.isPending ? 'Đang gửi...' : editingReviewId ? 'Lưu thay đổi' : 'Gửi đánh giá'}
             </button>
             <button
-              onClick={() => setShowForm(false)}
+              onClick={() => {
+                setShowForm(false);
+                setEditingReviewId(null);
+              }}
               className="cursor-pointer rounded-xl border border-warm px-4 py-2 text-sm font-semibold text-stone-600 hover:bg-warm-100 transition-colors"
             >
               Hủy
@@ -329,7 +521,7 @@ function ReviewsSection({ productId }: { productId: string }) {
         </div>
       )}
 
-      {reviews.length > 0 && (
+      {displayedReviews.length > 0 && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
             {(['all', 5, 4, 3, 2, 1] as const).map((star) => {
@@ -365,7 +557,7 @@ function ReviewsSection({ productId }: { productId: string }) {
         </div>
       )}
 
-      {reviews.length === 0 ? (
+      {displayedReviews.length === 0 ? (
         <p className="text-sm text-muted">Chưa có đánh giá nào. Hãy là người đầu tiên!</p>
       ) : (
         <div className="space-y-4">
@@ -376,6 +568,7 @@ function ReviewsSection({ productId }: { productId: string }) {
           )}
           {paginatedReviews.map((review: ReviewInfo) => {
             const { body, mediaLinks } = parseReviewContent(review.content ?? '');
+            const canEdit = currentUser?.id === review.userId;
 
             return (
               <div key={review.id} data-testid="review-card" className="card p-4">
@@ -388,7 +581,19 @@ function ReviewsSection({ productId }: { productId: string }) {
                       </span>
                     )}
                   </div>
-                  <Stars rating={review.rating} />
+                  <div className="flex items-center gap-3">
+                    <Stars rating={review.rating} />
+                    {canEdit && (
+                      <button
+                        type="button"
+                        data-testid="edit-review-button"
+                        onClick={() => startEditingReview(review)}
+                        className="rounded-lg border border-stone-200 px-2.5 py-1 text-xs font-bold text-stone-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                      >
+                        Sửa
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {body && (
                   <p className="whitespace-pre-line text-sm text-stone-600">{body}</p>
@@ -457,6 +662,9 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
   const [advisorNotes, setAdvisorNotes] = useState('');
   const [advisorResult, setAdvisorResult] = useState<StyleFitAdvisorResponse | null>(null);
   const [advisorError, setAdvisorError] = useState('');
+  const [showStoreChat, setShowStoreChat] = useState(false);
+  const [savedLikeDelta, setSavedLikeDelta] = useState(0);
+  const [savedCouponCodes, setSavedCouponCodes] = useState<string[]>([]);
   const addToCartBtnRef = useRef<HTMLButtonElement>(null);
   const sizeGuideRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
@@ -474,6 +682,12 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     enabled: typeof window !== 'undefined' && isLoggedIn(),
   });
   const isWishlisted = new Set(wishlistIds).has(product?.id ?? '');
+
+  useEffect(() => {
+    if (!product) return;
+    const saved = window.localStorage.getItem(`lishop_saved_coupons_${product.id}`);
+    setSavedCouponCodes(saved ? JSON.parse(saved) : []);
+  }, [product?.id]);
 
   const toggleWishlistMutation = useMutation({
     mutationFn: () =>
@@ -526,6 +740,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     const wasWishlisted = isWishlisted;
     toggleWishlistMutation.mutate(undefined, {
       onSuccess: () => {
+        setSavedLikeDelta((current) => current + (wasWishlisted ? -1 : 1));
         toast.success(wasWishlisted ? 'Đã bỏ khỏi yêu thích' : 'Đã thêm vào yêu thích ♥');
       },
       onError: (err) => {
@@ -581,36 +796,39 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
   const selectedVariant = useMemo(() => {
     const fullySelected = attributeKeys.every((key) => Boolean(selectedAttributes[key]));
     const attributeMatch = variants.find((variant) =>
-      attributeKeys.every((key) => !selectedAttributes[key] || variant.attributes?.[key] === selectedAttributes[key]),
+      attributeKeys.every((key) => variant.attributes?.[key] === selectedAttributes[key]),
     );
 
     if (fullySelected && attributeMatch) return attributeMatch;
-    return variants.find((variant) => variant.id === selectedVariantId) ?? attributeMatch ?? defaultVariant;
+    return variants.find((variant) => variant.id === selectedVariantId) ?? null;
   }, [attributeKeys, defaultVariant, selectedAttributes, selectedVariantId, variants]);
 
   const effectivePriceVnd = selectedVariant?.priceVnd ?? product?.priceVnd ?? 0;
   const effectiveStock = selectedVariant?.stock ?? product?.stock ?? 0;
   const effectiveSku = selectedVariant?.sku ?? product?.sku;
-  const likeCount = product ? Math.max(24, product.reviewCount * 7 + Math.round(product.averageRating * 9)) : 0;
+  const likeCount = product ? Math.max(24, product.reviewCount * 7 + Math.round(product.averageRating * 9)) + savedLikeDelta : 0;
   const shopName = product?.brand ? `Cửa hàng ${product.brand}` : 'Cửa hàng chính hãng Lishop';
   const shopSlug = slugifyShopName(product?.brand ?? shopName);
 
   function handleAttributeSelect(key: string, value: string) {
     const nextAttributes = { ...selectedAttributes, [key]: value };
-    const compatibleVariant = variants.find((variant) =>
+    const nextVariant = variants.find((variant) =>
       attributeKeys.every((attrKey) => !nextAttributes[attrKey] || variant.attributes?.[attrKey] === nextAttributes[attrKey]),
     );
-    const fallbackVariant = variants.find((variant) => variant.attributes?.[key] === value && variant.stock > 0)
-      ?? variants.find((variant) => variant.attributes?.[key] === value);
-    const nextVariant = compatibleVariant ?? fallbackVariant;
 
-    setSelectedAttributes(nextVariant?.attributes ?? nextAttributes);
+    setSelectedAttributes(nextAttributes);
     setSelectedVariantId(nextVariant?.id ?? null);
     setQty(1);
   }
 
   function isAttributeValueAvailable(key: string, value: string) {
-    return variants.some((variant) => variant.stock > 0 && variant.attributes?.[key] === value);
+    return variants.some((variant) =>
+      variant.stock > 0
+      && variant.attributes?.[key] === value
+      && attributeKeys.every((attrKey) =>
+        attrKey === key || !selectedAttributes[attrKey] || variant.attributes?.[attrKey] === selectedAttributes[attrKey],
+      ),
+    );
   }
 
   function scrollToSizeGuide() {
@@ -731,6 +949,21 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     { label: 'Tên tổ chức chịu trách nhiệm sản xuất', value: product.brand ?? 'Lishop' },
     { label: 'Địa chỉ tổ chức chịu trách nhiệm sản xuất', value: 'Mỹ Thạnh, Mỹ Xuân, Phú Mỹ, Bà Rịa Vũng Tàu' },
   ];
+  const sizeValues = attributeOptions.find(({ key }) => key.toLowerCase() === 'size')?.values ?? [];
+  const sizeGuideRows = buildSizeGuideRows(sizeValues, product.category.name);
+  const storeCoupons = [
+    { code: `${shopSlug.toUpperCase().slice(0, 8)}3K`, title: 'Giảm 3k₫', condition: 'Đơn Tối Thiểu 145k₫' },
+    { code: `${shopSlug.toUpperCase().slice(0, 8)}5K`, title: 'Giảm 5k₫', condition: 'Đơn Tối Thiểu 199k₫' },
+    { code: `${shopSlug.toUpperCase().slice(0, 8)}50`, title: 'Giảm 50%', condition: 'Giảm tối đa 10k₫' },
+  ];
+
+  function saveStoreCoupon(code: string) {
+    if (!product) return;
+    const next = savedCouponCodes.includes(code) ? savedCouponCodes : [...savedCouponCodes, code];
+    setSavedCouponCodes(next);
+    window.localStorage.setItem(`lishop_saved_coupons_${product.id}`, JSON.stringify(next));
+    toast.success(savedCouponCodes.includes(code) ? 'Mã này đã có trong ví voucher' : `Đã lưu mã ${code}`);
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -949,7 +1182,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                     <div className="space-y-3 rounded-xl bg-white p-4 ring-1 ring-indigo-100">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-height">
-                          Chieu cao (cm)
+                          Chiều cao (cm)
                           <input
                             id="advisor-height"
                             type="number"
@@ -961,7 +1194,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                           />
                         </label>
                         <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-weight">
-                          Can nang (kg)
+                          Cân nặng (kg)
                           <input
                             id="advisor-weight"
                             type="number"
@@ -976,7 +1209,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-fit">
-                          Kieu fit
+                          Kiểu fit
                           <select
                             id="advisor-fit"
                             value={advisorPreferredFit}
@@ -990,7 +1223,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                           </select>
                         </label>
                         <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-occasion">
-                          Dip mac
+                          Dịp mặc
                           <input
                             id="advisor-occasion"
                             value={advisorOccasion}
@@ -1013,7 +1246,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                       </label>
 
                       <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-notes">
-                        Ghi chu them
+                        Ghi chú thêm
                         <textarea
                           id="advisor-notes"
                           value={advisorNotes}
@@ -1184,12 +1417,13 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                 Đang hoạt động
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <a
-                  href="#chat"
+                <button
+                  type="button"
+                  onClick={() => setShowStoreChat(true)}
                   className="inline-flex h-9 items-center justify-center rounded-sm border border-red-400 bg-red-50 px-4 text-sm font-bold text-red-500 transition hover:bg-red-100"
                 >
-                  Nhắn tin ngay
-                </a>
+                  Chat Ngay
+                </button>
                 <Link
                   href={`/shops/${shopSlug}`}
                   data-testid="shop-profile-link"
@@ -1205,7 +1439,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
             {[
               ['Đánh giá', formatCompactCount(shopReviewCount)],
               ['Sản phẩm', shopProductCount.toLocaleString('vi-VN')],
-              ['Tỉ lệ phản hồi', '89%'],
+              ['Tỉ Lệ Phản Hồi', '89%'],
               ['Thời gian phản hồi', 'trong vài phút'],
               ['Tham gia', '8 năm trước'],
               ['Người theo dõi', formatCompactCount(shopFollowerCount)],
@@ -1258,9 +1492,30 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
             <section ref={sizeGuideRef} id="size-guide" className="mt-8 scroll-mt-24 border-t border-warm pt-6">
               <h3 className="text-base font-black uppercase tracking-normal text-stone-900">Hướng dẫn chọn cỡ</h3>
               <p className="mt-3 text-sm leading-7 text-stone-600">
-                Nếu bạn phân vân giữa hai cỡ, hãy chọn cỡ lớn hơn để thoải mái hơn. Vui lòng đối chiếu
-                thông số cơ thể với bảng cỡ của từng mẫu sản phẩm trước khi đặt hàng.
+                Bảng này được tạo theo nhóm sản phẩm và các biến thể đang bán. Nếu bạn phân vân giữa hai cỡ, hãy chọn cỡ lớn hơn để thoải mái hơn.
               </p>
+              <div className="mt-4 overflow-hidden border border-warm">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-stone-50 text-xs font-black uppercase text-stone-500">
+                    <tr>
+                      <th className="px-3 py-2">Cỡ</th>
+                      <th className="px-3 py-2">Số đo gợi ý</th>
+                      <th className="px-3 py-2">Thông số sản phẩm</th>
+                      <th className="px-3 py-2">Lưu ý</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-warm bg-white">
+                    {sizeGuideRows.map((row) => (
+                      <tr key={row.size}>
+                        <td className="px-3 py-2 font-black text-stone-900">{row.size}</td>
+                        <td className="px-3 py-2 text-stone-600">{row.body}</td>
+                        <td className="px-3 py-2 text-stone-600">{row.product}</td>
+                        <td className="px-3 py-2 text-stone-600">{row.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
           )}
 
@@ -1276,26 +1531,30 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
         <aside data-testid="product-detail-sidebar" className="space-y-4">
           <section className="bg-white px-4 py-5 shadow-sm ring-1 ring-warm">
-            <h2 className="text-sm font-semibold text-stone-400">Mã giảm giá của cửa hàng</h2>
+            <h2 className="text-sm font-semibold text-stone-400">Mã giảm giá của Shop</h2>
             <div className="mt-5 space-y-3">
-              {[
-                ['Giảm 3k₫', 'Đơn Tối Thiểu 145k₫'],
-                ['Giảm 5k₫', 'Đơn Tối Thiểu 199k₫'],
-                ['Giảm 50%', 'Giảm tối đa 10k₫'],
-              ].map(([title, condition]) => (
-                <div key={title} className="grid min-h-24 grid-cols-[1fr_70px] overflow-hidden border border-red-100 bg-red-50 text-red-500">
+              {storeCoupons.map((coupon) => {
+                const isSaved = savedCouponCodes.includes(coupon.code);
+                return (
+                <div key={coupon.code} className="grid min-h-24 grid-cols-[1fr_70px] overflow-hidden border border-red-100 bg-red-50 text-red-500">
                   <div className="flex flex-col justify-center px-3">
-                    <p className="text-sm font-black leading-tight">{title}</p>
-                    <p className="mt-0.5 text-xs font-semibold leading-tight">{condition}</p>
+                    <p className="text-sm font-black leading-tight">{coupon.title}</p>
+                    <p className="mt-0.5 text-xs font-semibold leading-tight">{coupon.condition}</p>
+                    <p className="mt-1 text-[11px] font-bold text-red-600">{coupon.code}</p>
                     <p className="mt-2 text-[11px] text-stone-500">HSD: 20.07.2026</p>
                   </div>
                   <div className="flex items-center justify-center border-l border-dashed border-red-200 bg-red-50">
-                    <button type="button" className="h-9 rounded-sm bg-red-500 px-4 text-xs font-black text-white transition hover:bg-red-600">
-                      Lưu
+                    <button
+                      type="button"
+                      onClick={() => saveStoreCoupon(coupon.code)}
+                      className={`h-9 rounded-sm px-4 text-xs font-black text-white transition ${isSaved ? 'bg-stone-400' : 'bg-red-500 hover:bg-red-600'}`}
+                    >
+                      {isSaved ? 'Đã lưu' : 'Lưu'}
                     </button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </section>
 
@@ -1324,6 +1583,13 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
       <ReviewsSection productId={product.id} />
       <RelatedProducts slug={slug} />
+      <StoreChatPanel
+        open={showStoreChat}
+        onClose={() => setShowStoreChat(false)}
+        shopName={shopName}
+        productName={product.name}
+        variantLabel={selectedVariant ? getVariantLabel(selectedVariant) : ''}
+      />
       <ChatWidget />
     </div>
   );

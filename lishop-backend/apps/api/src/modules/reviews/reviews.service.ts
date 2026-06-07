@@ -1,7 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ReviewsRepository, ReviewWithUser, AdminReview } from './reviews.repository';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { UpdateReviewDto } from './dto/update-review.dto';
 import { Review, ReviewStatus } from '@lishop/database';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
@@ -33,6 +34,9 @@ export class ReviewsService {
     if (existing) throw new ConflictException('Bạn đã đánh giá sản phẩm này rồi');
 
     const verifiedPurchase = await this.repo.hasDeliveredOrderWithProduct(userId, productId);
+    if (!verifiedPurchase) {
+      throw new BadRequestException('Bạn chỉ có thể đánh giá sản phẩm đã mua và đã giao thành công');
+    }
 
     const review = await this.repo.create({
       rating: dto.rating,
@@ -45,6 +49,23 @@ export class ReviewsService {
 
     await this.repo.refreshProductReviewStats(productId);
     return review;
+  }
+
+  async updateReview(userId: string, reviewId: string, dto: UpdateReviewDto): Promise<Review> {
+    const existing = await this.repo.findById(reviewId);
+    if (!existing) throw new NotFoundException(`Review ${reviewId} not found`);
+    if (existing.userId !== userId) {
+      throw new ForbiddenException('Bạn chỉ có thể chỉnh sửa đánh giá của chính mình');
+    }
+
+    const updated = await this.repo.updateOwnedReview(userId, reviewId, {
+      ...(dto.rating !== undefined && { rating: dto.rating }),
+      ...(dto.content !== undefined && { content: dto.content }),
+      status: ReviewStatus.APPROVED,
+    });
+
+    await this.repo.refreshProductReviewStats(existing.productId);
+    return updated;
   }
 
   findAllForAdmin(status?: ReviewStatus): Promise<AdminReview[]> {
