@@ -2,8 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 
 const ORDERS_URL = process.env['E2E_ORDERS_URL'] ?? 'http://localhost:3005';
 const CATALOG_URL = process.env['E2E_CATALOG_URL'] ?? 'http://localhost:3002';
-const PROFILE_URL = process.env['E2E_PROFILE_URL'] ?? 'http://localhost:3006';
-const API_URL = process.env['E2E_API_URL'] ?? 'http://localhost:4000';
 
 async function addLoginCookie(page: Page) {
   await page.context().addCookies([
@@ -20,7 +18,6 @@ async function addLoginCookie(page: Page) {
 
 test.describe('my orders actions', () => {
   test('customer can contact shop from an order and buy the product again', async ({ page }) => {
-    let createdTicketPayload: Record<string, unknown> | null = null;
     await addLoginCookie(page);
 
     await page.route('**/orders', async (route) => {
@@ -75,46 +72,11 @@ test.describe('my orders actions', () => {
       });
     });
 
-    await page.route('**/support/tickets', async (route) => {
-      if (route.request().resourceType() === 'document') return route.fallback();
-      if (!route.request().url().includes(':4000/')) return route.fallback();
-      if (route.request().method() !== 'POST') {
-        await route.continue();
-        return;
-      }
-
-      createdTicketPayload = route.request().postDataJSON() as Record<string, unknown>;
-      await route.fulfill({
-        status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            id: 'ticket-order-1',
-            userId: 'user-1',
-            category: 'ORDER',
-            subject: 'Liên hệ cửa hàng về đơn hàng LS-ORDER-001',
-            status: 'OPEN',
-            orderRef: 'LS-ORDER-001',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            user: { id: 'user-1', email: 'buyer@example.com', firstName: 'Order', lastName: 'Tester' },
-            messages: [],
-          },
-        }),
-      });
-    });
     await page.route(`${CATALOG_URL}/products/iphone-15-pro`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'text/html',
         body: '<main>Product detail: iPhone 15 Pro</main>',
-      });
-    });
-    await page.route(`${PROFILE_URL}/support/ticket-order-1`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'text/html',
-        body: '<main>Chat with shop</main>',
       });
     });
 
@@ -125,15 +87,14 @@ test.describe('my orders actions', () => {
     await expect(page).toHaveURL(`${CATALOG_URL}/products/iphone-15-pro`);
 
     await page.goto(`${ORDERS_URL}/orders`);
-    await page.getByRole('button', { name: /li/i }).click();
+    await page.getByRole('button', { name: /liên hệ người bán/i }).click();
 
-    await expect.poll(() => createdTicketPayload).not.toBeNull();
-    expect(createdTicketPayload).toMatchObject({
-      category: 'ORDER',
-      orderRef: 'LS-ORDER-001',
-    });
-    expect(String(createdTicketPayload?.['subject'])).toContain('LS-ORDER-001');
-    expect(String(createdTicketPayload?.['description'])).toContain('iPhone 15 Pro');
-    await expect(page).toHaveURL(`${PROFILE_URL}/support/ticket-order-1`);
+    await expect(page.getByTestId('order-shop-chat-panel')).toBeVisible();
+    await expect(page.getByTestId('order-shop-chat-panel')).toContainText('LS-ORDER-001');
+    await page.getByTestId('order-shop-chat-input').fill('Shop ơi đơn này giao xong chưa?');
+    await page.getByTestId('order-shop-chat-send').click();
+    await expect(page.getByText('Shop ơi đơn này giao xong chưa?')).toBeVisible();
+    await expect(page.getByText(/Shop đã nhận tin nhắn/)).toBeVisible();
+    await expect(page).toHaveURL(`${ORDERS_URL}/orders`);
   });
 });

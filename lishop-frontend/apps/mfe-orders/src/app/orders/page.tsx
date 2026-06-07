@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { formatVND, hasSessionCookie } from '@lishop/shared';
 import { ordersApi, OrderStatus, type OrderSummary } from '../../lib/orders-api';
@@ -10,7 +10,6 @@ import { AccountSidebar } from '../../components/account-sidebar';
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
 const CATALOG_BASE_URL = process.env['NEXT_PUBLIC_MFE_CATALOG_URL'] ?? 'http://localhost:3002';
 const CATALOG_PRODUCTS_URL = `${CATALOG_BASE_URL}/products`;
-const PROFILE_URL = process.env['NEXT_PUBLIC_MFE_PROFILE_URL'] ?? 'http://localhost:3006';
 const SHOP_NAME = 'Lishop Official Store';
 
 const STATUS_META: Record<OrderStatus, { label: string; color: string; dot: string }> = {
@@ -62,9 +61,135 @@ function compactDate(value: string) {
   });
 }
 
+interface ShopChatMessage {
+  from: 'buyer' | 'shop';
+  text: string;
+  time: string;
+}
+
+function OrderShopChatPanel({
+  order,
+  onClose,
+}: {
+  order: OrderSummary;
+  onClose: () => void;
+}) {
+  const storageKey = `lishop_order_shop_chat_${order.id}`;
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<ShopChatMessage[]>([]);
+  const productNames = order.items.map((item) => item.productName).join(', ');
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(storageKey);
+      if (saved) {
+        setMessages(JSON.parse(saved) as ShopChatMessage[]);
+        return;
+      }
+    } catch {
+      // Keep chat usable even when storage is unavailable or contains stale data.
+    }
+
+    setMessages([
+      {
+        from: 'shop',
+        text: `Chào bạn, ${SHOP_NAME} có thể hỗ trợ về đơn ${order.orderNumber}${productNames ? ` (${productNames})` : ''}.`,
+        time: new Date().toISOString(),
+      },
+    ]);
+  }, [order.orderNumber, productNames, storageKey]);
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    window.localStorage.setItem(storageKey, JSON.stringify(messages));
+  }, [messages, storageKey]);
+
+  function sendMessage() {
+    const text = input.trim();
+    if (!text) return;
+
+    const now = new Date().toISOString();
+    setMessages((current) => [
+      ...current,
+      { from: 'buyer', text, time: now },
+      {
+        from: 'shop',
+        text: 'Shop đã nhận tin nhắn. Tư vấn viên sẽ phản hồi sớm trong khung chat này.',
+        time: now,
+      },
+    ]);
+    setInput('');
+  }
+
+  return (
+    <div
+      data-testid="order-shop-chat-panel"
+      className="fixed bottom-6 right-6 z-50 flex h-[460px] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-2xl shadow-stone-900/20"
+    >
+      <div className="flex items-center justify-between bg-stone-950 px-4 py-3 text-white">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black">{SHOP_NAME}</p>
+          <p className="mt-0.5 text-xs font-semibold text-stone-300">Chat về đơn {order.orderNumber}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-stone-300 transition hover:bg-white/10 hover:text-white"
+          aria-label="Đóng chat với người bán"
+        >
+          x
+        </button>
+      </div>
+
+      <div className="border-b border-stone-100 bg-indigo-50 px-4 py-2 text-xs font-semibold text-indigo-700">
+        {productNames || 'Đơn hàng của bạn'}
+      </div>
+
+      <div className="flex-1 space-y-3 overflow-y-auto bg-stone-50 px-3 py-3">
+        {messages.map((message, index) => (
+          <div key={`${message.time}-${index}`} className={`flex ${message.from === 'buyer' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm leading-6 ${
+                message.from === 'buyer'
+                  ? 'bg-indigo-600 text-white'
+                  : 'border border-stone-200 bg-white text-stone-700 shadow-sm'
+              }`}
+            >
+              {message.text}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2 border-t border-stone-100 bg-white px-3 py-3">
+        <input
+          data-testid="order-shop-chat-input"
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') sendMessage();
+          }}
+          placeholder="Nhập tin nhắn cho shop..."
+          className="min-w-0 flex-1 rounded-xl border border-stone-200 px-3 py-2 text-sm font-medium text-stone-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+        <button
+          data-testid="order-shop-chat-send"
+          type="button"
+          onClick={sendMessage}
+          disabled={!input.trim()}
+          className="rounded-xl bg-stone-950 px-4 py-2 text-sm font-black text-white transition hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Gửi
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function OrdersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
+  const [chatOrder, setChatOrder] = useState<OrderSummary | null>(null);
 
   useEffect(() => {
     if (!hasSessionCookie()) window.location.replace(`${AUTH_URL}/login`);
@@ -74,21 +199,6 @@ export default function OrdersPage() {
     queryKey: ['my-orders'],
     queryFn: () => ordersApi.getOrders(),
     retry: false,
-  });
-
-  const contactSellerMutation = useMutation({
-    mutationFn: (order: OrderSummary) => {
-      const productNames = order.items.map((item) => item.productName).join(', ');
-      return ordersApi.createSupportTicket({
-        category: 'ORDER',
-        subject: `Liên hệ cửa hàng về đơn hàng ${order.orderNumber}`,
-        description: `Tôi cần liên hệ cửa hàng về đơn hàng ${order.orderNumber}. Sản phẩm: ${productNames}.`,
-        orderRef: order.orderNumber,
-      });
-    },
-    onSuccess: (ticket) => {
-      window.location.href = `${PROFILE_URL}/support/${ticket.id}`;
-    },
   });
 
   const filteredOrders = useMemo(() => {
@@ -210,10 +320,6 @@ export default function OrdersPage() {
                     ? `${CATALOG_PRODUCTS_URL}/${firstItem.productSlug}`
                     : `${CATALOG_PRODUCTS_URL}?q=${encodeURIComponent(firstItem.productName)}`
                   : CATALOG_PRODUCTS_URL;
-                const isContactingSeller =
-                  contactSellerMutation.isPending &&
-                  contactSellerMutation.variables?.id === order.id;
-
                 return (
                   <div key={order.id} className="card p-5 transition-all hover:border-indigo-200">
                     <div className="flex items-start justify-between gap-4">
@@ -276,8 +382,7 @@ export default function OrdersPage() {
                           </Link>
                           <button
                             type="button"
-                            onClick={() => contactSellerMutation.mutate(order)}
-                            disabled={isContactingSeller}
+                            onClick={() => setChatOrder(order)}
                             className="rounded-xl border border-warm bg-white px-3 py-2 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                           >
                             Liên hệ người bán
@@ -302,6 +407,7 @@ export default function OrdersPage() {
           )}
         </div>
       </div>
+      {chatOrder && <OrderShopChatPanel order={chatOrder} onClose={() => setChatOrder(null)} />}
     </div>
   );
 }
