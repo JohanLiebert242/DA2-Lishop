@@ -32,7 +32,11 @@ async function registerCustomer(request: APIRequestContext) {
   });
 
   expect(response.ok()).toBeTruthy();
-  const data = await unwrap<{ accessToken: string }>(response);
+  const loginResponse = await request.post(`${API_URL}/auth/login`, {
+    data: { email, password: PASSWORD },
+  });
+  expect(loginResponse.ok()).toBeTruthy();
+  const data = await unwrap<{ accessToken: string }>(loginResponse);
   return { email, accessToken: data.accessToken };
 }
 
@@ -115,6 +119,19 @@ async function mockMapServices(page: Page) {
 }
 
 test.describe('shipping addresses', () => {
+  test('shows a visible map fallback when OpenStreetMap tiles fail to load', async ({ page, request }) => {
+    const customer = await registerCustomer(request);
+    await addLoginCookies(page, customer.accessToken);
+    await page.route('https://tile.openstreetmap.org/**', async (route) => {
+      await route.fulfill({ status: 503, contentType: 'text/plain', body: 'tile unavailable' });
+    });
+
+    await page.goto(`${PROFILE_URL}/addresses`);
+    await page.locator('main button').last().click();
+
+    await expect(page.getByTestId('address-map-fallback')).toBeVisible();
+  });
+
   test('customer can use autocomplete, pick the map, and save coordinates', async ({ page, request }) => {
     const customer = await registerCustomer(request);
     await addLoginCookies(page, customer.accessToken);

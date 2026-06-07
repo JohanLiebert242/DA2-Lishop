@@ -133,6 +133,7 @@ function AddressPickerMap({
   onPick: (point: MapPoint) => void;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
+  const [tileLoadFailed, setTileLoadFailed] = useState(false);
   const centerPixel = latLonToPixel(point.lat, point.lon, MAP_ZOOM);
   const centerTileX = Math.floor(centerPixel.x / MAP_TILE_SIZE);
   const centerTileY = Math.floor(centerPixel.y / MAP_TILE_SIZE);
@@ -170,6 +171,29 @@ function AddressPickerMap({
         className="relative h-72 cursor-crosshair overflow-hidden bg-stone-100"
         aria-label="Chọn vị trí trên bản đồ"
       >
+        <div
+          data-testid="address-map-fallback"
+          className="pointer-events-none absolute inset-0 overflow-hidden bg-[#e8f3ed]"
+          aria-hidden="true"
+        >
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.7)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.7)_1px,transparent_1px)] bg-[size:42px_42px]" />
+          <div className="absolute -left-10 top-16 h-16 w-[125%] -rotate-6 rounded-full bg-sky-200/70 blur-[1px]" />
+          <div className="absolute left-[-8%] top-20 h-7 w-[118%] -rotate-6 rounded-full bg-sky-100/90" />
+          <div className="absolute left-10 top-7 h-3 w-[78%] rotate-3 rounded-full bg-white/85 shadow-sm" />
+          <div className="absolute left-20 bottom-14 h-3 w-[70%] -rotate-12 rounded-full bg-white/85 shadow-sm" />
+          <div className="absolute -right-8 top-9 h-3 w-[50%] rotate-[62deg] rounded-full bg-white/85 shadow-sm" />
+          <div className="absolute left-8 bottom-8 rounded-lg bg-white/75 px-2.5 py-1 text-[11px] font-bold text-stone-600 shadow-sm">
+            Quận trung tâm
+          </div>
+          <div className="absolute right-7 top-8 rounded-lg bg-white/75 px-2.5 py-1 text-[11px] font-bold text-stone-600 shadow-sm">
+            Khu giao hàng
+          </div>
+          {tileLoadFailed && (
+            <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-black text-indigo-700 shadow-sm">
+              Bản đồ tạm thời
+            </div>
+          )}
+        </div>
         <div className="absolute left-1/2 top-1/2 h-0 w-0">
           {tiles.map((tile) => (
             // eslint-disable-next-line @next/next/no-img-element
@@ -179,6 +203,7 @@ function AddressPickerMap({
               alt=""
               className="absolute h-64 w-64 select-none"
               draggable={false}
+              onError={() => setTileLoadFailed(true)}
               style={{
                 left: tile.dx * MAP_TILE_SIZE - offsetX,
                 top: tile.dy * MAP_TILE_SIZE - offsetY,
