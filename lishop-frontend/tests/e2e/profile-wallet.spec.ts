@@ -16,6 +16,25 @@ async function addLoginCookies(page: Page) {
 }
 
 async function mockWalletApis(page: Page) {
+  await page.route('**/users/profile', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          id: 'wallet-user',
+          email: 'wallet-user@lishop.vn',
+          firstName: 'Wallet',
+          lastName: 'Tester',
+          avatarUrl: null,
+          loyaltyPoints: 5,
+          role: 'CUSTOMER',
+          createdAt: new Date().toISOString(),
+        },
+      }),
+    });
+  });
+
   await page.route('**/wallet', async (route) => {
     if (route.request().resourceType() !== 'fetch') {
       await route.continue();
@@ -73,7 +92,7 @@ test.describe('profile wallet', () => {
       await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
     });
 
-    await page.goto(`${PROFILE_URL}/wallet`);
+    await page.goto(`${PROFILE_URL}/wallet`, { waitUntil: 'networkidle' });
 
     const topupAmount = page.getByTestId('wallet-topup-amount');
     await topupAmount.fill('10000');
@@ -93,7 +112,7 @@ test.describe('profile wallet', () => {
     await addLoginCookies(page);
     await mockWalletApis(page);
 
-    await page.goto(`${PROFILE_URL}/wallet`);
+    await page.goto(`${PROFILE_URL}/wallet`, { waitUntil: 'networkidle' });
     await page.getByTestId('wallet-points-amount').fill('100');
     await page.getByTestId('wallet-points-submit').click();
 
