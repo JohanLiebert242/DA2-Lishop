@@ -4,6 +4,7 @@ import { Providers } from '../components/providers';
 import { Header } from '../components/header';
 import { Footer } from '../components/footer';
 import { AnnouncementBar } from '../components/announcement-bar';
+import { AiChatWidget } from '../components/ai-chat-widget';
 
 export const metadata: Metadata = {
   title: 'Lishop — Mua sắm thông minh',
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AnnouncementBar />
           <Header />
           <main className="flex-1">{children}</main>
+          <AiChatWidget />
           <Footer />
         </Providers>
       </body>

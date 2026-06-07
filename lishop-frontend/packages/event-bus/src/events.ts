@@ -5,6 +5,7 @@ export enum LishopEvent {
   CART_CLEARED = 'CART_CLEARED',
   ORDER_PLACED = 'ORDER_PLACED',
   NOTIFICATION_RECEIVED = 'NOTIFICATION_RECEIVED',
+  PROFILE_UPDATED = 'PROFILE_UPDATED',
 }
 
 export interface LishopEventPayloads {
@@ -14,4 +15,10 @@ export interface LishopEventPayloads {
   [LishopEvent.CART_CLEARED]: undefined;
   [LishopEvent.ORDER_PLACED]: { orderId: string; orderNumber: string };
   [LishopEvent.NOTIFICATION_RECEIVED]: { notificationId: string };
+  [LishopEvent.PROFILE_UPDATED]: {
+    userId: string;
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string | null;
+  };
 }

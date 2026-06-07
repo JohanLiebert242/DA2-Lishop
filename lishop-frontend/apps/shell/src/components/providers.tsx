@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@lishop/ui';
+import { eventBus, LishopEvent } from '@lishop/event-bus';
 import { queryClient } from '../lib/query-client';
 import { useAuthStore } from '../stores/auth.store';
 
@@ -33,6 +34,30 @@ function AuthInitializer() {
         setAuth(meJson.data ?? meJson, newToken);
       });
   }, [setAuth, clearAuth]);
+
+  useEffect(() => {
+    const handler = (payload: {
+      userId: string;
+      firstName?: string;
+      lastName?: string;
+      avatarUrl?: string | null;
+    }) => {
+      const current = useAuthStore.getState().user;
+      if (!current || current.id !== payload.userId) return;
+      setAuth(
+        {
+          ...current,
+          ...(payload.firstName !== undefined && { firstName: payload.firstName }),
+          ...(payload.lastName !== undefined && { lastName: payload.lastName }),
+          ...(payload.avatarUrl !== undefined && { avatarUrl: payload.avatarUrl }),
+        },
+        useAuthStore.getState().accessToken,
+      );
+    };
+
+    eventBus.on(LishopEvent.PROFILE_UPDATED, handler);
+    return () => eventBus.off(LishopEvent.PROFILE_UPDATED, handler);
+  }, [setAuth]);
 
   return null;
 }

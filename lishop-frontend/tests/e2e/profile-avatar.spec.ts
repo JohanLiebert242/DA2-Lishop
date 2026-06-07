@@ -70,7 +70,8 @@ test.describe('profile avatar', () => {
     expect(previewSrc?.length).toBeGreaterThan(500);
 
     await page.locator('button.btn-primary').first().click();
-    await expect(page.locator('img[alt="Avatar Tester"]')).toHaveAttribute('src', previewSrc!);
+    await expect(page.getByTestId('profile-main-avatar')).toHaveAttribute('src', previewSrc!);
+    await expect(page.getByTestId('profile-sidebar-avatar')).toHaveAttribute('src', previewSrc!);
     expect(savedAvatarUrl).toBe(previewSrc);
   });
 });

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hasSessionCookie } from '@lishop/shared';
+import { eventBus, LishopEvent } from '@lishop/event-bus';
 import { profileApi, UpdateProfileInput, LoyaltyPointItem } from '../../lib/profile-api';
 import { AccountSidebar } from '../../components/account-sidebar';
 
@@ -29,6 +30,12 @@ export default function ProfilePage() {
     mutationFn: (data: UpdateProfileInput) => profileApi.updateProfile(data),
     onSuccess: (updated) => {
       queryClient.setQueryData(['profile'], updated);
+      eventBus.emit(LishopEvent.PROFILE_UPDATED, {
+        userId: updated.id,
+        firstName: updated.firstName ?? undefined,
+        lastName: updated.lastName ?? undefined,
+        avatarUrl: updated.avatarUrl,
+      });
       setEditing(false);
       setMessage('Cập nhật thành công!');
       setTimeout(() => setMessage(''), 3000);
@@ -147,7 +154,7 @@ export default function ProfilePage() {
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-600 text-xl font-bold text-white shadow-brand">
                 {profile.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.avatarUrl} alt={displayName} className="h-16 w-16 object-cover" />
+                  <img data-testid="profile-main-avatar" src={profile.avatarUrl} alt={displayName} className="h-16 w-16 object-cover" />
                 ) : (
                   initials
                 )}

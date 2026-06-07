@@ -1,5 +1,9 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
+import { hasSessionCookie } from '@lishop/shared';
+import { profileApi } from '../lib/profile-api';
+
 const MFE_ORDERS = process.env['NEXT_PUBLIC_MFE_ORDERS_URL'] ?? 'http://localhost:3005';
 const MFE_PROFILE = process.env['NEXT_PUBLIC_MFE_PROFILE_URL'] ?? 'http://localhost:3006';
 const MFE_NOTIF = process.env['NEXT_PUBLIC_MFE_NOTIFICATIONS_URL'] ?? 'http://localhost:3008';
@@ -17,15 +21,38 @@ const PROFILE_KEYS = new Set<AccountSection>(PROFILE_SECTIONS.map((item) => item
 
 export function AccountSidebar({ activeSection }: { activeSection: AccountSection }) {
   const isProfileGroupActive = PROFILE_KEYS.has(activeSection);
+  const canLoadProfile = hasSessionCookie();
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: () => profileApi.getProfile(),
+    enabled: canLoadProfile,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const initials = (profile?.firstName?.[0] ?? profile?.email?.[0] ?? 'U').toUpperCase();
+  const displayName =
+    profile?.firstName && profile?.lastName
+      ? `${profile.firstName} ${profile.lastName}`
+      : profile?.email ?? 'Tài khoản của tôi';
 
   return (
     <aside className="w-56 shrink-0">
       <div className="overflow-hidden rounded-2xl border border-warm bg-white shadow-sm">
         <div className="bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-            <span className="text-2xl">👤</span>
+          <div className="mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/20 text-base font-black backdrop-blur-sm">
+            {profile?.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                data-testid="profile-sidebar-avatar"
+                src={profile.avatarUrl}
+                alt={displayName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span data-testid="profile-sidebar-initials">{profile ? initials : '👤'}</span>
+            )}
           </div>
-          <p className="text-sm font-bold">Tài khoản của tôi</p>
+          <p className="truncate text-sm font-bold">{displayName}</p>
           <p className="mt-0.5 text-xs text-white/70">Quản lý thông tin cá nhân</p>
         </div>
 

@@ -109,6 +109,7 @@ export function Header() {
   };
 
   const accountInitial = user?.firstName?.charAt(0).toUpperCase() ?? 'U';
+  const accountAvatar = user?.avatarUrl?.trim() || null;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-stone-200/80 bg-white/95 shadow-[0_10px_35px_rgba(28,25,23,0.06)] backdrop-blur-xl">
@@ -232,7 +233,14 @@ export function Header() {
                   className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-white px-2 py-1.5 text-sm font-bold text-stone-800 transition hover:border-stone-300 hover:bg-stone-50"
                   aria-label="Tài khoản"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-stone-950 text-xs font-black text-white">{accountInitial}</span>
+                  <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-stone-950 text-xs font-black text-white">
+                    {accountAvatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img data-testid="shell-account-avatar" src={accountAvatar} alt="Avatar" className="h-full w-full object-cover" />
+                    ) : (
+                      accountInitial
+                    )}
+                  </span>
                   <span className="hidden max-w-28 truncate sm:block">{user?.firstName ?? 'Tài khoản'}</span>
                   <svg className={`h-4 w-4 text-stone-400 transition ${showAccount ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -243,7 +251,14 @@ export function Header() {
                   <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl shadow-stone-900/12">
                     <div className="border-b border-stone-100 bg-stone-950 px-4 py-4 text-white">
                       <div className="flex items-center gap-3">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-400 text-sm font-black text-stone-950">{accountInitial}</span>
+                        <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-amber-400 text-sm font-black text-stone-950">
+                          {accountAvatar ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img data-testid="shell-account-menu-avatar" src={accountAvatar} alt="Avatar" className="h-full w-full object-cover" />
+                          ) : (
+                            accountInitial
+                          )}
+                        </span>
                         <div className="min-w-0">
                           <p className="truncate text-sm font-black">{user?.firstName ?? 'Tài khoản Lishop'}</p>
                           <p className="mt-0.5 text-xs font-semibold text-stone-300">{user?.role ?? 'CUSTOMER'}</p>

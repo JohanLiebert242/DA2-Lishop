@@ -22,4 +22,72 @@ test.describe('shell support center', () => {
     await page.getByTestId('support-search-submit').click();
     await expect(page).toHaveURL(/\/support\?q=ho%C3%A0n\+ti%E1%BB%81n/);
   });
+
+  test('shows AI chat support and sends a message', async ({ page }) => {
+    await page.route('**/support/chat', async (route) => {
+      const body = route.request().postDataJSON() as { message?: string };
+      expect(body.message).toBe('Tôi cần hỗ trợ đơn hàng');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            reply: 'Bạn có thể vào mục Đơn hàng để theo dõi hoặc tạo yêu cầu hỗ trợ.',
+            type: 'text',
+          },
+        }),
+      });
+    });
+
+    await page.goto(`${SHELL_URL}/support`, { waitUntil: 'networkidle' });
+    const chatToggle = page.getByTestId('shell-ai-chat-toggle');
+    await expect(chatToggle).toBeVisible();
+    await chatToggle.click();
+    await expect(page.getByTestId('shell-ai-chat-panel')).toBeVisible();
+    await page.getByTestId('shell-ai-chat-input').fill('Tôi cần hỗ trợ đơn hàng');
+    await page.getByTestId('shell-ai-chat-send').click();
+
+    await expect(page.getByText('Bạn có thể vào mục Đơn hàng để theo dõi')).toBeVisible();
+  });
+
+  test('updates header avatar when profile data changes', async ({ page }) => {
+    const initialAvatar = 'data:image/png;base64,aW5pdGlhbA==';
+    const nextAvatar = 'data:image/png;base64,dXBkYXRlZA==';
+
+    await page.context().addCookies([
+      { name: 'lishop_session', value: '1', domain: 'localhost', path: '/', sameSite: 'Lax' },
+    ]);
+
+    await page.route('**/auth/me', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: 'user-avatar-sync',
+            email: 'avatar-sync@lishop.vn',
+            firstName: 'Avatar',
+            lastName: 'Sync',
+            avatarUrl: initialAvatar,
+            role: 'CUSTOMER',
+            emailVerified: true,
+          },
+        }),
+      });
+    });
+
+    await page.goto(`${SHELL_URL}/support`, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('shell-account-avatar')).toHaveAttribute('src', initialAvatar);
+
+    await page.evaluate((avatarUrl) => {
+      const channel = new BroadcastChannel('lishop-events');
+      channel.postMessage({
+        event: 'PROFILE_UPDATED',
+        payload: { userId: 'user-avatar-sync', avatarUrl },
+      });
+      channel.close();
+    }, nextAvatar);
+
+    await expect(page.getByTestId('shell-account-avatar')).toHaveAttribute('src', nextAvatar);
+  });
 });
