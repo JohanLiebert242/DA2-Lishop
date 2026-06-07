@@ -20,6 +20,7 @@ function FaqAccordionItem({ item }: { item: FaqItem }) {
   return (
     <div className="border-b border-gray-100 last:border-0">
       <button
+        data-testid="support-faq-item"
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left hover:bg-gray-50 transition-colors"
       >

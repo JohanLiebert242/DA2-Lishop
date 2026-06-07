@@ -184,6 +184,7 @@ const productSeeds: ProductSeed[] = [
     ['Kiehl Calendula Toner', 950000],
     ['The Ordinary Niacinamide Serum', 320000],
   ], 70),
+  ...buildExpandedCatalog(),
 ];
 
 function makeProducts(
@@ -202,6 +203,58 @@ function makeProducts(
     variantKind,
     tags: index % 3 === 0 ? ['hot', 'bestseller'] : index % 3 === 1 ? ['new'] : ['sale'],
   }));
+}
+
+function buildExpandedCatalog(): ProductSeed[] {
+  const blueprints: Array<{
+    brand: string;
+    categorySlug: string;
+    imageKey: keyof typeof IMAGE_POOLS;
+    variantKind?: ProductSeed['variantKind'];
+    labels: string[];
+    basePrice: number;
+    priceStep: number;
+    baseStock: number;
+  }> = [
+    { brand: 'Apple', categorySlug: 'phones', imageKey: 'phones', variantKind: 'tech', labels: ['Vision', 'Air', 'Plus'], basePrice: 18990000, priceStep: 900000, baseStock: 24 },
+    { brand: 'Samsung', categorySlug: 'phones', imageKey: 'phones', variantKind: 'tech', labels: ['Galaxy', 'Ultra', 'Neo'], basePrice: 13990000, priceStep: 750000, baseStock: 26 },
+    { brand: 'Xiaomi', categorySlug: 'phones', imageKey: 'phones', variantKind: 'tech', labels: ['Redmi', 'Note', 'Ultra'], basePrice: 6990000, priceStep: 550000, baseStock: 30 },
+    { brand: 'OPPO', categorySlug: 'phones', imageKey: 'phones', variantKind: 'tech', labels: ['Reno', 'Find', 'Air'], basePrice: 7990000, priceStep: 520000, baseStock: 28 },
+    { brand: 'Google', categorySlug: 'phones', imageKey: 'phones', variantKind: 'tech', labels: ['Pixel', 'Pro', 'Fold'], basePrice: 14990000, priceStep: 850000, baseStock: 22 },
+    { brand: 'ASUS', categorySlug: 'laptops', imageKey: 'laptops', variantKind: 'tech', labels: ['Zenbook', 'Vivobook', 'ROG'], basePrice: 16990000, priceStep: 1100000, baseStock: 20 },
+    { brand: 'Dell', categorySlug: 'laptops', imageKey: 'laptops', variantKind: 'tech', labels: ['Inspiron', 'Latitude', 'XPS'], basePrice: 17990000, priceStep: 1250000, baseStock: 20 },
+    { brand: 'Nike', categorySlug: 'shoes', imageKey: 'shoes', variantKind: 'shoe', labels: ['Run', 'Street', 'Training'], basePrice: 1490000, priceStep: 120000, baseStock: 36 },
+    { brand: "Levi's", categorySlug: 'mens-wear', imageKey: 'fashion', variantKind: 'size', labels: ['Denim', 'Urban', 'Classic'], basePrice: 890000, priceStep: 90000, baseStock: 32 },
+    { brand: 'Zara', categorySlug: 'womens-wear', imageKey: 'fashion', variantKind: 'size', labels: ['Studio', 'Soft', 'Daily'], basePrice: 790000, priceStep: 80000, baseStock: 34 },
+    { brand: 'Philips', categorySlug: 'kitchen', imageKey: 'kitchen', labels: ['Home', 'Cook', 'Fresh'], basePrice: 990000, priceStep: 150000, baseStock: 26 },
+    { brand: 'Kiehl', categorySlug: 'skincare', imageKey: 'beauty', labels: ['Daily', 'Glow', 'Repair'], basePrice: 520000, priceStep: 70000, baseStock: 40 },
+    { brand: 'The Ordinary', categorySlug: 'skincare', imageKey: 'beauty', labels: ['Balance', 'Clear', 'Hydrate'], basePrice: 260000, priceStep: 35000, baseStock: 44 },
+    { brand: 'La Roche Posay', categorySlug: 'skincare', imageKey: 'beauty', labels: ['Care', 'Barrier', 'Derm'], basePrice: 390000, priceStep: 45000, baseStock: 42 },
+  ];
+
+  const products: ProductSeed[] = [];
+
+  for (const blueprint of blueprints) {
+    for (let index = 1; index <= 30; index++) {
+      const line = blueprint.labels[(index - 1) % blueprint.labels.length];
+      products.push({
+        name: `${blueprint.brand} ${line} Series ${String(index).padStart(2, '0')}`,
+        categorySlug: blueprint.categorySlug,
+        priceVnd: blueprint.basePrice + (index - 1) * blueprint.priceStep,
+        stock: blueprint.baseStock + (index % 9) * 2,
+        imageKey: blueprint.imageKey,
+        variantKind: blueprint.variantKind,
+        tags:
+          index % 5 === 0
+            ? ['sale', 'hot', 'bestseller']
+            : index % 3 === 0
+              ? ['new', 'premium']
+              : ['hot', 'office'],
+      });
+    }
+  }
+
+  return products;
 }
 
 function slugify(value: string) {

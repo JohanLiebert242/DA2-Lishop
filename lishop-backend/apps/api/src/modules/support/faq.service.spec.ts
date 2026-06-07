@@ -54,11 +54,30 @@ describe('FaqService', () => {
     expect(result[0]!.items).toHaveLength(2);
   });
 
+  it('getPublished returns default FAQs when database has no published FAQ', async () => {
+    repo.findPublished.mockResolvedValue([]);
+
+    const result = await service.getPublished();
+    const count = result.reduce((total, group) => total + group.items.length, 0);
+
+    expect(count).toBeGreaterThanOrEqual(10);
+    expect(result.some((group) => group.category === 'ORDER')).toBe(true);
+  });
+
   it('search delegates to repo', async () => {
     repo.search.mockResolvedValue([mockFaq]);
     const result = await service.search('đổi trả');
     expect(repo.search).toHaveBeenCalledWith('đổi trả');
     expect(result).toHaveLength(1);
+  });
+
+  it('searches default FAQs when database search has no result', async () => {
+    repo.search.mockResolvedValue([]);
+
+    const result = await service.search('hoan tien');
+
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.some((faq) => faq.category === 'REFUND')).toBe(true);
   });
 
   it('findAll delegates to repo', async () => {

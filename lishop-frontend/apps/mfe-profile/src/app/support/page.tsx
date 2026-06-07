@@ -109,6 +109,7 @@ export default function SupportPage() {
               📖 FAQ
             </Link>
             <button
+              data-testid="support-create-open"
               onClick={handleOpenModal}
               className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
             >
@@ -132,6 +133,7 @@ export default function SupportPage() {
               Tạo yêu cầu mới nếu bạn cần được hỗ trợ
             </p>
             <button
+              data-testid="support-create-open"
               onClick={handleOpenModal}
               className="mt-4 inline-block rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
             >
@@ -218,6 +220,7 @@ export default function SupportPage() {
                   Danh mục <span className="text-red-500">*</span>
                 </label>
                 <select
+                  data-testid="support-ticket-category"
                   value={form.category}
                   onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as TicketCategory }))}
                   className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -233,6 +236,7 @@ export default function SupportPage() {
                   Tiêu đề <span className="text-red-500">*</span>
                 </label>
                 <input
+                  data-testid="support-ticket-subject"
                   type="text"
                   value={form.subject}
                   onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
@@ -246,6 +250,7 @@ export default function SupportPage() {
                   Mô tả chi tiết <span className="text-red-500">*</span>
                 </label>
                 <textarea
+                  data-testid="support-ticket-description"
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   placeholder="Mô tả vấn đề của bạn một cách chi tiết..."
@@ -259,6 +264,7 @@ export default function SupportPage() {
                   Mã đơn hàng (nếu có)
                 </label>
                 <input
+                  data-testid="support-ticket-order-ref"
                   type="text"
                   value={form.orderRef ?? ''}
                   onChange={(e) => setForm((f) => ({ ...f, orderRef: e.target.value }))}
@@ -269,6 +275,7 @@ export default function SupportPage() {
 
               <div className="flex gap-3 pt-1">
                 <button
+                  data-testid="support-ticket-submit"
                   type="submit"
                   disabled={createMutation.isPending}
                   className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
