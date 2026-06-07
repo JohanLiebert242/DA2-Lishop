@@ -37,40 +37,40 @@ type NavSection = { label: string; items: NavItem[] };
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    label: 'Tong quan',
+    label: 'Tổng quan',
     items: [
-      { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, tone: 'from-indigo-500/20 to-blue-500/8 text-indigo-700' },
-      { href: '/admin/analytics', label: 'Phan tich', icon: TrendingUp, tone: 'from-sky-500/20 to-cyan-500/8 text-sky-700' },
-      { href: '/admin/orders', label: 'Don hang', icon: ClipboardList, tone: 'from-amber-500/20 to-orange-500/8 text-amber-700' },
+      { href: '/admin', label: 'Bảng điều khiển', icon: LayoutDashboard, tone: 'from-indigo-500/20 to-blue-500/8 text-indigo-700' },
+      { href: '/admin/analytics', label: 'Phân tích', icon: TrendingUp, tone: 'from-sky-500/20 to-cyan-500/8 text-sky-700' },
+      { href: '/admin/orders', label: 'Đơn hàng', icon: ClipboardList, tone: 'from-amber-500/20 to-orange-500/8 text-amber-700' },
     ],
   },
   {
-    label: 'Van hanh',
+    label: 'Vận hành',
     items: [
-      { href: '/admin/products', label: 'San pham', icon: ShoppingBag, tone: 'from-violet-500/20 to-fuchsia-500/8 text-violet-700' },
-      { href: '/admin/inventory', label: 'Kho hang', icon: Boxes, tone: 'from-emerald-500/20 to-teal-500/8 text-emerald-700' },
-      { href: '/admin/promotions', label: 'Khuyen mai', icon: Megaphone, tone: 'from-pink-500/20 to-rose-500/8 text-pink-700' },
-      { href: '/admin/flashsales', label: 'Flash Sale', icon: BellRing, tone: 'from-rose-500/20 to-orange-500/8 text-rose-700' },
-      { href: '/admin/payments', label: 'Thanh toan', icon: CreditCard, tone: 'from-cyan-500/20 to-blue-500/8 text-cyan-700' },
-      { href: '/admin/invoices', label: 'Hoa don', icon: Receipt, tone: 'from-slate-500/20 to-slate-400/8 text-slate-700' },
-      { href: '/admin/refunds', label: 'Hoan tien', icon: RefreshCcw, tone: 'from-orange-500/20 to-amber-500/8 text-orange-700' },
+      { href: '/admin/products', label: 'Sản phẩm', icon: ShoppingBag, tone: 'from-violet-500/20 to-fuchsia-500/8 text-violet-700' },
+      { href: '/admin/inventory', label: 'Kho hàng', icon: Boxes, tone: 'from-emerald-500/20 to-teal-500/8 text-emerald-700' },
+      { href: '/admin/promotions', label: 'Khuyến mãi', icon: Megaphone, tone: 'from-pink-500/20 to-rose-500/8 text-pink-700' },
+      { href: '/admin/flashsales', label: 'Bán nhanh', icon: BellRing, tone: 'from-rose-500/20 to-orange-500/8 text-rose-700' },
+      { href: '/admin/payments', label: 'Thanh toán', icon: CreditCard, tone: 'from-cyan-500/20 to-blue-500/8 text-cyan-700' },
+      { href: '/admin/invoices', label: 'Hóa đơn', icon: Receipt, tone: 'from-slate-500/20 to-slate-400/8 text-slate-700' },
+      { href: '/admin/refunds', label: 'Hoàn tiền', icon: RefreshCcw, tone: 'from-orange-500/20 to-amber-500/8 text-orange-700' },
     ],
   },
   {
-    label: 'Cham soc',
+    label: 'Chăm sóc',
     items: [
-      { href: '/admin/tickets', label: 'Ho tro', icon: Ticket, tone: 'from-sky-500/20 to-indigo-500/8 text-sky-700' },
-      { href: '/admin/faq', label: 'FAQ', icon: HelpCircle, tone: 'from-indigo-500/20 to-violet-500/8 text-indigo-700' },
-      { href: '/admin/reviews', label: 'Danh gia', icon: Star, tone: 'from-amber-500/20 to-yellow-500/8 text-amber-700' },
-      { href: '/admin/returns', label: 'Doi tra', icon: PackageSearch, tone: 'from-rose-500/20 to-fuchsia-500/8 text-rose-700' },
+      { href: '/admin/tickets', label: 'Hỗ trợ', icon: Ticket, tone: 'from-sky-500/20 to-indigo-500/8 text-sky-700' },
+      { href: '/admin/faq', label: 'Hỏi đáp', icon: HelpCircle, tone: 'from-indigo-500/20 to-violet-500/8 text-indigo-700' },
+      { href: '/admin/reviews', label: 'Đánh giá', icon: Star, tone: 'from-amber-500/20 to-yellow-500/8 text-amber-700' },
+      { href: '/admin/returns', label: 'Đổi trả', icon: PackageSearch, tone: 'from-rose-500/20 to-fuchsia-500/8 text-rose-700' },
     ],
   },
   {
-    label: 'Nguoi dung',
+    label: 'Người dùng',
     items: [
-      { href: '/admin/users', label: 'Nguoi dung', icon: Users, tone: 'from-sky-500/20 to-cyan-500/8 text-sky-700' },
-      { href: '/admin/wallets', label: 'Vi nguoi dung', icon: Wallet, tone: 'from-emerald-500/20 to-cyan-500/8 text-emerald-700' },
-      { href: '/admin/wallet-topups', label: 'Duyet nap vi', icon: BadgeDollarSign, tone: 'from-amber-500/20 to-orange-500/8 text-amber-700' },
+      { href: '/admin/users', label: 'Người dùng', icon: Users, tone: 'from-sky-500/20 to-cyan-500/8 text-sky-700' },
+      { href: '/admin/wallets', label: 'Ví người dùng', icon: Wallet, tone: 'from-emerald-500/20 to-cyan-500/8 text-emerald-700' },
+      { href: '/admin/wallet-topups', label: 'Duyệt nạp ví', icon: BadgeDollarSign, tone: 'from-amber-500/20 to-orange-500/8 text-amber-700' },
     ],
   },
 ];
@@ -113,18 +113,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin" className="flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/lishop-logo.png" alt="Lishop logo" className="h-9 w-9 object-contain" />
+                <img src="/lishop-logo.png" alt="Biểu trưng Lishop" className="h-9 w-9 object-contain" />
               </span>
               <div className="min-w-0">
                 <p className="text-lg font-semibold text-slate-950">Lishop Admin</p>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Overview control center</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Trung tâm điều hành tổng quan</p>
               </div>
             </Link>
 
             {stats ? (
               <div className="hidden items-center gap-2 lg:flex">
                 {[
-                  { label: 'Don', value: `${stats.orderCount}`, tone: 'bg-indigo-50 text-indigo-700' },
+                  { label: 'Đơn', value: `${stats.orderCount}`, tone: 'bg-indigo-50 text-indigo-700' },
                   { label: 'Doanh thu', value: formatVND(stats.revenueVnd), tone: 'bg-emerald-50 text-emerald-700' },
                   { label: 'KH', value: `${stats.userCount}`, tone: 'bg-sky-50 text-sky-700' },
                   { label: 'SP', value: `${stats.productCount}`, tone: 'bg-amber-50 text-amber-700' },
@@ -141,14 +141,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-3">
             <div className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 md:flex">
               <ShieldCheck className="h-4 w-4" />
-              He thong on dinh
+              Hệ thống ổn định
             </div>
             <a
               href={SHELL_URL}
               className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
             >
               <ArrowLeft className="h-4 w-4" />
-              Trang chu
+              Trang chủ
             </a>
           </div>
         </div>
@@ -157,10 +157,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="relative z-10 mx-auto flex max-w-[1600px] gap-6 px-4 py-6">
         <aside className="sticky top-[97px] hidden h-[calc(100vh-121px)] w-72 shrink-0 overflow-y-auto rounded-[28px] border border-white/70 bg-white/85 p-4 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.45)] backdrop-blur xl:block">
           <div className="mb-4 rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
-            <p className="mt-2 text-lg font-semibold text-slate-950">Ban dieu khien van hanh</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Không gian làm việc</p>
+            <p className="mt-2 text-lg font-semibold text-slate-950">Bảng điều khiển vận hành</p>
             <p className="mt-1 text-sm leading-6 text-slate-500">
-              Theo doi doanh thu, don hang, ton kho va cac tac vu cham soc khach hang trong mot khung quan tri thong nhat.
+              Theo dõi doanh thu, đơn hàng, tồn kho và các tác vụ chăm sóc khách hàng trong một khung quản trị thống nhất.
             </p>
           </div>
 

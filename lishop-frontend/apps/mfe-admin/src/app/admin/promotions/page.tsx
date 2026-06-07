@@ -17,8 +17,8 @@ function CouponRow({ coupon }: { coupon: AdminCoupon }) {
     coupon.type === 'PERCENT'
       ? `${coupon.value}%`
       : coupon.type === 'FIXED'
-      ? formatVND(coupon.value)
-      : 'Miễn phí ship';
+        ? formatVND(coupon.value)
+        : 'Miễn phí vận chuyển';
 
   return (
     <tr className="border-b last:border-0 hover:bg-gray-50">
@@ -68,30 +68,30 @@ function CreateCouponForm({ onClose }: { onClose: () => void }) {
       <h3 className="mb-3 text-sm font-semibold text-gray-900">Tạo mã giảm giá mới</h3>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="coupon-code" className="block text-xs font-medium text-gray-700 mb-1">Mã</label>
+          <label htmlFor="coupon-code" className="mb-1 block text-xs font-medium text-gray-700">Mã</label>
           <input
             id="coupon-code"
             value={form.code}
-            onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+            onChange={(e) => setForm((current) => ({ ...current, code: e.target.value.toUpperCase() }))}
             placeholder="VD: SUMMER10"
             className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor="coupon-type" className="block text-xs font-medium text-gray-700 mb-1">Loại</label>
+          <label htmlFor="coupon-type" className="mb-1 block text-xs font-medium text-gray-700">Loại</label>
           <select
             id="coupon-type"
             value={form.type}
-            onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as CouponType }))}
+            onChange={(e) => setForm((current) => ({ ...current, type: e.target.value as CouponType }))}
             className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
           >
-            {(Object.keys(COUPON_TYPE_LABELS) as CouponType[]).map((t) => (
-              <option key={t} value={t}>{COUPON_TYPE_LABELS[t]}</option>
+            {(Object.keys(COUPON_TYPE_LABELS) as CouponType[]).map((type) => (
+              <option key={type} value={type}>{COUPON_TYPE_LABELS[type]}</option>
             ))}
           </select>
         </div>
         <div>
-          <label htmlFor="coupon-value" className="block text-xs font-medium text-gray-700 mb-1">
+          <label htmlFor="coupon-value" className="mb-1 block text-xs font-medium text-gray-700">
             Giá trị {form.type === 'PERCENT' ? '(%)' : form.type === 'FIXED' ? '(₫)' : ''}
           </label>
           <input
@@ -99,42 +99,42 @@ function CreateCouponForm({ onClose }: { onClose: () => void }) {
             type="number"
             min={0}
             value={form.value}
-            onChange={(e) => setForm((f) => ({ ...f, value: Number(e.target.value) }))}
+            onChange={(e) => setForm((current) => ({ ...current, value: Number(e.target.value) }))}
             disabled={form.type === 'FREE_SHIPPING'}
             className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none disabled:bg-gray-100"
           />
         </div>
         <div>
-          <label htmlFor="coupon-max-uses" className="block text-xs font-medium text-gray-700 mb-1">Số lần tối đa</label>
+          <label htmlFor="coupon-max-uses" className="mb-1 block text-xs font-medium text-gray-700">Số lần tối đa</label>
           <input
             id="coupon-max-uses"
             type="number"
             min={1}
             placeholder="Không giới hạn"
             value={form.maxUses ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, maxUses: e.target.value ? Number(e.target.value) : undefined }))}
+            onChange={(e) => setForm((current) => ({ ...current, maxUses: e.target.value ? Number(e.target.value) : undefined }))}
             className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor="coupon-min-order" className="block text-xs font-medium text-gray-700 mb-1">Đơn hàng tối thiểu (₫)</label>
+          <label htmlFor="coupon-min-order" className="mb-1 block text-xs font-medium text-gray-700">Đơn hàng tối thiểu (₫)</label>
           <input
             id="coupon-min-order"
             type="number"
             min={0}
             placeholder="Không yêu cầu"
             value={form.minOrderVnd ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, minOrderVnd: e.target.value ? Number(e.target.value) : undefined }))}
+            onChange={(e) => setForm((current) => ({ ...current, minOrderVnd: e.target.value ? Number(e.target.value) : undefined }))}
             className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor="coupon-expires" className="block text-xs font-medium text-gray-700 mb-1">Hết hạn</label>
+          <label htmlFor="coupon-expires" className="mb-1 block text-xs font-medium text-gray-700">Hết hạn</label>
           <input
             id="coupon-expires"
             type="date"
             value={form.expiresAt?.slice(0, 10) ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value ? new Date(e.target.value).toISOString() : undefined }))}
+            onChange={(e) => setForm((current) => ({ ...current, expiresAt: e.target.value ? new Date(e.target.value).toISOString() : undefined }))}
             className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
           />
         </div>
@@ -171,14 +171,14 @@ export default function PromotionsPage() {
 
   return (
     <div>
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b">
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-900">
             {isLoading ? 'Đang tải...' : `${coupons.length} mã giảm giá`}
           </h2>
           <button
             type="button"
-            onClick={() => setShowCreateCoupon((v) => !v)}
+            onClick={() => setShowCreateCoupon((value) => !value)}
             className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
           >
             + Tạo mã

@@ -53,9 +53,9 @@ test.describe('catalog AI style fit advisor', () => {
             recommendedVariantId: recommendedVariant!.id,
             recommendedSize: recommendedVariant!.attributes.size,
             confidence: 'high',
-            fitSummary: 'Size nay se gon dang va de mac hang ngay.',
-            reasons: ['Chieu cao va can nang phu hop voi size nay.'],
-            styleTips: ['Phoi voi quan ong dung va giay toi gian.'],
+            fitSummary: 'Cỡ này sẽ gọn dáng và dễ mặc hằng ngày.',
+            reasons: ['Chiều cao và cân nặng phù hợp với cỡ này.'],
+            styleTips: ['Phối với quần ống đứng và giày tối giản.'],
             warnings: [],
             fallback: false,
           },
@@ -66,13 +66,13 @@ test.describe('catalog AI style fit advisor', () => {
     await page.goto(`${CATALOG_URL}/products/${product.slug}`, { waitUntil: 'domcontentloaded' });
 
     const panel = page.getByTestId('style-fit-advisor');
-    await panel.getByRole('button', { name: 'AI chon size' }).click();
-    await panel.getByLabel('Chieu cao (cm)').fill('170');
-    await panel.getByLabel('Can nang (kg)').fill('62');
-    await panel.getByRole('button', { name: 'Nhan goi y AI' }).click();
+    await panel.getByRole('button', { name: 'AI chọn cỡ' }).click();
+    await panel.getByLabel('Chiều cao (cm)').fill('170');
+    await panel.getByLabel('Cân nặng (kg)').fill('62');
+    await panel.getByRole('button', { name: 'Nhận gợi ý AI' }).click();
 
-    await expect(panel).toContainText('Size nay se gon dang');
-    await expect(panel).toContainText(`Size ${recommendedVariant!.attributes.size}`);
+    await expect(panel).toContainText('Cỡ này sẽ gọn dáng');
+    await expect(panel).toContainText(`Cỡ ${recommendedVariant!.attributes.size}`);
     await expect(page.getByRole('button', { name: recommendedVariant!.attributes.size, exact: true })).toHaveAttribute('aria-pressed', 'true');
   });
 });

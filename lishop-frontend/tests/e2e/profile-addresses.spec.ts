@@ -121,31 +121,31 @@ test.describe('shipping addresses', () => {
     await mockMapServices(page);
 
     await page.goto(`${PROFILE_URL}/addresses`);
-    await expect(page.getByRole('heading', { name: 'Dia chi giao hang' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Địa chỉ giao hàng' })).toBeVisible();
 
-    await page.getByRole('button', { name: /Them dia chi/ }).click();
-    await page.getByPlaceholder('Nguyen Van A').fill('E2E Address Tester');
+    await page.getByRole('button', { name: /Thêm địa chỉ/ }).click();
+    await page.getByPlaceholder('Nguyễn Văn A').fill('E2E Address Tester');
     await page.getByPlaceholder('0912 345 678').fill('0901234567');
 
-    await page.getByPlaceholder('Nhap so nha, duong, phuong, quan, thanh pho').fill('123 Nguyen Hue District 1');
-    await page.getByRole('button', { name: 'Tim', exact: true }).click();
+    await page.getByPlaceholder('Nhập số nhà, đường, phường, quận, thành phố').fill('123 Nguyen Hue District 1');
+    await page.getByRole('button', { name: 'Tìm', exact: true }).click();
     await page.getByText('123 Nguyen Hue, Ben Nghe, District 1').click();
 
-    await expect(page.getByPlaceholder('Chon tu goi y hoac ban do')).toHaveValue('123 Nguyen Hue');
-    await expect(page.getByPlaceholder('Quan 1')).toHaveValue('District 1');
-    await expect(page.getByPlaceholder('Ho Chi Minh')).toHaveValue('Ho Chi Minh City');
-    await expect(page.getByText('Da gan toa do giao hang: 10.77584, 106.70175')).toBeVisible();
+    await expect(page.getByPlaceholder('Chọn từ gợi ý hoặc bản đồ')).toHaveValue('123 Nguyen Hue');
+    await expect(page.getByPlaceholder('Quận 1')).toHaveValue('District 1');
+    await expect(page.getByPlaceholder('Hồ Chí Minh')).toHaveValue('Ho Chi Minh City');
+    await expect(page.getByText('Đã gắn tọa độ giao hàng: 10.77584, 106.70175')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Chon vi tri tren ban do' }).click({ position: { x: 180, y: 110 } });
-    await expect(page.getByPlaceholder('Chon tu goi y hoac ban do')).toHaveValue('45 Le Loi');
-    const pickedCoordinateText = page.getByText(/Da gan toa do giao hang:/);
+    await page.getByRole('button', { name: 'Chọn vị trí trên bản đồ' }).click({ position: { x: 180, y: 110 } });
+    await expect(page.getByPlaceholder('Chọn từ gợi ý hoặc bản đồ')).toHaveValue('45 Le Loi');
+    const pickedCoordinateText = page.getByText(/Đã gắn tọa độ giao hàng:/);
     await expect(pickedCoordinateText).toBeVisible();
     const coordinateMatch = (await pickedCoordinateText.textContent())?.match(/([\d.]+),\s*([\d.]+)/);
     expect(coordinateMatch).toBeTruthy();
     const pickedLatitude = Number(coordinateMatch![1]);
     const pickedLongitude = Number(coordinateMatch![2]);
 
-    await page.getByRole('button', { name: 'Luu dia chi' }).click();
+    await page.getByRole('button', { name: 'Lưu địa chỉ' }).click();
     await expect(page.getByText('E2E Address Tester')).toBeVisible();
     await expect(page.getByText('45 Le Loi, District 1, Ho Chi Minh City')).toBeVisible();
 

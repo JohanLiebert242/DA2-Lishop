@@ -236,8 +236,8 @@ const CUSTOMER_REVIEWS = [
   },
   {
     name: 'Quốc Bảo',
-    role: 'Chủ shop online',
-    quote: 'Tìm sản phẩm nhanh, giá rõ, flash sale dễ theo dõi. Các coupon nhỏ mỗi ngày tạo cảm giác quay lại rất tự nhiên.',
+    role: 'Chủ cửa hàng trực tuyến',
+    quote: 'Tìm sản phẩm nhanh, giá rõ, đợt bán nhanh dễ theo dõi. Các coupon nhỏ mỗi ngày tạo cảm giác quay lại rất tự nhiên.',
     rating: '4.9',
   },
   {
@@ -325,7 +325,7 @@ export default function HomePage() {
               Lishop gom cả hành trình mua sắm vào một nơi.
             </h1>
             <p className="mt-5 max-w-xl text-base leading-8 text-white/76 sm:text-lg">
-              Tìm sản phẩm nhanh, nhận coupon đúng lúc, theo dõi đơn hàng và săn flash sale trong cùng một hệ sinh thái micro-frontend.
+              Tìm sản phẩm nhanh, nhận coupon đúng lúc, theo dõi đơn hàng và săn đợt bán nhanh trong cùng một hệ sinh thái micro-frontend.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href={`${CATALOG_URL}/products`}
@@ -522,7 +522,7 @@ export default function HomePage() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="rounded-full bg-red-300/30 px-2.5 py-0.5 text-xs font-black text-white tracking-widest uppercase">
-                      Flash Sale
+                      Bán nhanh
                     </span>
                     <span className="h-1.5 w-1.5 rounded-full bg-red-300 animate-ping" />
                   </div>
@@ -706,11 +706,11 @@ export default function HomePage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {(user ? [
             { icon:'🎁', title:'Tặng voucher 50K', desc:'Kiểm tra các mã ưu đãi của bạn', bg:'from-indigo-600 to-violet-600', cta:'Xem ngay', href:`${PROMO_URL}/promotions` },
-            { icon:'📦', title:'Flash sale hàng ngày', desc:'12:00 & 20:00 mỗi ngày', bg:'from-rose-600 to-red-600', cta:'Xem ngay', href:`${PROMO_URL}/promotions` },
+            { icon:'📦', title:'Bán nhanh hằng ngày', desc:'12:00 & 20:00 mỗi ngày', bg:'from-rose-600 to-red-600', cta:'Xem ngay', href:`${PROMO_URL}/promotions` },
             { icon:'⭐', title:'Tích điểm mỗi đơn', desc:'Đổi điểm lấy quà hấp dẫn', bg:'from-amber-500 to-orange-500', cta:'Xem điểm', href:`${PROFILE_URL}/profile` },
           ] : [
             { icon:'🎁', title:'Tặng voucher 50K', desc:'Cho đơn đầu tiên của bạn', bg:'from-indigo-600 to-violet-600', cta:'Nhận ngay', href:`${AUTH_URL}/register` },
-            { icon:'📦', title:'Flash sale hàng ngày', desc:'12:00 & 20:00 mỗi ngày', bg:'from-rose-600 to-red-600', cta:'Xem ngay', href:`${PROMO_URL}/promotions` },
+            { icon:'📦', title:'Bán nhanh hằng ngày', desc:'12:00 & 20:00 mỗi ngày', bg:'from-rose-600 to-red-600', cta:'Xem ngay', href:`${PROMO_URL}/promotions` },
             { icon:'⭐', title:'Tích điểm mỗi đơn', desc:'Đổi điểm lấy quà hấp dẫn', bg:'from-amber-500 to-orange-500', cta:'Tìm hiểu', href:`${AUTH_URL}/register` },
           ]).map(b => (
             <Link key={b.title} href={b.href}
@@ -767,7 +767,7 @@ export default function HomePage() {
             <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">Đăng ký email</p>
             <h2 className="mt-2 text-3xl font-black tracking-tight">Nhận bảng tin ưu đãi mỗi tuần</h2>
             <p className="mt-3 max-w-lg text-sm leading-7 text-white/65">
-              Đăng ký bằng email để nhận coupon mới, bản tin flash sale và cập nhật sản phẩm nổi bật.
+              Đăng ký bằng email để nhận coupon mới, bản tin bán nhanh và cập nhật sản phẩm nổi bật.
             </p>
             <form onSubmit={handleNewsletterSubmit} className="mt-6 flex flex-col gap-3 sm:flex-row">
               <input

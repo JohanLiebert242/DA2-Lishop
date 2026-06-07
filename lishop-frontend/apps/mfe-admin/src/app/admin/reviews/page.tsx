@@ -52,7 +52,7 @@ function ReviewRow({ review }: { review: AdminReview }) {
               disabled={aiMutation.isPending}
               className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-medium text-sky-800 hover:bg-sky-100 disabled:opacity-50"
             >
-              {aiMutation.isPending ? 'AI dang kiem...' : 'AI kiem duyet'}
+              {aiMutation.isPending ? 'AI đang kiểm...' : 'AI kiểm duyệt'}
             </button>
             {review.status !== 'APPROVED' ? (
               <button
@@ -61,7 +61,7 @@ function ReviewRow({ review }: { review: AdminReview }) {
                 disabled={mutation.isPending}
                 className="rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-200 disabled:opacity-50"
               >
-                Duyet
+                Duyệt
               </button>
             ) : null}
             {review.status !== 'REJECTED' ? (
@@ -71,7 +71,7 @@ function ReviewRow({ review }: { review: AdminReview }) {
                 disabled={mutation.isPending}
                 className="rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-800 hover:bg-red-200 disabled:opacity-50"
               >
-                Tu choi
+                Từ chối
               </button>
             ) : null}
           </div>
@@ -82,15 +82,15 @@ function ReviewRow({ review }: { review: AdminReview }) {
           <td colSpan={7} className="px-4 py-3">
             <div className="rounded-md border border-sky-200 bg-white p-3">
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800">AI kiem duyet</span>
+                <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800">AI kiểm duyệt</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${REVIEW_STATUS_COLORS[aiModeration.suggestedStatus]}`}>
                   {REVIEW_STATUS_LABELS[aiModeration.suggestedStatus]}
                 </span>
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                  Risk: {aiModeration.riskLevel}
+                  Mức rủi ro: {aiModeration.riskLevel}
                 </span>
                 {aiModeration.fallback ? (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">fallback</span>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Chế độ dự phòng</span>
                 ) : null}
               </div>
               <p className="text-sm text-gray-900">{aiModeration.summary}</p>
@@ -123,34 +123,34 @@ export default function ReviewsPage() {
     <div className="space-y-6">
       <AdminPageHeader
         icon={Star}
-        title="Danh gia"
-        description="Theo doi review khach hang, muc do sao, trang thai kiem duyet va AI moderation de giu chat luong noi dung hien thi tren storefront."
-        badge="Moderation"
+        title="Đánh giá"
+        description="Theo dõi đánh giá khách hàng, mức độ sao, trạng thái kiểm duyệt và AI moderation để giữ chất lượng nội dung hiển thị trên cửa hàng."
+        badge="Kiểm duyệt"
         tone="amber"
         stats={[
-          { label: 'Tong review', value: isLoading ? '...' : `${reviews.length}` },
-          { label: 'Cho duyet', value: isLoading ? '...' : `${pendingReviews}` },
-          { label: 'Tu choi', value: isLoading ? '...' : `${rejectedReviews}` },
+          { label: 'Tổng đánh giá', value: isLoading ? '...' : `${reviews.length}` },
+          { label: 'Chờ duyệt', value: isLoading ? '...' : `${pendingReviews}` },
+          { label: 'Từ chối', value: isLoading ? '...' : `${rejectedReviews}` },
           { label: 'Sao TB', value: isLoading ? '...' : averageRating.toFixed(1) },
         ]}
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminMetricCard icon={ShieldCheck} label="Cho moderation" value={isLoading ? '...' : `${pendingReviews}`} hint="Review can admin thao tac" tone="indigo" />
-        <AdminMetricCard icon={AlertTriangle} label="Bi tu choi" value={isLoading ? '...' : `${rejectedReviews}`} hint="Noi dung can xem lai" tone="rose" />
-        <AdminMetricCard icon={Sparkles} label="Sao trung binh" value={isLoading ? '...' : averageRating.toFixed(1)} hint="Cam nhan tong quan tu feedback" tone="amber" />
+        <AdminMetricCard icon={ShieldCheck} label="Chờ kiểm duyệt" value={isLoading ? '...' : `${pendingReviews}`} hint="Đánh giá cần admin thao tác" tone="indigo" />
+        <AdminMetricCard icon={AlertTriangle} label="Bị từ chối" value={isLoading ? '...' : `${rejectedReviews}`} hint="Nội dung cần xem lại" tone="rose" />
+        <AdminMetricCard icon={Sparkles} label="Sao trung bình" value={isLoading ? '...' : averageRating.toFixed(1)} hint="Cảm nhận tổng quan từ phản hồi" tone="amber" />
       </div>
 
       <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
           <h2 className="mr-auto text-sm font-semibold text-gray-900">
-            {isLoading ? 'Dang tai...' : `${reviews.length} danh gia`}
+            {isLoading ? 'Đang tải...' : `${reviews.length} đánh giá`}
           </h2>
           {[
-            { label: 'Tat ca', value: '' },
-            { label: 'Cho duyet', value: 'PENDING' },
-            { label: 'Da duyet', value: 'APPROVED' },
-            { label: 'Tu choi', value: 'REJECTED' },
+            { label: 'Tất cả', value: '' },
+            { label: 'Chờ duyệt', value: 'PENDING' },
+            { label: 'Đã duyệt', value: 'APPROVED' },
+            { label: 'Từ chối', value: 'REJECTED' },
           ].map(({ label, value }) => (
             <button
               key={value}
@@ -168,13 +168,13 @@ export default function ReviewsPage() {
           <table className="w-full">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="px-4 py-2 text-left">San pham</th>
-                <th className="px-4 py-2 text-left">Nguoi dung</th>
+                <th className="px-4 py-2 text-left">Sản phẩm</th>
+                <th className="px-4 py-2 text-left">Người dùng</th>
                 <th className="px-4 py-2 text-left">Sao</th>
-                <th className="px-4 py-2 text-left">Noi dung</th>
-                <th className="px-4 py-2 text-left">Trang thai</th>
-                <th className="px-4 py-2 text-left">Ngay</th>
-                <th className="px-4 py-2 text-left">Thao tac</th>
+                <th className="px-4 py-2 text-left">Nội dung</th>
+                <th className="px-4 py-2 text-left">Trạng thái</th>
+                <th className="px-4 py-2 text-left">Ngày</th>
+                <th className="px-4 py-2 text-left">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -185,8 +185,8 @@ export default function ReviewsPage() {
             <div className="p-4">
               <AdminEmptyState
                 icon={Star}
-                title="Khong co danh gia nao"
-                description="Khi storefront bat dau nhan review, admin se thay moderation queue va AI goi y tai day."
+                title="Không có đánh giá nào"
+                description="Khi cửa hàng bắt đầu nhận đánh giá, admin sẽ thấy hàng chờ kiểm duyệt và gợi ý AI tại đây."
                 tone="amber"
               />
             </div>

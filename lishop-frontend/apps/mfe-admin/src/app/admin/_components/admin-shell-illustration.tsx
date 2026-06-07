@@ -70,7 +70,7 @@ export function AdminShellIllustration({
             <div className="flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${styles.dot}`} />
               <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Live overview
+                Tổng quan trực tiếp
               </span>
             </div>
             <div className="flex gap-2">

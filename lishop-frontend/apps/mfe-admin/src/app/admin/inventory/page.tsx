@@ -27,7 +27,7 @@ function InventoryRow({
         {product.isLowStock ? (
           <span className="font-semibold text-red-600">
             {product.stock}{' '}
-            <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs text-red-700">Sap het</span>
+            <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs text-red-700">Sắp hết</span>
           </span>
         ) : (
           <span className="font-medium text-gray-900">{product.stock}</span>
@@ -41,7 +41,7 @@ function InventoryRow({
             <span className={product.lastMovement.delta >= 0 ? 'text-green-600' : 'text-red-600'}>
               {product.lastMovement.delta >= 0 ? '+' : ''}{product.lastMovement.delta}
             </span>
-            {' · '}{new Date(product.lastMovement.createdAt).toLocaleDateString('vi-VN')}
+            {' • '}{new Date(product.lastMovement.createdAt).toLocaleDateString('vi-VN')}
           </span>
         ) : '—'}
       </td>
@@ -55,7 +55,7 @@ function InventoryRow({
               : 'border-gray-300 text-gray-700 hover:bg-gray-50'
           }`}
         >
-          Dieu chinh
+          Điều chỉnh
         </button>
       </td>
     </tr>
@@ -83,7 +83,7 @@ function AdjustStockForm({ product, onClose }: { product: ProductStock; onClose:
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor={`delta-${product.id}`} className="mb-1 block text-xs font-medium text-gray-700">
-              Dieu chinh ton kho
+              Điều chỉnh tồn kho
             </label>
             <input
               id={`delta-${product.id}`}
@@ -95,7 +95,7 @@ function AdjustStockForm({ product, onClose }: { product: ProductStock; onClose:
           </div>
           <div className="min-w-40 flex-1">
             <label htmlFor={`note-${product.id}`} className="mb-1 block text-xs font-medium text-gray-700">
-              Ghi chu
+              Ghi chú
             </label>
             <textarea
               id={`note-${product.id}`}
@@ -112,14 +112,14 @@ function AdjustStockForm({ product, onClose }: { product: ProductStock; onClose:
               disabled={delta === 0 || adjustMutation.isPending}
               className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
             >
-              {adjustMutation.isPending ? 'Dang luu...' : 'Luu'}
+              {adjustMutation.isPending ? 'Đang lưu...' : 'Lưu'}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              Huy
+              Hủy
             </button>
           </div>
         </div>
@@ -144,39 +144,39 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <AdminPageHeader
         icon={Boxes}
-        title="Kho hang"
-        description="Theo doi ton kho theo SKU, muc canh bao, can nang va lan bien dong gan nhat. Khu nay duoc thiet ke de doc nhanh khi can bo sung hang."
-        badge="Inventory"
+        title="Kho hàng"
+        description="Theo dõi tồn kho theo mã hàng, mức cảnh báo, cân nặng và lần biến động gần nhất. Khu này được thiết kế để đọc nhanh khi cần bổ sung hàng."
+        badge="Tồn kho"
         tone="emerald"
         stats={[
-          { label: 'SKU', value: isLoading ? '...' : `${inventory.length}` },
-          { label: 'Ton thap', value: isLoading ? '...' : `${lowStockProducts}` },
-          { label: 'Da co movement', value: isLoading ? '...' : `${trackedMovements}` },
-          { label: 'Dang dieu hanh', value: 'Realtime' },
+          { label: 'Mã hàng', value: isLoading ? '...' : `${inventory.length}` },
+          { label: 'Tồn thấp', value: isLoading ? '...' : `${lowStockProducts}` },
+          { label: 'Đã có biến động', value: isLoading ? '...' : `${trackedMovements}` },
+          { label: 'Đang điều hành', value: 'Thời gian thực' },
         ]}
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminMetricCard icon={PackagePlus} label="San pham theo doi" value={isLoading ? '...' : `${inventory.length}`} hint="Tong SKU co trong feed admin" tone="indigo" />
-        <AdminMetricCard icon={AlertTriangle} label="Canh bao ton" value={isLoading ? '...' : `${lowStockProducts}`} hint="SKU dang o nguong nhay cam" tone="rose" />
-        <AdminMetricCard icon={History} label="Da co lich su" value={isLoading ? '...' : `${trackedMovements}`} hint="SKU da ghi nhan movement gan day" tone="sky" />
+        <AdminMetricCard icon={PackagePlus} label="Sản phẩm theo dõi" value={isLoading ? '...' : `${inventory.length}`} hint="Tổng mã hàng có trong luồng admin" tone="indigo" />
+        <AdminMetricCard icon={AlertTriangle} label="Cảnh báo tồn" value={isLoading ? '...' : `${lowStockProducts}`} hint="Mã hàng đang ở ngưỡng nhạy cảm" tone="rose" />
+        <AdminMetricCard icon={History} label="Đã có lịch sử" value={isLoading ? '...' : `${trackedMovements}`} hint="Mã hàng đã ghi nhận biến động gần đây" tone="sky" />
       </div>
 
       <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
         <div className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-900">
-            {isLoading ? 'Dang tai...' : `${inventory.length} san pham`}
+            {isLoading ? 'Đang tải...' : `${inventory.length} sản phẩm`}
           </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="px-4 py-2 text-left">San pham</th>
-                <th className="px-4 py-2 text-left">Ton kho</th>
-                <th className="px-4 py-2 text-left">Can nang</th>
-                <th className="px-4 py-2 text-left">Lan cap nhat cuoi</th>
-                <th className="px-4 py-2 text-left">Thao tac</th>
+                <th className="px-4 py-2 text-left">Sản phẩm</th>
+                <th className="px-4 py-2 text-left">Tồn kho</th>
+                <th className="px-4 py-2 text-left">Cân nặng</th>
+                <th className="px-4 py-2 text-left">Lần cập nhật cuối</th>
+                <th className="px-4 py-2 text-left">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -198,8 +198,8 @@ export default function InventoryPage() {
             <div className="p-4">
               <AdminEmptyState
                 icon={Boxes}
-                title="Chua co san pham trong kho"
-                description="Ngay khi inventory duoc dong bo tu backend, bang ton kho va khu KPI se hien thong tin dieu hanh tai day."
+                title="Chưa có sản phẩm trong kho"
+                description="Ngay khi tồn kho được đồng bộ từ backend, bảng tồn kho và khu KPI sẽ hiện thông tin điều hành tại đây."
                 tone="emerald"
               />
             </div>

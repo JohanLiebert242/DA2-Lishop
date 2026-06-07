@@ -81,8 +81,8 @@ export default function OrdersPage() {
       const productNames = order.items.map((item) => item.productName).join(', ');
       return ordersApi.createSupportTicket({
         category: 'ORDER',
-        subject: `Lien he shop ve don hang ${order.orderNumber}`,
-        description: `Toi can lien he shop ve don hang ${order.orderNumber}. San pham: ${productNames}.`,
+        subject: `Liên hệ cửa hàng về đơn hàng ${order.orderNumber}`,
+        description: `Tôi cần liên hệ cửa hàng về đơn hàng ${order.orderNumber}. Sản phẩm: ${productNames}.`,
         orderRef: order.orderNumber,
       });
     },
@@ -230,7 +230,7 @@ export default function OrdersPage() {
 
                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
                           <span>Đặt ngày: {formatOrderDate(order.createdAt)}</span>
-                          <span className="font-semibold text-stone-600">Shop: {SHOP_NAME}</span>
+                          <span className="font-semibold text-stone-600">Cửa hàng: {SHOP_NAME}</span>
                           {deliveredAt && (
                             <span className="font-semibold text-emerald-700">Giao thành công: {compactDate(deliveredAt)}</span>
                           )}

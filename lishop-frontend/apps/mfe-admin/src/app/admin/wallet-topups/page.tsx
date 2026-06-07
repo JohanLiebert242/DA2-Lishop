@@ -154,9 +154,7 @@ export default function WalletTopupsPage() {
                         <div className="w-64 space-y-2">
                           <textarea
                             value={notes[topup.id] ?? ''}
-                            onChange={(event) =>
-                              setNotes((current) => ({ ...current, [topup.id]: event.target.value }))
-                            }
+                            onChange={(event) => setNotes((current) => ({ ...current, [topup.id]: event.target.value }))}
                             rows={2}
                             maxLength={240}
                             placeholder="Ghi chú đối soát..."

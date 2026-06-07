@@ -19,8 +19,8 @@ export default function PaymentsPage() {
   });
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="border-b px-4 py-3">
         <h2 className="text-sm font-semibold text-gray-900">
           {isLoading ? 'Đang tải...' : `${payments.length} giao dịch`}
         </h2>
@@ -39,38 +39,36 @@ export default function PaymentsPage() {
             </tr>
           </thead>
           <tbody>
-            {payments.map((p) => {
+            {payments.map((payment) => {
               const userName =
-                p.order.user.firstName && p.order.user.lastName
-                  ? `${p.order.user.firstName} ${p.order.user.lastName}`
-                  : p.order.user.email;
+                payment.order.user.firstName && payment.order.user.lastName
+                  ? `${payment.order.user.firstName} ${payment.order.user.lastName}`
+                  : payment.order.user.email;
               return (
-                <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-sm text-gray-700">#{p.order.orderNumber}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700 max-w-[140px] truncate">{userName}</td>
+                <tr key={payment.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <td className="px-4 py-3 font-mono text-sm text-gray-700">#{payment.order.orderNumber}</td>
+                  <td className="max-w-[140px] truncate px-4 py-3 text-sm text-gray-700">{userName}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">
-                    {PAYMENT_METHOD_LABELS[p.method] ?? p.method}
+                    {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}
                   </td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {formatVND(p.amountVnd)}
-                  </td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{formatVND(payment.amountVnd)}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[p.status as PaymentStatus] ?? 'bg-gray-100 text-gray-700'}`}>
-                      {PAYMENT_STATUS_LABELS[p.status as PaymentStatus] ?? p.status}
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[payment.status as PaymentStatus] ?? 'bg-gray-100 text-gray-700'}`}>
+                      {PAYMENT_STATUS_LABELS[payment.status as PaymentStatus] ?? payment.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {new Date(p.createdAt).toLocaleDateString('vi-VN')}
+                    {new Date(payment.createdAt).toLocaleDateString('vi-VN')}
                   </td>
                   <td className="px-4 py-3">
-                    {p.status === 'PENDING' && p.method === 'COD' && (
+                    {payment.status === 'PENDING' && payment.method === 'COD' && (
                       <button
                         type="button"
-                        onClick={() => confirmPaymentMutation.mutate(p.orderId)}
+                        onClick={() => confirmPaymentMutation.mutate(payment.orderId)}
                         disabled={confirmPaymentMutation.isPending}
                         className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
                       >
-                        {confirmPaymentMutation.isPending ? 'Đang xác nhận...' : 'Xác nhận COD'}
+                        {confirmPaymentMutation.isPending ? 'Đang xác nhận...' : 'Xác nhận tiền mặt'}
                       </button>
                     )}
                   </td>

@@ -79,18 +79,18 @@ test.describe('promotions page', () => {
 
     await page.goto(`${PROMOTIONS_URL}/promotions`);
 
-    await expect(page.getByText('Su kien: Flash Sale dang chay')).toBeVisible();
-    await expect(page.getByText('Su kien: Ma giam gia hot')).toBeVisible();
+    await expect(page.getByText('Sự kiện: Đợt bán nhanh đang chạy')).toBeVisible();
+    await expect(page.getByText('Sự kiện: Mã giảm giá hot')).toBeVisible();
     await expect(page.getByTestId('section-countdown').first()).toBeVisible();
     await expect(page.getByTestId('page-countdown')).toHaveCount(0);
 
     const saveCoupon = page.getByTestId('coupon-card-SAVE10');
     await expect(saveCoupon).toBeVisible();
-    await expect(saveCoupon.getByText('Copied')).toHaveCount(0);
-    await saveCoupon.getByRole('button', { name: /copy/i }).click();
+    await expect(saveCoupon.getByText('Đã chép')).toHaveCount(0);
+    await saveCoupon.getByRole('button', { name: /sao chép/i }).click();
 
-    await expect(page.getByRole('status')).toHaveText(/Da copy ma SAVE10/);
-    await expect(saveCoupon.getByText('Copied')).toBeVisible();
+    await expect(page.getByRole('status')).toHaveText(/Đã sao chép mã SAVE10/);
+    await expect(saveCoupon.getByText('Đã chép')).toBeVisible();
     await expect
       .poll(() => page.evaluate(() => (window as Window & { __copiedCoupon?: string }).__copiedCoupon))
       .toBe('SAVE10');

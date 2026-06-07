@@ -69,7 +69,7 @@ export function PersonalizedRecommendations({
         </h2>
         {data.fallback && (
           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-            Fallback
+            Dự phòng
           </span>
         )}
       </div>

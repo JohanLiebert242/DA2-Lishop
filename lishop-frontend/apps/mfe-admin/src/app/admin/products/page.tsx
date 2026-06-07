@@ -86,7 +86,7 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
   const [categoryId, setCategoryId] = useState(existing?.categoryId ?? (categories[0]?.id ?? ''));
   const [images, setImages] = useState<ImageEntry[]>(
     existing?.images.length
-      ? existing.images.map((i) => ({ url: i.url, alt: i.alt ?? '', isPrimary: i.isPrimary }))
+      ? existing.images.map((image) => ({ url: image.url, alt: image.alt ?? '', isPrimary: image.isPrimary }))
       : [],
   );
   const [newImageUrl, setNewImageUrl] = useState('');
@@ -107,7 +107,7 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
   function removeImage(idx: number) {
     setImages((prev) => {
       const next = prev.filter((_, i) => i !== idx);
-      if (next.length > 0 && !next.some((i) => i.isPrimary)) next[0]!.isPrimary = true;
+      if (next.length > 0 && !next.some((image) => image.isPrimary)) next[0]!.isPrimary = true;
       return next;
     });
   }
@@ -119,13 +119,17 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
   const mutation = useMutation({
     mutationFn: () => {
       const data: CreateProductInput = {
-        name, description, priceVnd, priceUsd, stock, weightGrams, categoryId,
+        name,
+        description,
+        priceVnd,
+        priceUsd,
+        stock,
+        weightGrams,
+        categoryId,
         ...(sku.trim() ? { sku: sku.trim() } : {}),
         ...(images.length ? { images } : {}),
       };
-      return existing
-        ? adminApi.updateProduct(existing.id, data)
-        : adminApi.createProduct(data);
+      return existing ? adminApi.updateProduct(existing.id, data) : adminApi.createProduct(data);
     },
     onSuccess: () => { onSaved(); onClose(); },
     onError: (err: Error) => setError(err.message),
@@ -145,7 +149,11 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
     },
     onSuccess: (result) => {
       setDescription(result.description);
-      setAiNotice(result.fallback ? 'AI fallback da tao mo ta. Ban co the chinh sua truoc khi luu.' : 'AI da tao mo ta. Ban co the chinh sua truoc khi luu.');
+      setAiNotice(
+        result.fallback
+          ? 'AI ở chế độ dự phòng đã tạo mô tả. Bạn có thể chỉnh sửa trước khi lưu.'
+          : 'AI đã tạo mô tả. Bạn có thể chỉnh sửa trước khi lưu.',
+      );
       setError('');
     },
     onError: (err: Error) => {
@@ -158,17 +166,19 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
         <h3 className="mb-4 text-base font-semibold text-gray-900">
           {existing ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
         </h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Tên sản phẩm</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Tên sản phẩm</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Tên sản phẩm..." />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">SKU <span className="text-gray-400">(không bắt buộc)</span></label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">
+              Mã hàng <span className="text-gray-400">(không bắt buộc)</span>
+            </label>
             <input value={sku} onChange={(e) => setSku(e.target.value)} className={inputCls} placeholder="VD: PROD-001" />
           </div>
           <div>
@@ -180,11 +190,13 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
                 disabled={!name.trim() || copyMutation.isPending}
                 className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {copyMutation.isPending ? 'AI dang viet...' : 'AI viet mo ta'}
+                {copyMutation.isPending ? 'AI đang viết...' : 'AI viết mô tả'}
               </button>
             </div>
             <textarea
-              value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
               className="w-full resize-none rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
               placeholder="Mô tả sản phẩm..."
             />
@@ -192,64 +204,74 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Giá (VND)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Giá (VND)</label>
               <input type="number" min={0} value={priceVnd} onChange={(e) => setPriceVnd(Number(e.target.value))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Giá (USD cents)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Giá (xu USD)</label>
               <input type="number" min={0} value={priceUsd} onChange={(e) => setPriceUsd(Number(e.target.value))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Tồn kho</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Tồn kho</label>
               <input type="number" min={0} value={stock} onChange={(e) => setStock(Number(e.target.value))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Trọng lượng (g)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Trọng lượng (g)</label>
               <input type="number" min={1} value={weightGrams} onChange={(e) => setWeightGrams(Number(e.target.value))} className={inputCls} />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Danh mục</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Danh mục</label>
             <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputCls}>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Hình ảnh sản phẩm</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Hình ảnh sản phẩm</label>
             {images.length > 0 && (
               <ul className="mb-2 space-y-1.5">
                 {images.map((img, idx) => (
                   <li key={idx} className="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5 text-xs">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.url} alt={img.alt || ''} className="h-8 w-8 shrink-0 rounded object-cover bg-gray-100" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                    <img
+                      src={img.url}
+                      alt={img.alt || ''}
+                      className="h-8 w-8 shrink-0 rounded bg-gray-100 object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
                     <span className="flex-1 truncate text-gray-600">{img.url}</span>
                     {img.alt && <span className="shrink-0 text-gray-400">{img.alt}</span>}
                     <button
-                      type="button" onClick={() => setPrimary(idx)}
-                      className={`shrink-0 cursor-pointer rounded px-1.5 py-0.5 text-xs font-medium ${img.isPrimary ? 'bg-indigo-100 text-indigo-700' : 'text-gray-400 hover:text-indigo-600'}`}
+                      type="button"
+                      onClick={() => setPrimary(idx)}
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${img.isPrimary ? 'bg-indigo-100 text-indigo-700' : 'text-gray-400 hover:text-indigo-600'}`}
                     >
                       {img.isPrimary ? '★ Chính' : '☆'}
                     </button>
-                    <button type="button" onClick={() => removeImage(idx)} className="shrink-0 cursor-pointer text-red-400 hover:text-red-600">✕</button>
+                    <button type="button" onClick={() => removeImage(idx)} className="shrink-0 text-red-400 hover:text-red-600">✕</button>
                   </li>
                 ))}
               </ul>
             )}
             <div className="flex gap-2">
               <input
-                value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)}
+                value={newImageUrl}
+                onChange={(e) => setNewImageUrl(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addImage())}
                 className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
                 placeholder="URL ảnh..."
               />
               <input
-                value={newImageAlt} onChange={(e) => setNewImageAlt(e.target.value)}
+                value={newImageAlt}
+                onChange={(e) => setNewImageAlt(e.target.value)}
                 className="w-28 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
-                placeholder="Alt text"
+                placeholder="Mô tả ảnh"
               />
               <button
-                type="button" onClick={addImage} disabled={!newImageUrl.trim()}
-                className="cursor-pointer rounded-md bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-40"
+                type="button"
+                onClick={addImage}
+                disabled={!newImageUrl.trim()}
+                className="rounded-md bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-40"
               >
                 + Thêm
               </button>
@@ -258,13 +280,14 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
         </div>
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="cursor-pointer rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <button type="button" onClick={onClose} className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
             Hủy
           </button>
           <button
-            type="button" onClick={() => mutation.mutate()}
+            type="button"
+            onClick={() => mutation.mutate()}
             disabled={!name.trim() || !description.trim() || !categoryId || mutation.isPending}
-            className="cursor-pointer rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             {mutation.isPending ? 'Đang lưu...' : existing ? 'Cập nhật' : 'Tạo'}
           </button>
@@ -274,13 +297,7 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
   );
 }
 
-function ProductImportModal({
-  onClose,
-  onImported,
-}: {
-  onClose: () => void;
-  onImported: () => void;
-}) {
+function ProductImportModal({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
   const [rawText, setRawText] = useState('');
   const [previewCount, setPreviewCount] = useState(0);
   const [error, setError] = useState('');
@@ -292,14 +309,14 @@ function ProductImportModal({
       setError('');
     } catch (err) {
       setPreviewCount(0);
-      setError(err instanceof Error ? err.message : 'Không đọc được dữ liệu import');
+      setError(err instanceof Error ? err.message : 'Không đọc được dữ liệu nhập');
     }
   }
 
   const mutation = useMutation({
     mutationFn: () => {
       const products = parseProductsImport(rawText);
-      if (products.length === 0) throw new Error('File import không có sản phẩm hợp lệ');
+      if (products.length === 0) throw new Error('Tệp nhập không có sản phẩm hợp lệ');
       return adminApi.importProducts(products);
     },
     onSuccess: () => onImported(),
@@ -311,12 +328,12 @@ function ProductImportModal({
     refreshPreview(await file.text());
   }
 
-  const sampleCsv = 'name,sku,description,priceVnd,priceUsd,stock,weightGrams,categorySlug,imageUrl,tags\nÁo imported,IMP-001,Mô tả sản phẩm,199000,799,20,500,thoi-trang,https://example.com/image.jpg,import|new';
+  const sampleCsv = 'name,sku,description,priceVnd,priceUsd,stock,weightGrams,categorySlug,imageUrl,tags\nAo imported,IMP-001,Mo ta san pham,199000,799,20,500,thoi-trang,https://example.com/image.jpg,import|new';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <h3 className="mb-4 text-base font-semibold text-gray-900">Import sản phẩm</h3>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+        <h3 className="mb-4 text-base font-semibold text-gray-900">Nhập sản phẩm</h3>
         <div className="space-y-3">
           <input
             type="file"
@@ -332,7 +349,7 @@ function ProductImportModal({
             placeholder={sampleCsv}
           />
           <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
-            CSV cần header. Dùng <span className="font-mono">categoryId</span> hoặc <span className="font-mono">categorySlug</span>. JSON có thể là mảng sản phẩm hoặc object <span className="font-mono">{'{"products":[]}'}</span>.
+            CSV cần dòng tiêu đề. Dùng <span className="font-mono">categoryId</span> hoặc <span className="font-mono">categorySlug</span>. JSON có thể là mảng sản phẩm hoặc object <span className="font-mono">{'{"products":[]}'}</span>.
           </div>
           {previewCount > 0 && (
             <p className="text-xs font-medium text-emerald-700">Đã đọc {previewCount} sản phẩm.</p>
@@ -352,16 +369,16 @@ function ProductImportModal({
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="cursor-pointer rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <button type="button" onClick={onClose} className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
             Đóng
           </button>
           <button
             type="button"
             onClick={() => mutation.mutate()}
             disabled={previewCount === 0 || mutation.isPending}
-            className="cursor-pointer rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {mutation.isPending ? 'Đang import...' : 'Import'}
+            {mutation.isPending ? 'Đang nhập...' : 'Nhập'}
           </button>
         </div>
       </div>
@@ -369,13 +386,7 @@ function ProductImportModal({
   );
 }
 
-function ProductAiImportEnrichModal({
-  onClose,
-  onImported,
-}: {
-  onClose: () => void;
-  onImported: () => void;
-}) {
+function ProductAiImportEnrichModal({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
   const [rawText, setRawText] = useState('');
   const [preview, setPreview] = useState<CreateProductInput[]>([]);
   const [error, setError] = useState('');
@@ -383,12 +394,16 @@ function ProductAiImportEnrichModal({
 
   const analyzeMutation = useMutation({
     mutationFn: () => {
-      if (!rawText.trim()) throw new Error('Vui long nhap du lieu can AI phan tich');
+      if (!rawText.trim()) throw new Error('Vui lòng nhập dữ liệu cần AI phân tích');
       return adminApi.aiImportEnrichProducts(rawText);
     },
     onSuccess: (result) => {
       setPreview(result.products ?? []);
-      setAiNotice(result.fallback ? 'AI fallback da tu dong chuan hoa/enrich. Hay xem lai truoc khi import.' : 'AI da phan tich va enrich. Hay xem lai truoc khi import.');
+      setAiNotice(
+        result.fallback
+          ? 'AI ở chế độ dự phòng đã tự động chuẩn hóa và làm giàu dữ liệu. Hãy xem lại trước khi nhập.'
+          : 'AI đã phân tích và làm giàu dữ liệu. Hãy xem lại trước khi nhập.',
+      );
       setError('');
     },
     onError: (err: Error) => {
@@ -400,7 +415,7 @@ function ProductAiImportEnrichModal({
 
   const importMutation = useMutation({
     mutationFn: () => {
-      if (preview.length === 0) throw new Error('Chua co san pham de import');
+      if (preview.length === 0) throw new Error('Chưa có sản phẩm để nhập');
       return adminApi.importProducts(preview);
     },
     onSuccess: () => onImported(),
@@ -413,15 +428,15 @@ function ProductAiImportEnrichModal({
   }
 
   const sample = [
-    'Danh sach san pham can import:',
-    '- Ao thun nam gia 199k ton 20, danh muc thoi-trang',
+    'Danh sách sản phẩm cần nhập:',
+    '- Áo thun nam giá 199k tồn 20, danh mục thời-trang',
     '- Tai nghe Bluetooth gia 399k ton 8',
   ].join('\n');
 
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <h3 className="mb-4 text-base font-semibold text-gray-900">AI import/enrich san pham</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+        <h3 className="mb-4 text-base font-semibold text-gray-900">AI nhập liệu nâng cao</h3>
         <div className="space-y-3">
           <input
             type="file"
@@ -437,40 +452,40 @@ function ProductAiImportEnrichModal({
             placeholder={sample}
           />
           <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
-            Dan CSV/JSON hoac mo ta tu do. AI se co gang chuan hoa du lieu thanh danh sach san pham de import.
+            Dán CSV, JSON hoặc mô tả tự do. AI sẽ cố gắng chuẩn hóa dữ liệu thành danh sách sản phẩm để nhập.
           </div>
           {aiNotice && <p className="text-xs font-medium text-emerald-700">{aiNotice}</p>}
           {preview.length > 0 && (
             <div className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
-              Da chuan bi {preview.length} san pham. (Preview: {preview.slice(0, 3).map((p) => p.name).join(', ')}{preview.length > 3 ? ', ...' : ''})
+              Đã chuẩn bị {preview.length} sản phẩm. (Xem trước: {preview.slice(0, 3).map((p) => p.name).join(', ')}{preview.length > 3 ? ', ...' : ''})
             </div>
           )}
           {importMutation.data && (
             <div className="rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
-              Tao thanh cong {importMutation.data.created}, loi {importMutation.data.failed}.
+              Tạo thành công {importMutation.data.created}, lỗi {importMutation.data.failed}.
             </div>
           )}
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="cursor-pointer rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-            Dong
+          <button type="button" onClick={onClose} className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Đóng
           </button>
           <button
             type="button"
             onClick={() => analyzeMutation.mutate()}
             disabled={!rawText.trim() || analyzeMutation.isPending}
-            className="cursor-pointer rounded-md border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+            className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
           >
-            {analyzeMutation.isPending ? 'AI dang phan tich...' : 'AI phan tich'}
+            {analyzeMutation.isPending ? 'AI đang phân tích...' : 'AI phân tích'}
           </button>
           <button
             type="button"
             onClick={() => importMutation.mutate()}
             disabled={preview.length === 0 || importMutation.isPending}
-            className="cursor-pointer rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {importMutation.isPending ? 'Dang import...' : 'Import'}
+            {importMutation.isPending ? 'Đang nhập...' : 'Nhập'}
           </button>
         </div>
       </div>
@@ -504,11 +519,11 @@ export default function ProductsPage() {
 
   const allProducts = productsData?.items ?? [];
   const filtered = productSearch.trim()
-    ? allProducts.filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+    ? allProducts.filter((product) => product.name.toLowerCase().includes(productSearch.toLowerCase()))
     : allProducts;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <h2 className="mr-auto text-sm font-semibold text-gray-900">
           {isLoading ? 'Đang tải...' : `${allProducts.length} sản phẩm`}
@@ -517,26 +532,26 @@ export default function ProductsPage() {
           value={productSearch}
           onChange={(e) => setProductSearch(e.target.value)}
           placeholder="Tìm sản phẩm..."
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none w-48"
+          className="w-48 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
         />
         <button
           type="button"
           onClick={() => setShowImportModal(true)}
-          className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 whitespace-nowrap"
+          className="whitespace-nowrap rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
         >
-          Import
+          Nhập dữ liệu
         </button>
         <button
           type="button"
           onClick={() => setShowAiImportModal(true)}
-          className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap"
+          className="whitespace-nowrap rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
         >
-          AI import/enrich
+          AI nhập liệu nâng cao
         </button>
         <button
           type="button"
           onClick={() => { setEditingProduct(null); setShowProductModal(true); }}
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 whitespace-nowrap"
+          className="whitespace-nowrap rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
         >
           + Thêm sản phẩm
         </button>
@@ -556,7 +571,7 @@ export default function ProductsPage() {
           </thead>
           <tbody>
             {filtered.map((product) => {
-              const img = product.images.find((i) => i.isPrimary) ?? product.images[0];
+              const img = product.images.find((image) => image.isPrimary) ?? product.images[0];
               return (
                 <tr key={product.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="px-4 py-3">
@@ -568,7 +583,7 @@ export default function ProductsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-gray-900 max-w-[200px] truncate">{product.name}</p>
+                    <p className="max-w-[200px] truncate text-sm font-medium text-gray-900">{product.name}</p>
                     <p className="text-xs text-gray-400">{product.slug}</p>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">{product.category.name}</td>

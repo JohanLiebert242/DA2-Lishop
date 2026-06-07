@@ -92,7 +92,7 @@ test.describe('my orders actions', () => {
             id: 'ticket-order-1',
             userId: 'user-1',
             category: 'ORDER',
-            subject: 'Lien he shop ve don hang LS-ORDER-001',
+            subject: 'Liên hệ cửa hàng về đơn hàng LS-ORDER-001',
             status: 'OPEN',
             orderRef: 'LS-ORDER-001',
             createdAt: new Date().toISOString(),

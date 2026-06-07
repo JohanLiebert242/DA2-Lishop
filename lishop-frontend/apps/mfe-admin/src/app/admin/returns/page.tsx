@@ -39,7 +39,7 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
     onSuccess: (result) => {
       if (result.adminNote) setAdminNote(result.adminNote);
       if (result.suggestedStatus) setSelectedStatus(result.suggestedStatus);
-      setAiSummary(result.fallback ? `AI fallback: ${result.summary}` : result.summary);
+      setAiSummary(result.fallback ? `AI chế độ dự phòng: ${result.summary}` : result.summary);
     },
     onError: (err: Error) => setAiSummary(err.message),
   });
@@ -79,7 +79,7 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
                   : 'border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
-              Cap nhat
+              Cập nhật
             </button>
           ) : null}
         </td>
@@ -90,7 +90,7 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <label htmlFor={`return-status-${ret.id}`} className="mb-1 block text-xs font-medium text-gray-700">
-                  Trang thai moi
+                  Trạng thái mới
                 </label>
                 <select
                   id={`return-status-${ret.id}`}
@@ -106,7 +106,7 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
               {needsNote ? (
                 <div className="min-w-48 flex-1">
                   <label htmlFor={`return-note-${ret.id}`} className="mb-1 block text-xs font-medium text-gray-700">
-                    Ghi chu admin
+                    Ghi chú admin
                   </label>
                   <input
                     id={`return-note-${ret.id}`}
@@ -124,7 +124,7 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
                 data-testid={`return-ai-${ret.id}`}
                 className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
               >
-                {aiMutation.isPending ? 'AI dang goi y...' : 'AI goi y'}
+                {aiMutation.isPending ? 'AI đang gợi ý...' : 'AI gợi ý'}
               </button>
               <div className="flex gap-2">
                 <button
@@ -133,14 +133,14 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
                   disabled={!selectedStatus || updateMutation.isPending}
                   className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {updateMutation.isPending ? 'Dang luu...' : 'Luu'}
+                  {updateMutation.isPending ? 'Đang lưu...' : 'Lưu'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowUpdate(false)}
                   className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  Huy
+                  Hủy
                 </button>
               </div>
             </div>
@@ -171,41 +171,41 @@ export default function ReturnsPage() {
     <div className="space-y-6">
       <AdminPageHeader
         icon={RotateCcw}
-        title="Doi tra"
-        description="Theo doi luong return request, trang thai tiep nhan, nhan hang va hoan tat, dong thoi nhan goi y AI cho cap nhat admin note."
-        badge="After-sales"
+        title="Đổi trả"
+        description="Theo dõi luồng yêu cầu đổi trả, trạng thái tiếp nhận, nhận hàng và hoàn tất, đồng thời nhận gợi ý AI để cập nhật ghi chú admin."
+        badge="Hậu mãi"
         tone="rose"
         stats={[
-          { label: 'Tong yeu cau', value: isLoading ? '...' : `${returns.length}` },
-          { label: 'Cho xu ly', value: isLoading ? '...' : `${pendingReturns}` },
-          { label: 'Da duyet', value: isLoading ? '...' : `${approvedReturns}` },
-          { label: 'Da nhan hang', value: isLoading ? '...' : `${receivedReturns}` },
+          { label: 'Tổng yêu cầu', value: isLoading ? '...' : `${returns.length}` },
+          { label: 'Chờ xử lý', value: isLoading ? '...' : `${pendingReturns}` },
+          { label: 'Đã duyệt', value: isLoading ? '...' : `${approvedReturns}` },
+          { label: 'Đã nhận hàng', value: isLoading ? '...' : `${receivedReturns}` },
         ]}
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminMetricCard icon={PackageSearch} label="Pending" value={isLoading ? '...' : `${pendingReturns}`} hint="Yeu cau can xem xet" tone="amber" />
-        <AdminMetricCard icon={Truck} label="Received" value={isLoading ? '...' : `${receivedReturns}`} hint="Hang doi tra da ve kho" tone="sky" />
-        <AdminMetricCard icon={RotateCcw} label="Approved" value={isLoading ? '...' : `${approvedReturns}`} hint="Case co the di tiep sang buoc sau" tone="rose" />
+        <AdminMetricCard icon={PackageSearch} label="Chờ xử lý" value={isLoading ? '...' : `${pendingReturns}`} hint="Yêu cầu cần xem xét" tone="amber" />
+        <AdminMetricCard icon={Truck} label="Đã nhận hàng" value={isLoading ? '...' : `${receivedReturns}`} hint="Hàng đổi trả đã về kho" tone="sky" />
+        <AdminMetricCard icon={RotateCcw} label="Đã duyệt" value={isLoading ? '...' : `${approvedReturns}`} hint="Ca có thể đi tiếp sang bước sau" tone="rose" />
       </div>
 
       <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
         <div className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-900">
-            {isLoading ? 'Dang tai...' : `${returns.length} yeu cau doi tra`}
+            {isLoading ? 'Đang tải...' : `${returns.length} yêu cầu đổi trả`}
           </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="px-4 py-2 text-left">Ma yeu cau</th>
-                <th className="px-4 py-2 text-left">Khach hang</th>
-                <th className="px-4 py-2 text-left">Don hang</th>
-                <th className="px-4 py-2 text-left">Ly do</th>
-                <th className="px-4 py-2 text-left">Trang thai</th>
-                <th className="px-4 py-2 text-left">Ngay tao</th>
-                <th className="px-4 py-2 text-left">Thao tac</th>
+                <th className="px-4 py-2 text-left">Mã yêu cầu</th>
+                <th className="px-4 py-2 text-left">Khách hàng</th>
+                <th className="px-4 py-2 text-left">Đơn hàng</th>
+                <th className="px-4 py-2 text-left">Lý do</th>
+                <th className="px-4 py-2 text-left">Trạng thái</th>
+                <th className="px-4 py-2 text-left">Ngày tạo</th>
+                <th className="px-4 py-2 text-left">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -216,8 +216,8 @@ export default function ReturnsPage() {
             <div className="p-4">
               <AdminEmptyState
                 icon={RotateCcw}
-                title="Chua co yeu cau doi tra"
-                description="Khi khach hang tao return request, admin se thay queue thao tac, trang thai va AI suggestion trong bang nay."
+                title="Chưa có yêu cầu đổi trả"
+                description="Khi khách hàng tạo yêu cầu đổi trả, admin sẽ thấy hàng chờ thao tác, trạng thái và gợi ý AI trong bảng này."
                 tone="rose"
               />
             </div>

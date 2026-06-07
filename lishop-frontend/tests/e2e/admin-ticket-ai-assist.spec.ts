@@ -98,8 +98,8 @@ test.describe('admin ticket AI assist', () => {
     await page.goto(`${ADMIN_URL}/admin/tickets`, { waitUntil: 'networkidle' });
 
     await expect(page.getByText('customer@lishop.test')).toBeVisible();
-    await page.getByRole('button', { name: /Ph/i }).click();
-    await page.getByRole('button', { name: 'AI goi y' }).click();
+    await page.getByRole('button', { name: /phản hồi/i }).click();
+    await page.getByRole('button', { name: 'AI gợi ý' }).click();
 
     await expect(page.getByText(/Khach chua nhan duoc hang/)).toBeVisible();
     await expect(page.locator('textarea')).toHaveValue(

@@ -34,29 +34,29 @@ import { AdminEmptyState } from './_components/admin-empty-state';
 const QUICK_LINKS = [
   {
     href: '/admin/orders',
-    label: 'Don hang',
-    description: 'Theo doi trang thai giao va xu ly don can uu tien.',
+    label: 'Đơn hàng',
+    description: 'Theo dõi trạng thái giao và xử lý các đơn cần ưu tiên.',
     icon: ClipboardCheck,
     tone: 'from-indigo-500/16 to-blue-500/6 text-indigo-700',
   },
   {
     href: '/admin/products',
-    label: 'San pham',
-    description: 'Cap nhat catalog, copy AI va import du lieu hang loat.',
+    label: 'Sản phẩm',
+    description: 'Cập nhật danh mục, nội dung AI và nhập dữ liệu hàng loạt.',
     icon: ShoppingBag,
     tone: 'from-rose-500/16 to-pink-500/6 text-rose-700',
   },
   {
     href: '/admin/inventory',
-    label: 'Ton kho',
-    description: 'Kiem tra muc ton thap, lich su dieu chinh va canh bao.',
+    label: 'Tồn kho',
+    description: 'Kiểm tra mức tồn thấp, lịch sử điều chỉnh và các cảnh báo.',
     icon: Boxes,
     tone: 'from-emerald-500/16 to-teal-500/6 text-emerald-700',
   },
   {
     href: '/admin/tickets',
-    label: 'Ho tro',
-    description: 'Nhanh tay xu ly ticket, FAQ va cac tac vu after-sales.',
+    label: 'Hỗ trợ',
+    description: 'Nhanh tay xử lý phiếu hỗ trợ, mục hỏi đáp và các tác vụ hậu mãi.',
     icon: Ticket,
     tone: 'from-sky-500/16 to-cyan-500/6 text-sky-700',
   },
@@ -87,52 +87,52 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <AdminPageHeader
         icon={TrendingUp}
-        title="Dashboard"
-        description="Tong hop nhanh tinh hinh kinh doanh, van hanh va nhung diem can chu y trong he thong Lishop. Tu day ban co the nhin doanh thu, don hang, ton kho va cac luong can xu ly trong mot man hinh duy nhat."
-        badge="Bao cao tong quan"
+        title="Bảng điều khiển"
+        description="Tổng hợp nhanh tình hình kinh doanh, vận hành và những điểm cần chú ý trong hệ thống Lishop. Từ đây bạn có thể nhìn doanh thu, đơn hàng, tồn kho và các luồng cần xử lý trong một màn hình duy nhất."
+        badge="Báo cáo tổng quan"
         tone="indigo"
         stats={[
-          { label: 'Don hang', value: stats ? `${stats.orderCount}` : '...' },
+          { label: 'Đơn hàng', value: stats ? `${stats.orderCount}` : '...' },
           { label: 'Doanh thu', value: stats ? formatVND(stats.revenueVnd) : '...' },
-          { label: 'Khach hang', value: stats ? `${stats.userCount}` : '...' },
-          { label: 'San pham', value: stats ? `${stats.productCount}` : '...' },
+          { label: 'Khách hàng', value: stats ? `${stats.userCount}` : '...' },
+          { label: 'Sản phẩm', value: stats ? `${stats.productCount}` : '...' },
         ]}
       />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <AdminMetricCard
           icon={CircleDollarSign}
-          label="Doanh thu 30 ngay"
+          label="Doanh thu 30 ngày"
           value={analytics ? formatVND(analytics.summary.revenueVnd) : '...'}
-          hint="Tong doanh thu da ghi nhan trong chu ky gan nhat."
+          hint="Tổng doanh thu đã ghi nhận trong chu kỳ gần nhất."
           tone="emerald"
         />
         <AdminMetricCard
           icon={ClipboardCheck}
-          label="Don 30 ngay"
+          label="Đơn 30 ngày"
           value={analytics ? analytics.summary.orderCount.toLocaleString('vi-VN') : '...'}
-          hint="Tong so don hang phat sinh trong vong 30 ngay."
+          hint="Tổng số đơn hàng phát sinh trong vòng 30 ngày."
           tone="indigo"
         />
         <AdminMetricCard
           icon={Users}
-          label="Khach moi"
+          label="Khách mới"
           value={analytics ? analytics.summary.newUsers.toLocaleString('vi-VN') : '...'}
-          hint="Luong tai khoan moi trong chu ky bao cao."
+          hint="Lượng tài khoản mới trong chu kỳ báo cáo."
           tone="sky"
         />
         <AdminMetricCard
           icon={PackageSearch}
-          label="Can xu ly"
+          label="Cần xử lý"
           value={pendingOrders.toLocaleString('vi-VN')}
-          hint="Don cho xac nhan de tranh cham SLA."
+          hint="Đơn chờ xác nhận để tránh chậm SLA."
           tone="amber"
         />
         <AdminMetricCard
           icon={AlertTriangle}
-          label="Ton kho thap"
+          label="Tồn kho thấp"
           value={lowStockCount.toLocaleString('vi-VN')}
-          hint="San pham sap het can theo doi va bo sung."
+          hint="Sản phẩm sắp hết cần theo dõi và bổ sung."
           tone="rose"
         />
       </section>
@@ -141,11 +141,11 @@ export default function AdminDashboardPage() {
         <div className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-950">Doanh thu theo ngay</h2>
-              <p className="mt-1 text-sm text-slate-500">Moc doanh thu gan nhat de doc nhanh xung luc van hanh.</p>
+              <h2 className="text-lg font-semibold text-slate-950">Doanh thu theo ngày</h2>
+              <p className="mt-1 text-sm text-slate-500">Mốc doanh thu gần nhất để đọc nhanh xung lực vận hành.</p>
             </div>
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-              30 ngay gan nhat
+              30 ngày gần nhất
             </span>
           </div>
 
@@ -154,8 +154,8 @@ export default function AdminDashboardPage() {
           ) : !analytics || analytics.dailyRevenue.length === 0 ? (
             <AdminEmptyState
               icon={TrendingUp}
-              title="Chua co du lieu doanh thu"
-              description="Khi he thong bat dau ghi nhan giao dich, dashboard se tu dong hien thi trend de ban so sanh tung ngay."
+              title="Chưa có dữ liệu doanh thu"
+              description="Khi hệ thống bắt đầu ghi nhận giao dịch, bảng điều khiển sẽ tự động hiển thị xu hướng để bạn so sánh từng ngày."
               tone="indigo"
             />
           ) : (
@@ -176,7 +176,7 @@ export default function AdminDashboardPage() {
                 />
                 <Tooltip
                   formatter={(value) => [formatVND(Number(value ?? 0)), 'Doanh thu']}
-                  labelFormatter={(label) => `Ngay ${String(label)}`}
+                  labelFormatter={(label) => `Ngày ${String(label)}`}
                 />
                 <Area type="monotone" dataKey="amount" stroke="#4f46e5" strokeWidth={3} fill="url(#dashboardRevenue)" />
               </AreaChart>
@@ -186,16 +186,16 @@ export default function AdminDashboardPage() {
 
         <div className="space-y-6">
           <div className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
-            <h2 className="text-lg font-semibold text-slate-950">Trang thai don hang</h2>
-            <p className="mt-1 text-sm text-slate-500">Phan bo luong xu ly de nhin ra diem nghen van hanh.</p>
+            <h2 className="text-lg font-semibold text-slate-950">Trạng thái đơn hàng</h2>
+            <p className="mt-1 text-sm text-slate-500">Phân bổ luồng xử lý để nhìn ra điểm nghẽn vận hành.</p>
             {isLoading ? (
               <div className="mt-5 h-52 animate-pulse rounded-3xl bg-slate-100" />
             ) : !analytics || analytics.orderStatusBreakdown.length === 0 ? (
               <div className="mt-5">
                 <AdminEmptyState
                   icon={ClipboardCheck}
-                  title="Chua co trang thai don hang"
-                  description="Bang phan bo se xuat hien ngay khi API analytics tra du lieu theo tung nhom xu ly."
+                  title="Chưa có trạng thái đơn hàng"
+                  description="Biểu đồ phân bổ sẽ xuất hiện ngay khi API phân tích trả dữ liệu theo từng nhóm xử lý."
                   tone="amber"
                 />
               </div>
@@ -214,11 +214,11 @@ export default function AdminDashboardPage() {
             )}
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Da giao</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Đã giao</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{deliveredOrders}</p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Tong luong hien thi</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Tổng luồng hiển thị</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{totalVisibleStatuses}</p>
               </div>
             </div>
@@ -230,18 +230,18 @@ export default function AdminDashboardPage() {
                 <AlertTriangle className="h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-slate-950">Attention needed</h2>
-                <p className="text-sm text-slate-600">Cac diem can xu ly ngay de dashboard giu nhip van hanh on dinh.</p>
+                <h2 className="text-lg font-semibold text-slate-950">Điểm cần chú ý</h2>
+                <p className="text-sm text-slate-600">Các điểm cần xử lý ngay để bảng điều khiển giữ nhịp vận hành ổn định.</p>
               </div>
             </div>
             <div className="mt-4 space-y-3">
               <div className="rounded-2xl bg-white/90 p-4">
-                <p className="text-sm font-semibold text-slate-900">{pendingOrders} don dang cho xac nhan</p>
-                <p className="mt-1 text-sm text-slate-500">Tap trung vao xu ly cho don moi de tranh tre han SLA.</p>
+                <p className="text-sm font-semibold text-slate-900">{pendingOrders} đơn đang chờ xác nhận</p>
+                <p className="mt-1 text-sm text-slate-500">Tập trung vào xử lý cho đơn mới để tránh trễ hạn SLA.</p>
               </div>
               <div className="rounded-2xl bg-white/90 p-4">
-                <p className="text-sm font-semibold text-slate-900">{lowStockCount} san pham ton kho thap</p>
-                <p className="mt-1 text-sm text-slate-500">Can doi chieu inventory va uu tien bo sung cac SKU ban nhanh.</p>
+                <p className="text-sm font-semibold text-slate-900">{lowStockCount} sản phẩm tồn kho thấp</p>
+                <p className="mt-1 text-sm text-slate-500">Cần đối chiếu tồn kho và ưu tiên bổ sung các mã hàng bán nhanh.</p>
               </div>
             </div>
           </div>
@@ -252,11 +252,11 @@ export default function AdminDashboardPage() {
         <div className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-950">Top san pham</h2>
-              <p className="mt-1 text-sm text-slate-500">Nhanh tay nhìn ra SKU dang keo doanh thu trong giai doan gan nhat.</p>
+              <h2 className="text-lg font-semibold text-slate-950">Sản phẩm nổi bật</h2>
+              <p className="mt-1 text-sm text-slate-500">Nhanh tay nhìn ra các mã hàng đang kéo doanh thu trong giai đoạn gần nhất.</p>
             </div>
             <Link href="/admin/products" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:text-indigo-900">
-              Mo catalog
+              Mở danh mục
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -269,8 +269,8 @@ export default function AdminDashboardPage() {
           ) : !analytics || analytics.topProducts.length === 0 ? (
             <AdminEmptyState
               icon={ShoppingBag}
-              title="Chua co top san pham"
-              description="Dashboard se xep hang cac san pham co doanh thu cao nhat khi analytics co du lieu."
+              title="Chưa có sản phẩm nổi bật"
+              description="Bảng điều khiển sẽ xếp hạng các sản phẩm có doanh thu cao nhất khi dữ liệu phân tích sẵn sàng."
               tone="rose"
             />
           ) : (
@@ -282,7 +282,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-950">{product.productName}</p>
-                    <p className="mt-1 text-sm text-slate-500">Doanh thu ghi nhan: {formatVND(product.revenue)}</p>
+                    <p className="mt-1 text-sm text-slate-500">Doanh thu ghi nhận: {formatVND(product.revenue)}</p>
                   </div>
                 </div>
               ))}
@@ -293,8 +293,8 @@ export default function AdminDashboardPage() {
         <div className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-950">Quick actions</h2>
-              <p className="mt-1 text-sm text-slate-500">Lua chon lo trinh dieu huong nhanh toi cac nhom tac vu quan trong.</p>
+              <h2 className="text-lg font-semibold text-slate-950">Tác vụ nhanh</h2>
+              <p className="mt-1 text-sm text-slate-500">Lựa chọn lộ trình điều hướng nhanh tới các nhóm tác vụ quan trọng.</p>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">

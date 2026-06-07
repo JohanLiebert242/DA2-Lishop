@@ -12,9 +12,9 @@ type Message =
 const CATALOG_URL = process.env['NEXT_PUBLIC_MFE_CATALOG_URL'] ?? 'http://localhost:3002';
 
 const QUICK_REPLIES = [
-  'Toi can combo di lam duoi 1 trieu',
-  'Goi y qua sinh nhat cho nu',
-  'Tim san pham dang mua nhat',
+  'Tôi cần combo đi làm dưới 1 triệu',
+  'Gợi ý quà sinh nhật cho nữ',
+  'Tìm sản phẩm đang mua nhiều',
 ];
 
 function TypingIndicator() {
@@ -45,7 +45,7 @@ function CartPlanCard({
         <img src={item.imageUrl} alt={item.name} className="h-14 w-14 rounded-md object-cover" />
       ) : (
         <div className="flex h-14 w-14 items-center justify-center rounded-md bg-gray-100 text-xs text-gray-400">
-          Anh
+          Ảnh
         </div>
       )}
       <div className="min-w-0 flex-1">
@@ -66,7 +66,7 @@ function CartPlanCard({
             disabled={adding}
             className="rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
-            Them
+            Thêm
           </button>
         </div>
       </div>
@@ -93,8 +93,8 @@ function ConciergeResult({
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2">
           <div className="mb-2 flex items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Gio hang goi y</p>
-              <p className="text-xs text-emerald-700">Tam tinh {formatVND(total)}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Giỏ hàng gợi ý</p>
+              <p className="text-xs text-emerald-700">Tạm tính {formatVND(total)}</p>
             </div>
             <button
               type="button"
@@ -103,7 +103,7 @@ function ConciergeResult({
               disabled={adding}
               className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
             >
-              Them tat ca
+              Thêm tất cả
             </button>
           </div>
           <div className="space-y-2">
@@ -126,7 +126,7 @@ function ConciergeResult({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={item.imageUrl} alt={item.name} className="h-20 w-full object-cover" />
               ) : (
-                <div className="flex h-20 items-center justify-center bg-gray-100 text-xs text-gray-400">Anh</div>
+                <div className="flex h-20 items-center justify-center bg-gray-100 text-xs text-gray-400">Ảnh</div>
               )}
               <div className="p-2">
                 <p className="line-clamp-2 text-xs font-semibold text-gray-800">{item.name}</p>
@@ -197,7 +197,7 @@ export function ChatWidget() {
       setMessages([
         {
           role: 'bot',
-          text: 'Xin chao, minh la AI Shopping Concierge cua Lishop. Hay noi nhu cau, ngan sach hoac dip mua sam cua ban.',
+          text: 'Xin chào, mình là trợ lý mua sắm AI của Lishop. Hãy nói nhu cầu, ngân sách hoặc dịp mua sắm của bạn.',
         },
       ]);
     }
@@ -218,7 +218,7 @@ export function ChatWidget() {
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: 'bot', text: 'Concierge dang gap loi. Ban vui long thu lai sau.', error: true },
+        { role: 'bot', text: 'Trợ lý mua sắm đang gặp lỗi. Bạn vui lòng thử lại sau.', error: true },
       ]);
     } finally {
       setTyping(false);
@@ -230,9 +230,9 @@ export function ChatWidget() {
     setNotice('');
     try {
       await addToCart(item.productId, item.quantity);
-      setNotice(`Da them ${item.name} vao gio.`);
+      setNotice(`Đã thêm ${item.name} vào giỏ.`);
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : 'Khong the them vao gio.');
+      setNotice(err instanceof Error ? err.message : 'Không thể thêm vào giỏ.');
     } finally {
       setAdding(false);
     }
@@ -245,9 +245,9 @@ export function ChatWidget() {
       for (const item of items) {
         await addToCart(item.productId, item.quantity);
       }
-      setNotice(`Da them ${items.length} san pham goi y vao gio.`);
+      setNotice(`Đã thêm ${items.length} sản phẩm gợi ý vào giỏ.`);
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : 'Khong the them tat ca vao gio.');
+      setNotice(err instanceof Error ? err.message : 'Không thể thêm tất cả vào giỏ.');
     } finally {
       setAdding(false);
     }
@@ -265,7 +265,7 @@ export function ChatWidget() {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        aria-label="Mo AI Shopping Concierge"
+        aria-label="Mở trợ lý mua sắm AI"
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-xl font-bold text-white shadow-lg transition-transform hover:scale-105 hover:bg-indigo-700 focus:outline-none"
       >
         {open ? 'x' : 'AI'}
@@ -278,13 +278,13 @@ export function ChatWidget() {
         >
           <div className="flex items-center justify-between bg-indigo-600 px-4 py-3">
             <div>
-              <p className="font-semibold text-white">AI Shopping Concierge</p>
-              <p className="text-xs text-indigo-100">Tu van va tao gio hang goi y</p>
+              <p className="font-semibold text-white">Trợ lý mua sắm AI</p>
+              <p className="text-xs text-indigo-100">Tư vấn và tạo giỏ hàng gợi ý</p>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Dong Concierge"
+              aria-label="Đóng trợ lý"
               className="rounded-full px-2 py-1 text-sm font-bold text-indigo-100 hover:bg-indigo-700 hover:text-white"
             >
               x
@@ -332,7 +332,7 @@ export function ChatWidget() {
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Mo ta nhu cau mua sam..."
+              placeholder="Mô tả nhu cầu mua sắm..."
               disabled={typing}
               className="flex-1 rounded-full border border-gray-300 px-4 py-1.5 text-sm focus:border-indigo-400 focus:outline-none disabled:opacity-50"
             />
@@ -340,10 +340,10 @@ export function ChatWidget() {
               type="button"
               onClick={() => sendMessage(input)}
               disabled={!input.trim() || typing}
-              aria-label="Gui yeu cau"
+              aria-label="Gửi yêu cầu"
               className="flex h-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 px-3 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
             >
-              Gui
+              Gửi
             </button>
           </div>
         </div>

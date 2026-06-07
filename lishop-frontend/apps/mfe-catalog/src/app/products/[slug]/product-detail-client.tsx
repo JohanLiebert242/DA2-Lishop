@@ -24,10 +24,10 @@ const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:30
 const REVIEWS_PER_PAGE = 5;
 
 const ATTRIBUTE_LABELS: Record<string, string> = {
-  color: 'Mau sac',
-  size: 'Kich co',
-  storage: 'Dung luong',
-  format: 'Dinh dang',
+  color: 'Màu sắc',
+  size: 'Kích cỡ',
+  storage: 'Dung lượng',
+  format: 'Định dạng',
 };
 
 function formatAttributeLabel(key: string) {
@@ -293,7 +293,7 @@ function ReviewsSection({ productId }: { productId: string }) {
                 onChange={handleMediaFilesChange}
                 className="mt-1 block w-full cursor-pointer rounded-xl border border-dashed border-warm bg-white px-3 py-2 text-sm text-stone-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-indigo-700"
               />
-              <p className="mt-1 text-xs text-muted">File dang preview tai may, URL se duoc luu cung noi dung review.</p>
+              <p className="mt-1 text-xs text-muted">Tệp đang được xem trước trên máy, URL sẽ được lưu cùng nội dung đánh giá.</p>
             </label>
           </div>
           {mediaPreviews.length > 0 && (
@@ -371,7 +371,7 @@ function ReviewsSection({ productId }: { productId: string }) {
         <div className="space-y-4">
           {sortedReviews.length === 0 && (
             <p className="rounded-xl border border-dashed border-warm px-4 py-6 text-center text-sm text-muted">
-              Khong co danh gia nao khop bo loc nay.
+              Không có đánh giá nào khớp bộ lọc này.
             </p>
           )}
           {paginatedReviews.map((review: ReviewInfo) => {
@@ -483,7 +483,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
   const styleFitAdvisorMutation = useMutation({
     mutationFn: async () => {
-      if (!product) throw new Error('Khong tim thay san pham de tu van size');
+      if (!product) throw new Error('Không tìm thấy sản phẩm để tư vấn kích cỡ');
 
       const heightCm = Number(advisorHeightCm);
       const weightKg = Number(advisorWeightKg);
@@ -510,11 +510,11 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
         setSelectedAttributes(recommendedVariant.attributes ?? {});
         setQty(1);
       }
-      toast.success(result.fallback ? 'Da nhan goi y fit fallback.' : 'AI da goi y size phu hop.');
+      toast.success(result.fallback ? 'Đã nhận gợi ý dự phòng về độ vừa vặn.' : 'AI đã gợi ý kích cỡ phù hợp.');
     },
     onError: (err: Error) => {
       setAdvisorResult(null);
-      setAdvisorError(err.message || 'Khong the lay goi y size luc nay');
+      setAdvisorError(err.message || 'Không thể lấy gợi ý kích cỡ lúc này');
     },
   });
 
@@ -592,7 +592,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
   const effectiveStock = selectedVariant?.stock ?? product?.stock ?? 0;
   const effectiveSku = selectedVariant?.sku ?? product?.sku;
   const likeCount = product ? Math.max(24, product.reviewCount * 7 + Math.round(product.averageRating * 9)) : 0;
-  const shopName = product?.brand ? `${product.brand} Store` : 'Lishop Official Store';
+  const shopName = product?.brand ? `Cửa hàng ${product.brand}` : 'Cửa hàng chính hãng Lishop';
   const shopSlug = slugifyShopName(product?.brand ?? shopName);
 
   function handleAttributeSelect(key: string, value: string) {
@@ -632,7 +632,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     }
 
     await navigator.clipboard.writeText(url);
-    toast.success('Da sao chep lien ket san pham');
+    toast.success('Đã sao chép liên kết sản phẩm');
   }
 
   const images = useMemo(() => {
@@ -821,7 +821,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                 onClick={() => handleShare('copy')}
                 className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
               >
-                Copy link
+                Sao chép liên kết
               </button>
             </div>
           </div>
@@ -930,19 +930,19 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                       onClick={() => setShowStyleFitAdvisor((current) => !current)}
                       className="text-sm font-bold text-indigo-700 transition hover:text-indigo-800"
                     >
-                      AI chon size
+                      AI chọn cỡ
                     </button>
                     <button
                       type="button"
                       onClick={scrollToSizeGuide}
                       className="text-sm font-bold text-indigo-600 transition hover:text-indigo-700"
                     >
-                      Huong dan chon size
+                      Hướng dẫn chọn cỡ
                     </button>
                   </div>
 
                   <p className="text-sm text-stone-600">
-                    Nhap so do co ban de nhan goi y fit va tu dong chon bien the phu hop neu AI tim thay.
+                    Nhập số đo cơ bản để nhận gợi ý độ vừa vặn và tự động chọn biến thể phù hợp nếu AI tìm thấy.
                   </p>
 
                   {showStyleFitAdvisor && (
@@ -986,7 +986,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                             <option value="slim">Slim</option>
                             <option value="regular">Regular</option>
                             <option value="relaxed">Relaxed</option>
-                            <option value="oversized">Oversized</option>
+                            <option value="oversized">Rộng thoải mái</option>
                           </select>
                         </label>
                         <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-occasion">
@@ -1002,12 +1002,12 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                       </div>
 
                       <label className="block text-sm font-semibold text-stone-700" htmlFor="advisor-body-shape">
-                        Dang nguoi
+                        Dáng người
                         <input
                           id="advisor-body-shape"
                           value={advisorBodyShape}
                           onChange={(event) => setAdvisorBodyShape(event.target.value)}
-                          placeholder="Vai rong, bung nho, dang thao..."
+                          placeholder="Vai rộng, bụng nhỏ, dáng thể thao..."
                           className="mt-1 w-full rounded-xl border border-warm bg-white px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                         />
                       </label>
@@ -1031,16 +1031,16 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                           disabled={styleFitAdvisorMutation.isPending}
                           className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {styleFitAdvisorMutation.isPending ? 'Dang xin goi y...' : 'Nhan goi y AI'}
+                          {styleFitAdvisorMutation.isPending ? 'Đang xin gợi ý...' : 'Nhận gợi ý AI'}
                         </button>
                         {advisorResult?.recommendedSize && (
                           <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
-                            AI de xuat: Size {advisorResult.recommendedSize}
+                            AI đề xuất: Cỡ {advisorResult.recommendedSize}
                           </span>
                         )}
                         {advisorResult?.fallback && (
                           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
-                            Dang dung fallback
+                            Đang dùng dự phòng
                           </span>
                         )}
                       </div>
@@ -1181,21 +1181,21 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
               <h2 className="truncate text-lg font-black text-stone-900">{shopName}</h2>
               <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-stone-500">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                online
+                Đang hoạt động
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <a
                   href="#chat"
                   className="inline-flex h-9 items-center justify-center rounded-sm border border-red-400 bg-red-50 px-4 text-sm font-bold text-red-500 transition hover:bg-red-100"
                 >
-                  Chat Ngay
+                  Nhắn tin ngay
                 </a>
                 <Link
                   href={`/shops/${shopSlug}`}
                   data-testid="shop-profile-link"
                   className="inline-flex h-9 items-center justify-center rounded-sm border border-stone-200 bg-white px-4 text-sm font-bold text-stone-700 transition hover:border-red-200 hover:text-red-500"
                 >
-                  Xem Shop
+                  Xem cửa hàng
                 </Link>
               </div>
             </div>
@@ -1203,12 +1203,12 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
           <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
             {[
-              ['Đánh Giá', formatCompactCount(shopReviewCount)],
-              ['Sản Phẩm', shopProductCount.toLocaleString('vi-VN')],
-              ['Tỉ Lệ Phản Hồi', '89%'],
-              ['Thời Gian Phản Hồi', 'trong vài phút'],
-              ['Tham Gia', '8 năm trước'],
-              ['Người Theo Dõi', formatCompactCount(shopFollowerCount)],
+              ['Đánh giá', formatCompactCount(shopReviewCount)],
+              ['Sản phẩm', shopProductCount.toLocaleString('vi-VN')],
+              ['Tỉ lệ phản hồi', '89%'],
+              ['Thời gian phản hồi', 'trong vài phút'],
+              ['Tham gia', '8 năm trước'],
+              ['Người theo dõi', formatCompactCount(shopFollowerCount)],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between gap-4 text-sm">
                 <dt className="text-stone-400">{label}</dt>
@@ -1256,10 +1256,10 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
           {hasSizeGuide && (
             <section ref={sizeGuideRef} id="size-guide" className="mt-8 scroll-mt-24 border-t border-warm pt-6">
-              <h3 className="text-base font-black uppercase tracking-normal text-stone-900">Hướng dẫn size</h3>
+              <h3 className="text-base font-black uppercase tracking-normal text-stone-900">Hướng dẫn chọn cỡ</h3>
               <p className="mt-3 text-sm leading-7 text-stone-600">
-                Nếu bạn phân vân giữa hai size, hãy chọn size lớn hơn để thoải mái hơn. Vui lòng đối chiếu
-                thông số cơ thể với bảng size của từng mẫu sản phẩm trước khi đặt hàng.
+                Nếu bạn phân vân giữa hai cỡ, hãy chọn cỡ lớn hơn để thoải mái hơn. Vui lòng đối chiếu
+                thông số cơ thể với bảng cỡ của từng mẫu sản phẩm trước khi đặt hàng.
               </p>
             </section>
           )}
@@ -1276,7 +1276,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
         <aside data-testid="product-detail-sidebar" className="space-y-4">
           <section className="bg-white px-4 py-5 shadow-sm ring-1 ring-warm">
-            <h2 className="text-sm font-semibold text-stone-400">Mã giảm giá của Shop</h2>
+            <h2 className="text-sm font-semibold text-stone-400">Mã giảm giá của cửa hàng</h2>
             <div className="mt-5 space-y-3">
               {[
                 ['Giảm 3k₫', 'Đơn Tối Thiểu 145k₫'],
@@ -1300,7 +1300,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
           </section>
 
           <section className="bg-white px-4 py-5 shadow-sm ring-1 ring-warm">
-            <h2 className="text-sm font-semibold text-stone-400">Top Sản Phẩm Nổi Bật</h2>
+            <h2 className="text-sm font-semibold text-stone-400">Sản phẩm nổi bật</h2>
             <Link href={`/products/${product.slug}`} className="mt-5 block transition hover:opacity-90">
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-stone-100">
                 {featuredImage ? (

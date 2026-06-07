@@ -70,19 +70,18 @@ test.describe('admin AI product import/enrich', () => {
 
     await page.goto(`${ADMIN_URL}/admin/products`, { waitUntil: 'networkidle' });
 
-    const open = page.getByRole('button', { name: /AI import\/enrich/i });
+    const open = page.getByRole('button', { name: /ai nhập liệu nâng cao/i });
     await expect(open).toBeVisible();
     await open.click();
 
     const dialog = page.locator('.fixed.inset-0').last();
     await expect(dialog).toBeVisible();
 
-    await dialog.getByPlaceholder(/Danh sach san pham/i).fill('Ao AI gia 199k ton 10');
-    await dialog.getByRole('button', { name: /AI phan tich/i }).click();
+    await dialog.getByPlaceholder(/Danh sách sản phẩm/i).fill('Ao AI gia 199k ton 10');
+    await dialog.getByRole('button', { name: /AI phân tích/i }).click();
 
-    await expect(dialog.getByText(/Da chuan bi 1 san pham/i)).toBeVisible();
-    await dialog.getByRole('button', { name: /^Import$/ }).click();
-    await expect(dialog.getByText(/Tao thanh cong 1/i)).toBeVisible();
+    await expect(dialog.getByText(/Đã chuẩn bị 1 sản phẩm/i)).toBeVisible();
+    await dialog.getByRole('button', { name: /^Nhập$/ }).click();
+    await expect(dialog.getByText(/Tạo thành công 1/i)).toBeVisible();
   });
 });
-

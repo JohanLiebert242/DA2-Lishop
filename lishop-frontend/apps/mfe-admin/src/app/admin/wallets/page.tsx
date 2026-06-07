@@ -11,8 +11,8 @@ export default function WalletsPage() {
   });
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="border-b px-4 py-3">
         <h2 className="text-sm font-semibold text-gray-900">
           {isLoading ? 'Đang tải...' : `${adminWallets.length} ví người dùng`}
         </h2>
@@ -36,12 +36,8 @@ export default function WalletsPage() {
                     ? `${wallet.user.firstName} ${wallet.user.lastName}`
                     : '—'}
                 </td>
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                  {formatVND(wallet.balanceVnd)}
-                </td>
-                <td className="px-4 py-3 text-xs text-gray-500">
-                  {new Date(wallet.updatedAt).toLocaleDateString('vi-VN')}
-                </td>
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">{formatVND(wallet.balanceVnd)}</td>
+                <td className="px-4 py-3 text-xs text-gray-500">{new Date(wallet.updatedAt).toLocaleDateString('vi-VN')}</td>
               </tr>
             ))}
           </tbody>

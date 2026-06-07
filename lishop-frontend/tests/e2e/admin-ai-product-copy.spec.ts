@@ -51,7 +51,7 @@ test.describe('admin AI product copy', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [
-            { id: 'cat-1', name: 'Thoi trang', slug: 'thoi-trang', parentId: null },
+            { id: 'cat-1', name: 'Thời trang', slug: 'thoi-trang', parentId: null },
           ],
         }),
       });
@@ -72,17 +72,17 @@ test.describe('admin AI product copy', () => {
 
     await page.goto(`${ADMIN_URL}/admin/products`, { waitUntil: 'networkidle' });
 
-    const addProduct = page.getByRole('button', { name: /Thêm sản phẩm/i });
+    const addProduct = page.getByRole('button', { name: /thêm sản phẩm/i });
     await expect(addProduct).toBeVisible();
     await addProduct.click();
     const dialog = page.locator('.fixed.inset-0').last();
     await expect(dialog).toBeVisible();
 
     await dialog.getByPlaceholder('Tên sản phẩm...').fill('Ao khoac AI');
-    await dialog.getByRole('button', { name: 'AI viet mo ta' }).click();
+    await dialog.getByRole('button', { name: 'AI viết mô tả' }).click();
 
     const description = dialog.getByPlaceholder('Mô tả sản phẩm...');
     await expect(description).toHaveValue(/Ao khoac AI co form gon/);
-    await expect(dialog.getByText(/AI da tao mo ta/)).toBeVisible();
+    await expect(dialog.getByText(/AI đã tạo mô tả/)).toBeVisible();
   });
 });

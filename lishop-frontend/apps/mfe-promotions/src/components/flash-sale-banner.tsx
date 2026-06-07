@@ -42,7 +42,7 @@ export function FlashSaleBanner({ sale }: { sale: FlashSaleInfo }) {
     <div className="rounded-xl bg-gradient-to-r from-red-500 to-orange-500 p-4 text-white">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-bold">⚡ Flash Sale</h3>
+          <h3 className="text-lg font-bold">⚡ Bán nhanh</h3>
           <p className="text-sm text-red-100">Kết thúc sau</p>
         </div>
         <div data-testid="section-countdown" className="flex items-end gap-1.5">
@@ -68,7 +68,7 @@ export function FlashSaleBanner({ sale }: { sale: FlashSaleInfo }) {
                 {image ? (
                   <Image src={image.url} alt={item.product.name} fill className="object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-white/50 text-xs">No img</div>
+                  <div className="flex h-full items-center justify-center text-white/50 text-xs">Không có ảnh</div>
                 )}
                 <span className="absolute top-1 right-1 rounded bg-red-600 px-1.5 py-0.5 text-xs font-bold">
                   -{item.discountPercent}%

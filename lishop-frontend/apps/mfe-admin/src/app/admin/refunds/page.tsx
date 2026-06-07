@@ -27,7 +27,7 @@ export default function RefundsPage() {
   const aiAssistMutation = useMutation({
     mutationFn: (id: string) => adminApi.generateRefundAiAssist(id),
     onSuccess: (result, id) => {
-      const text = result.fallback ? `AI fallback: ${result.summary}` : result.summary;
+      const text = result.fallback ? `AI chế độ dự phòng: ${result.summary}` : result.summary;
       setAiNotes((prev) => ({ ...prev, [id]: result.adminNote ? `${text} - ${result.adminNote}` : text }));
     },
     onError: (err: Error, id) => setAiNotes((prev) => ({ ...prev, [id]: err.message })),
@@ -41,40 +41,40 @@ export default function RefundsPage() {
     <div className="space-y-6">
       <AdminPageHeader
         icon={RefreshCcw}
-        title="Hoan tien"
-        description="Khu xu ly refund cho cac don can hoan, cho phep xem hinh thuc hoan, tong gia tri va nhan goi y AI cho ghi chu van hanh."
-        badge="After-sales"
+        title="Hoàn tiền"
+        description="Khu xử lý hoàn tiền cho các đơn cần hoàn, cho phép xem hình thức hoàn, tổng giá trị và nhận gợi ý AI cho ghi chú vận hành."
+        badge="Hậu mãi"
         tone="amber"
         stats={[
-          { label: 'Tong refund', value: isLoading ? '...' : `${adminRefunds.length}` },
-          { label: 'Dang cho', value: isLoading ? '...' : `${pendingRefunds}` },
-          { label: 'Tong gia tri', value: isLoading ? '...' : formatVND(totalAmount) },
-          { label: 'Hoan vao vi', value: isLoading ? '...' : `${walletRefunds}` },
+          { label: 'Tổng hoàn tiền', value: isLoading ? '...' : `${adminRefunds.length}` },
+          { label: 'Đang chờ', value: isLoading ? '...' : `${pendingRefunds}` },
+          { label: 'Tổng giá trị', value: isLoading ? '...' : formatVND(totalAmount) },
+          { label: 'Hoàn vào ví', value: isLoading ? '...' : `${walletRefunds}` },
         ]}
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminMetricCard icon={CircleDollarSign} label="Tong gia tri" value={isLoading ? '...' : formatVND(totalAmount)} hint="Gia tri refund dang hien thi" tone="indigo" />
-        <AdminMetricCard icon={RefreshCcw} label="Dang cho xu ly" value={isLoading ? '...' : `${pendingRefunds}`} hint="Refund can thao tac tiep theo" tone="amber" />
-        <AdminMetricCard icon={Wallet} label="Hoan ve vi" value={isLoading ? '...' : `${walletRefunds}`} hint="Refund route ve wallet" tone="emerald" />
+        <AdminMetricCard icon={CircleDollarSign} label="Tổng giá trị" value={isLoading ? '...' : formatVND(totalAmount)} hint="Giá trị hoàn tiền đang hiển thị" tone="indigo" />
+        <AdminMetricCard icon={RefreshCcw} label="Đang chờ xử lý" value={isLoading ? '...' : `${pendingRefunds}`} hint="Hoàn tiền cần thao tác tiếp theo" tone="amber" />
+        <AdminMetricCard icon={Wallet} label="Hoàn về ví" value={isLoading ? '...' : `${walletRefunds}`} hint="Luồng hoàn tiền về ví" tone="emerald" />
       </div>
 
       <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
         <div className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-900">
-            {isLoading ? 'Dang tai...' : `${adminRefunds.length} yeu cau hoan tien`}
+            {isLoading ? 'Đang tải...' : `${adminRefunds.length} yêu cầu hoàn tiền`}
           </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="px-4 py-2 text-left">Don hang</th>
-                <th className="px-4 py-2 text-left">Khach hang</th>
-                <th className="px-4 py-2 text-left">So tien</th>
-                <th className="px-4 py-2 text-left">Phuong thuc</th>
-                <th className="px-4 py-2 text-left">Trang thai</th>
-                <th className="px-4 py-2 text-left">Thao tac</th>
+                <th className="px-4 py-2 text-left">Đơn hàng</th>
+                <th className="px-4 py-2 text-left">Khách hàng</th>
+                <th className="px-4 py-2 text-left">Số tiền</th>
+                <th className="px-4 py-2 text-left">Phương thức</th>
+                <th className="px-4 py-2 text-left">Trạng thái</th>
+                <th className="px-4 py-2 text-left">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -103,7 +103,7 @@ export default function RefundsPage() {
                           data-testid={`refund-ai-${refund.id}`}
                           className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                         >
-                          {aiAssistMutation.isPending ? 'AI dang goi y...' : 'AI goi y'}
+                          {aiAssistMutation.isPending ? 'AI đang gợi ý...' : 'AI gợi ý'}
                         </button>
                         <button
                           type="button"
@@ -111,7 +111,7 @@ export default function RefundsPage() {
                           disabled={processRefundMutation.isPending}
                           className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                         >
-                          {processRefundMutation.isPending ? 'Dang xu ly...' : 'Xu ly'}
+                          {processRefundMutation.isPending ? 'Đang xử lý...' : 'Xử lý'}
                         </button>
                       </div>
                     ) : null}
@@ -130,8 +130,8 @@ export default function RefundsPage() {
             <div className="p-4">
               <AdminEmptyState
                 icon={RefreshCcw}
-                title="Chua co yeu cau hoan tien"
-                description="Khi he thong phat sinh refund, bang nay se hien cac luong can xu ly kem goi y AI cho admin."
+                title="Chưa có yêu cầu hoàn tiền"
+                description="Khi hệ thống phát sinh hoàn tiền, bảng này sẽ hiện các luồng cần xử lý kèm gợi ý AI cho admin."
                 tone="amber"
               />
             </div>

@@ -10,7 +10,7 @@ test.describe('catalog AI product discovery', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
-            reply: 'iPhone 15 phu hop neu ban can camera tot va hieu nang on dinh.',
+            reply: 'iPhone 15 phù hợp nếu bạn cần camera tốt và hiệu năng ổn định.',
             mode: 'advice',
             fallback: false,
             items: [
@@ -18,12 +18,12 @@ test.describe('catalog AI product discovery', () => {
                 id: 'p-ai-1',
                 name: 'iPhone 15',
                 slug: 'iphone-15',
-                description: 'Camera tot, hieu nang on dinh',
+                description: 'Camera tốt, hiệu năng ổn định',
                 priceVnd: 20000000,
                 stock: 8,
                 averageRating: 4.8,
                 reviewCount: 120,
-                category: { id: 'c1', name: 'Dien thoai', slug: 'dien-thoai' },
+                category: { id: 'c1', name: 'Điện thoại', slug: 'dien-thoai' },
                 images: [],
               },
             ],
@@ -38,11 +38,11 @@ test.describe('catalog AI product discovery', () => {
     await expect(panel).toBeVisible();
 
     await panel
-      .getByPlaceholder(/dien thoai chup anh dep/i)
-      .fill('dien thoai chup anh dep duoi 20 trieu');
-    await panel.getByRole('button', { name: 'Tu van' }).click();
+      .getByPlaceholder(/điện thoại chụp ảnh đẹp/i)
+      .fill('điện thoại chụp ảnh đẹp dưới 20 triệu');
+    await panel.getByRole('button', { name: 'Tư vấn' }).click();
 
-    await expect(panel).toContainText('iPhone 15 phu hop');
+    await expect(panel).toContainText('iPhone 15 phù hợp');
     await expect(panel.getByRole('link', { name: /iPhone 15/i })).toBeVisible();
     await expect(panel).toContainText('20.000.000');
   });

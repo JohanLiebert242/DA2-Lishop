@@ -11,7 +11,7 @@ interface FlashSaleModalProps {
 }
 
 function FlashSaleModal({ existing, onClose, onSaved }: FlashSaleModalProps) {
-  const toLocal = (iso: string) => iso ? iso.slice(0, 16) : '';
+  const toLocal = (iso: string) => (iso ? iso.slice(0, 16) : '');
   const [startAt, setStartAt] = useState(toLocal(existing?.startAt ?? ''));
   const [endAt, setEndAt] = useState(toLocal(existing?.endAt ?? ''));
   const [isActive, setIsActive] = useState(existing?.isActive ?? true);
@@ -20,9 +20,7 @@ function FlashSaleModal({ existing, onClose, onSaved }: FlashSaleModalProps) {
   const mutation = useMutation({
     mutationFn: () => {
       const data = { startAt: new Date(startAt).toISOString(), endAt: new Date(endAt).toISOString(), isActive };
-      return existing
-        ? adminApi.updateFlashSale(existing.id, data)
-        : adminApi.createFlashSale(data);
+      return existing ? adminApi.updateFlashSale(existing.id, data) : adminApi.createFlashSale(data);
     },
     onSuccess: () => { onSaved(); onClose(); },
     onError: (err: Error) => setError(err.message),
@@ -32,11 +30,11 @@ function FlashSaleModal({ existing, onClose, onSaved }: FlashSaleModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
         <h3 className="mb-4 text-base font-semibold text-gray-900">
-          {existing ? 'Chỉnh sửa Flash Sale' : 'Tạo Flash Sale mới'}
+          {existing ? 'Chỉnh sửa đợt bán nhanh' : 'Tạo đợt bán nhanh mới'}
         </h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Bắt đầu</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Bắt đầu</label>
             <input
               type="datetime-local"
               value={startAt}
@@ -45,7 +43,7 @@ function FlashSaleModal({ existing, onClose, onSaved }: FlashSaleModalProps) {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Kết thúc</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Kết thúc</label>
             <input
               type="datetime-local"
               value={endAt}
@@ -65,10 +63,7 @@ function FlashSaleModal({ existing, onClose, onSaved }: FlashSaleModalProps) {
         </div>
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button" onClick={onClose}
-            className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
+          <button type="button" onClick={onClose} className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
             Hủy
           </button>
           <button
@@ -111,12 +106,12 @@ function FlashSaleItemsPanel({ sale }: { sale: AdminFlashSale }) {
     <tr className="border-b bg-indigo-50">
       <td colSpan={6} className="px-6 py-4">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-indigo-700">
-          Sản phẩm trong Flash Sale
+          Sản phẩm trong đợt bán nhanh
         </p>
         {sale.items.length === 0 ? (
           <p className="mb-3 text-xs text-gray-500">Chưa có sản phẩm nào.</p>
         ) : (
-          <table className="mb-3 w-full rounded-md overflow-hidden text-xs">
+          <table className="mb-3 w-full overflow-hidden rounded-md text-xs">
             <thead className="bg-indigo-100 text-indigo-800">
               <tr>
                 <th className="px-3 py-1.5 text-left">Sản phẩm</th>
@@ -152,7 +147,7 @@ function FlashSaleItemsPanel({ sale }: { sale: AdminFlashSale }) {
         )}
         <div className="flex flex-wrap items-end gap-2">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Product ID (UUID)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">ID sản phẩm (UUID)</label>
             <input
               value={productId}
               onChange={(e) => setProductId(e.target.value)}
@@ -161,9 +156,12 @@ function FlashSaleItemsPanel({ sale }: { sale: AdminFlashSale }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Giảm giá (%)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Giảm giá (%)</label>
             <input
-              type="number" min={1} max={99} value={discountPercent}
+              type="number"
+              min={1}
+              max={99}
+              value={discountPercent}
               onChange={(e) => setDiscountPercent(Number(e.target.value))}
               className="w-20 rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
             />
@@ -203,17 +201,17 @@ export default function FlashSalesPage() {
   });
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h2 className="text-sm font-semibold text-gray-900">
-          {isLoading ? 'Đang tải...' : `${flashSales.length} Flash Sale`}
+          {isLoading ? 'Đang tải...' : `${flashSales.length} đợt bán nhanh`}
         </h2>
         <button
           type="button"
           onClick={() => { setEditingFlashSale(null); setShowFlashSaleModal(true); }}
           className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
         >
-          + Tạo Flash Sale
+          + Tạo đợt bán nhanh
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -231,12 +229,8 @@ export default function FlashSalesPage() {
             {flashSales.map((sale) => (
               <React.Fragment key={sale.id}>
                 <tr className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {new Date(sale.startAt).toLocaleString('vi-VN')}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {new Date(sale.endAt).toLocaleString('vi-VN')}
-                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{new Date(sale.startAt).toLocaleString('vi-VN')}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{new Date(sale.endAt).toLocaleString('vi-VN')}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       sale.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
@@ -268,7 +262,7 @@ export default function FlashSalesPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (window.confirm('Xóa Flash Sale này?')) {
+                          if (window.confirm('Xóa đợt bán nhanh này?')) {
                             deleteFlashSaleMutation.mutate(sale.id);
                           }
                         }}
@@ -280,15 +274,13 @@ export default function FlashSalesPage() {
                     </div>
                   </td>
                 </tr>
-                {expandedFlashSaleId === sale.id && (
-                  <FlashSaleItemsPanel sale={sale} />
-                )}
+                {expandedFlashSaleId === sale.id && <FlashSaleItemsPanel sale={sale} />}
               </React.Fragment>
             ))}
           </tbody>
         </table>
         {!isLoading && flashSales.length === 0 && (
-          <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có Flash Sale nào.</p>
+          <p className="px-4 py-8 text-center text-sm text-gray-400">Chưa có đợt bán nhanh nào.</p>
         )}
       </div>
 

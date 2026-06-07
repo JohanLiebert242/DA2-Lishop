@@ -71,28 +71,28 @@ export default function OrdersPage() {
     <div className="space-y-6">
       <AdminPageHeader
         icon={ClipboardCheck}
-        title="Don hang"
-        description="Khu dieu hanh luong don hang theo trang, giup doi van hanh cap nhat trang thai xu ly va theo doi nhanh tong gia tri dang hien thi."
-        badge="Operations"
+        title="Đơn hàng"
+        description="Khu điều hành luồng đơn hàng theo trang, giúp đội vận hành cập nhật trạng thái xử lý và theo dõi nhanh tổng giá trị đang hiển thị."
+        badge="Vận hành"
         tone="amber"
         stats={[
-          { label: 'Tong don', value: isLoading ? '...' : `${total}` },
-          { label: 'Dang xu ly', value: isLoading ? '...' : `${processingOrders}` },
-          { label: 'Dang giao', value: isLoading ? '...' : `${shippingOrders}` },
-          { label: 'Gia tri trang', value: isLoading ? '...' : formatVND(totalRevenue) },
+          { label: 'Tổng đơn', value: isLoading ? '...' : `${total}` },
+          { label: 'Đang xử lý', value: isLoading ? '...' : `${processingOrders}` },
+          { label: 'Đang giao', value: isLoading ? '...' : `${shippingOrders}` },
+          { label: 'Giá trị trang', value: isLoading ? '...' : formatVND(totalRevenue) },
         ]}
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminMetricCard icon={PackageCheck} label="Don hien thi" value={isLoading ? '...' : `${orders.length}`} hint="So ban ghi tren trang hien tai" tone="indigo" />
-        <AdminMetricCard icon={TimerReset} label="Dang xu ly" value={isLoading ? '...' : `${processingOrders}`} hint="Don can giai quyet tiep theo" tone="amber" />
-        <AdminMetricCard icon={Truck} label="Dang giao" value={isLoading ? '...' : `${shippingOrders}`} hint="Don da vao pipeline shipment" tone="sky" />
+        <AdminMetricCard icon={PackageCheck} label="Đơn hiển thị" value={isLoading ? '...' : `${orders.length}`} hint="Số bản ghi trên trang hiện tại" tone="indigo" />
+        <AdminMetricCard icon={TimerReset} label="Đang xử lý" value={isLoading ? '...' : `${processingOrders}`} hint="Đơn cần giải quyết tiếp theo" tone="amber" />
+        <AdminMetricCard icon={Truck} label="Đang giao" value={isLoading ? '...' : `${shippingOrders}`} hint="Đơn đã vào luồng giao vận" tone="sky" />
       </div>
 
       <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-900">
-            {isLoading ? 'Dang tai...' : `${total} don hang`}
+            {isLoading ? 'Đang tải...' : `${total} đơn hàng`}
           </h2>
           {totalPages > 1 && (
             <div className="flex items-center gap-2 text-xs text-gray-600">
@@ -120,11 +120,11 @@ export default function OrdersPage() {
           <table className="w-full">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="px-4 py-2 text-left">Ma don</th>
-                <th className="px-4 py-2 text-left">Khach hang</th>
-                <th className="px-4 py-2 text-left">Tong tien</th>
-                <th className="px-4 py-2 text-left">Ngay dat</th>
-                <th className="px-4 py-2 text-left">Trang thai</th>
+                <th className="px-4 py-2 text-left">Mã đơn</th>
+                <th className="px-4 py-2 text-left">Khách hàng</th>
+                <th className="px-4 py-2 text-left">Tổng tiền</th>
+                <th className="px-4 py-2 text-left">Ngày đặt</th>
+                <th className="px-4 py-2 text-left">Trạng thái</th>
                 <th className="px-4 py-2 text-left">SL</th>
               </tr>
             </thead>
@@ -136,8 +136,8 @@ export default function OrdersPage() {
             <div className="p-4">
               <AdminEmptyState
                 icon={ClipboardCheck}
-                title="Chua co don hang"
-                description="Khi backend bat dau tra du lieu order, bang xu ly va cac KPI phia tren se duoc cap nhat tu dong."
+                title="Chưa có đơn hàng"
+                description="Khi backend bắt đầu trả dữ liệu đơn hàng, bảng xử lý và các KPI phía trên sẽ được cập nhật tự động."
                 tone="amber"
               />
             </div>

@@ -25,11 +25,11 @@ const BRAND_BY_SLUG: Record<string, string> = {
 
 function getShopInfo(slug: string) {
   if (slug === 'lishop-official-store') {
-    return { name: 'Lishop Official Store', brand: undefined };
+    return { name: 'Cửa hàng chính hãng Lishop', brand: undefined };
   }
 
   const brand = BRAND_BY_SLUG[slug] ?? slug.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
-  return { name: `${brand} Store`, brand };
+  return { name: `Cửa hàng ${brand}`, brand };
 }
 
 export default async function ShopPage({ params }: Props) {
@@ -46,28 +46,28 @@ export default async function ShopPage({ params }: Props) {
       <section className="border-b border-warm bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8">
           <Link href="/products" className="text-sm font-bold text-indigo-600 transition hover:text-indigo-700">
-            Quay lai san pham
+            Quay lại sản phẩm
           </Link>
           <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-wide text-muted">Shop</p>
+              <p className="text-xs font-black uppercase tracking-wide text-muted">Cửa hàng</p>
               <h1 className="mt-1 text-3xl font-black tracking-tight text-stone-900">{shop.name}</h1>
               <p className="mt-2 max-w-2xl text-sm text-muted">
-                Cac san pham dang ban tai shop nay duoc cap nhat tu catalog hien co.
+                Các sản phẩm đang bán tại cửa hàng này được cập nhật từ danh mục hiện có.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="rounded-lg bg-warm-100 px-3 py-2">
                 <p className="text-sm font-black text-stone-900">98%</p>
-                <p className="text-xs text-muted">Phan hoi</p>
+                <p className="text-xs text-muted">Phản hồi</p>
               </div>
               <div className="rounded-lg bg-warm-100 px-3 py-2">
                 <p className="text-sm font-black text-stone-900">24h</p>
-                <p className="text-xs text-muted">Xu ly</p>
+                <p className="text-xs text-muted">Xử lý</p>
               </div>
               <div className="rounded-lg bg-warm-100 px-3 py-2">
                 <p className="text-sm font-black text-stone-900">{products.items.length}</p>
-                <p className="text-xs text-muted">San pham</p>
+                <p className="text-xs text-muted">Sản phẩm</p>
               </div>
             </div>
           </div>
@@ -77,7 +77,7 @@ export default async function ShopPage({ params }: Props) {
       <section className="mx-auto max-w-7xl px-4 py-8">
         {products.items.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed border-stone-200 bg-white px-4 py-12 text-center">
-            <p className="font-semibold text-stone-700">Shop chua co san pham phu hop.</p>
+            <p className="font-semibold text-stone-700">Cửa hàng chưa có sản phẩm phù hợp.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">

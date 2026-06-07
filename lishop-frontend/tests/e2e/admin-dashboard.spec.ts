@@ -69,8 +69,8 @@ test.describe('admin dashboard', () => {
     await page.goto(`${ADMIN_URL}/admin`, { waitUntil: 'networkidle' });
 
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /bảng điều khiển/i })).toBeVisible();
     await expect(page.getByText(/Ao khoac premium/)).toBeVisible();
-    await expect(page.getByRole('heading', { name: /attention needed/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /điểm cần chú ý/i })).toBeVisible();
   });
 });

@@ -35,7 +35,7 @@ function AiSuggestionCard({ product }: { product: AiDiscoveryProduct }) {
         />
       ) : (
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-stone-100 text-xs text-stone-400">
-          No img
+          Không có ảnh
         </div>
       )}
       <div className="min-w-0">
@@ -43,7 +43,7 @@ function AiSuggestionCard({ product }: { product: AiDiscoveryProduct }) {
           {product.name}
         </p>
         <p className="mt-0.5 text-xs text-stone-500">
-          {product.category.name} · {product.stock > 0 ? `${product.stock} trong kho` : 'Het hang'}
+          {product.category.name} · {product.stock > 0 ? `${product.stock} trong kho` : 'Hết hàng'}
         </p>
         <p className="mt-1 text-sm font-black text-emerald-700">{formatVND(product.priceVnd)}</p>
       </div>
@@ -139,7 +139,7 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
       const result = await catalogApi.discoverProducts(message);
       setAiResult(result);
     } catch (err) {
-      setAiError(err instanceof Error ? err.message : 'Khong the tu van luc nay');
+      setAiError(err instanceof Error ? err.message : 'Không thể tư vấn lúc này');
     } finally {
       setAiLoading(false);
     }
@@ -182,10 +182,10 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
                     </span>
                     <div>
                       <h2 className="text-sm font-black uppercase tracking-wide text-stone-900">
-                        Tu van nhanh
+                        Tư vấn nhanh
                       </h2>
                       <p className="text-xs text-stone-500">
-                        Noi nhu cau, ngan sach hoac san pham muon so sanh
+                        Nói nhu cầu, ngân sách hoặc sản phẩm muốn so sánh
                       </p>
                     </div>
                   </div>
@@ -199,7 +199,7 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
                     }}
                     rows={2}
                     className="mt-3 w-full resize-none rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                    placeholder="VD: dien thoai chup anh dep duoi 20 trieu, hoac so sanh iphone 15 voi samsung s24"
+                    placeholder="VD: điện thoại chụp ảnh đẹp dưới 20 triệu, hoặc so sánh iPhone 15 với Samsung S24"
                   />
                 </div>
                 {aiHydrated ? (
@@ -209,7 +209,7 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
                     disabled={aiLoading}
                     className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-emerald-900 px-4 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 lg:mt-11"
                   >
-                    {aiLoading ? 'Dang tu van...' : 'Tu van'}
+                    {aiLoading ? 'Đang tư vấn...' : 'Tư vấn'}
                   </button>
                 ) : (
                   <div className="h-10 shrink-0 lg:mt-11" />
@@ -226,11 +226,11 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
                 <div className="mt-4 border-t border-stone-100 pt-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold uppercase text-emerald-800">
-                      {aiResult.mode === 'compare' ? 'So sanh' : 'Goi y'}
+                      {aiResult.mode === 'compare' ? 'So sánh' : 'Gợi ý'}
                     </span>
                     {aiResult.fallback && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-                        Fallback
+                        Dự phòng
                       </span>
                     )}
                   </div>

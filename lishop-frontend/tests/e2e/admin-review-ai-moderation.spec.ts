@@ -91,10 +91,10 @@ test.describe('admin review AI moderation', () => {
     await page.goto(`${ADMIN_URL}/admin/reviews`, { waitUntil: 'networkidle' });
 
     await expect(page.getByText('Buyer Test')).toBeVisible();
-    await page.getByRole('button', { name: 'AI kiem duyet' }).click();
+    await page.getByRole('button', { name: 'AI kiểm duyệt' }).click();
 
     await expect(page.getByText(/Review co dau hieu spam/)).toBeVisible();
-    await expect(page.getByText('Risk: HIGH')).toBeVisible();
+    await expect(page.getByText('Mức rủi ro: HIGH')).toBeVisible();
     await expect(page.getByText('Chua duong link ben ngoai')).toBeVisible();
   });
 });

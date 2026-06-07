@@ -8,18 +8,18 @@ import { CouponWidget } from '../../components/coupon-widget';
 
 function couponDescription(coupon: PublicCoupon): string {
   if (coupon.type === 'PERCENT') {
-    return `Giam ${coupon.value}%${
-      coupon.minOrderVnd > 0 ? ` - Don tu ${(coupon.minOrderVnd / 1000).toFixed(0)}K` : ''
+    return `Giảm ${coupon.value}%${
+      coupon.minOrderVnd > 0 ? ` - Đơn từ ${(coupon.minOrderVnd / 1000).toFixed(0)}K` : ''
     }`;
   }
 
   if (coupon.type === 'FIXED') {
-    return `Giam ${(coupon.value / 1000).toFixed(0)}K${
-      coupon.minOrderVnd > 0 ? ` - Don tu ${(coupon.minOrderVnd / 1000).toFixed(0)}K` : ''
+    return `Giảm ${(coupon.value / 1000).toFixed(0)}K${
+      coupon.minOrderVnd > 0 ? ` - Đơn từ ${(coupon.minOrderVnd / 1000).toFixed(0)}K` : ''
     }`;
   }
 
-  return 'Mien phi giao hang';
+  return 'Miễn phí giao hàng';
 }
 
 export default function PromotionsPage() {
@@ -46,7 +46,7 @@ export default function PromotionsPage() {
     }
 
     setCopiedCode(code);
-    setCopyMessage(`Da copy ma ${code}`);
+    setCopyMessage(`Đã sao chép mã ${code}`);
   }
 
   return (
@@ -75,10 +75,10 @@ export default function PromotionsPage() {
         <div className="relative mx-auto max-w-3xl px-4">
           <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 text-xs font-bold">
             <span className="h-2 w-2 rounded-full bg-red-300 animate-pulse" />
-            DANG DIEN RA
+            ĐANG DIỄN RA
           </span>
-          <h1 className="text-4xl font-black tracking-tight">Flash Sale & Khuyen mai</h1>
-          <p className="mt-2 text-white/80">Uu dai len den 25% - So luong co han</p>
+          <h1 className="text-4xl font-black tracking-tight">Bán nhanh & Khuyến mãi</h1>
+          <p className="mt-2 text-white/80">Ưu đãi lên đến 25% - Số lượng có hạn</p>
         </div>
       </div>
 
@@ -87,10 +87,10 @@ export default function PromotionsPage() {
           <div className="space-y-6 lg:col-span-2">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-red-600">
-                Su kien: Flash Sale dang chay
+                Sự kiện: Đợt bán nhanh đang chạy
               </p>
               <h2 className="mt-1 flex items-center gap-2 text-xl font-black tracking-tight text-stone-900">
-                Flash Sale dang chay ({flashSales.length} dot)
+                Đợt bán nhanh đang chạy ({flashSales.length} đợt)
               </h2>
             </div>
 
@@ -106,9 +106,9 @@ export default function PromotionsPage() {
               <div className="card flex flex-col items-center justify-center gap-4 py-16 text-center">
                 <span className="text-5xl">...</span>
                 <div>
-                  <p className="font-bold text-stone-700">Chua co flash sale nao</p>
+                  <p className="font-bold text-stone-700">Chưa có đợt bán nhanh nào</p>
                   <p className="mt-1 text-sm text-muted">
-                    Flash sale dien ra hang ngay luc 12:00 va 20:00
+                    Đợt bán nhanh diễn ra hằng ngày lúc 12:00 và 20:00
                   </p>
                 </div>
               </div>
@@ -124,14 +124,14 @@ export default function PromotionsPage() {
 
             <div className="card p-5">
               <h3 className="mb-4 flex items-center gap-2 text-sm font-black text-stone-900">
-                Huong dan su dung ma
+                Hướng dẫn sử dụng mã
               </h3>
               <ol className="space-y-3">
                 {[
-                  { step: '1', text: 'Them san pham vao gio hang' },
-                  { step: '2', text: 'Nhap ma giam gia o trang gio hang' },
-                  { step: '3', text: 'Giam gia tu dong ap dung' },
-                  { step: '4', text: 'Hoan tat thanh toan' },
+                  { step: '1', text: 'Thêm sản phẩm vào giỏ hàng' },
+                  { step: '2', text: 'Nhập mã giảm giá ở trang giỏ hàng' },
+                  { step: '3', text: 'Giảm giá tự động áp dụng' },
+                  { step: '4', text: 'Hoàn tất thanh toán' },
                 ].map((item) => (
                   <li key={item.step} className="flex items-start gap-3">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-black text-white">
@@ -146,10 +146,10 @@ export default function PromotionsPage() {
             {coupons.length > 0 && (
               <div className="card bg-gradient-to-br from-indigo-50 to-violet-50 p-5">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
-                  Su kien: Ma giam gia hot
+                  Sự kiện: Mã giảm giá hot
                 </p>
                 <h3 className="mb-3 mt-1 text-sm font-black text-stone-900">
-                  Ma giam gia hot ({coupons.length} ma)
+                  Mã giảm giá hot ({coupons.length} mã)
                 </h3>
                 <div className="space-y-2.5">
                   {coupons.map((coupon) => (
@@ -172,7 +172,7 @@ export default function PromotionsPage() {
                             : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
                         }`}
                       >
-                        {copiedCode === coupon.code ? 'Copied' : 'Copy'}
+                        {copiedCode === coupon.code ? 'Đã chép' : 'Sao chép'}
                       </button>
                     </div>
                   ))}
