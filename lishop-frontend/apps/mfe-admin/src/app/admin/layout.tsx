@@ -4,30 +4,78 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ArrowLeft,
+  BadgeDollarSign,
+  BellRing,
+  Boxes,
+  ClipboardList,
+  CreditCard,
+  HelpCircle,
+  LayoutDashboard,
+  type LucideIcon,
+  Megaphone,
+  PackageSearch,
+  Receipt,
+  RefreshCcw,
+  ShieldCheck,
+  ShoppingBag,
+  Star,
+  Ticket,
+  TrendingUp,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import { formatVND, hasSessionCookie } from '@lishop/shared';
 import { adminApi } from '../../lib/admin-api';
 
-const AUTH_URL  = process.env['NEXT_PUBLIC_MFE_AUTH_URL']  ?? 'http://localhost:3001';
-const SHELL_URL = process.env['NEXT_PUBLIC_SHELL_URL']      ?? 'http://localhost:3010';
+const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
+const SHELL_URL = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
 
-const NAV_ITEMS = [
-  { href: '/admin/orders',     label: 'Đơn hàng' },
-  { href: '/admin/users',      label: 'Người dùng' },
-  { href: '/admin/products',   label: 'Sản phẩm' },
-  { href: '/admin/promotions', label: 'Khuyến mãi' },
-  { href: '/admin/analytics',  label: 'Phân tích' },
-  { href: '/admin/inventory',  label: 'Kho hàng' },
-  { href: '/admin/returns',    label: 'Đổi trả' },
-  { href: '/admin/tickets',    label: 'Hỗ trợ' },
-  { href: '/admin/faq',        label: 'FAQ' },
-  { href: '/admin/reviews',    label: 'Đánh giá' },
-  { href: '/admin/flashsales', label: 'Flash Sale' },
-  { href: '/admin/payments',   label: 'Thanh toán' },
-  { href: '/admin/refunds',    label: 'Hoàn tiền' },
-  { href: '/admin/invoices',   label: 'Hóa đơn' },
-  { href: '/admin/wallets',    label: 'Ví người dùng' },
-  { href: '/admin/wallet-topups', label: 'Duyệt nạp ví' },
+type NavItem = { href: string; label: string; icon: LucideIcon; tone: string };
+type NavSection = { label: string; items: NavItem[] };
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    label: 'Tong quan',
+    items: [
+      { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, tone: 'from-indigo-500/20 to-blue-500/8 text-indigo-700' },
+      { href: '/admin/analytics', label: 'Phan tich', icon: TrendingUp, tone: 'from-sky-500/20 to-cyan-500/8 text-sky-700' },
+      { href: '/admin/orders', label: 'Don hang', icon: ClipboardList, tone: 'from-amber-500/20 to-orange-500/8 text-amber-700' },
+    ],
+  },
+  {
+    label: 'Van hanh',
+    items: [
+      { href: '/admin/products', label: 'San pham', icon: ShoppingBag, tone: 'from-violet-500/20 to-fuchsia-500/8 text-violet-700' },
+      { href: '/admin/inventory', label: 'Kho hang', icon: Boxes, tone: 'from-emerald-500/20 to-teal-500/8 text-emerald-700' },
+      { href: '/admin/promotions', label: 'Khuyen mai', icon: Megaphone, tone: 'from-pink-500/20 to-rose-500/8 text-pink-700' },
+      { href: '/admin/flashsales', label: 'Flash Sale', icon: BellRing, tone: 'from-rose-500/20 to-orange-500/8 text-rose-700' },
+      { href: '/admin/payments', label: 'Thanh toan', icon: CreditCard, tone: 'from-cyan-500/20 to-blue-500/8 text-cyan-700' },
+      { href: '/admin/invoices', label: 'Hoa don', icon: Receipt, tone: 'from-slate-500/20 to-slate-400/8 text-slate-700' },
+      { href: '/admin/refunds', label: 'Hoan tien', icon: RefreshCcw, tone: 'from-orange-500/20 to-amber-500/8 text-orange-700' },
+    ],
+  },
+  {
+    label: 'Cham soc',
+    items: [
+      { href: '/admin/tickets', label: 'Ho tro', icon: Ticket, tone: 'from-sky-500/20 to-indigo-500/8 text-sky-700' },
+      { href: '/admin/faq', label: 'FAQ', icon: HelpCircle, tone: 'from-indigo-500/20 to-violet-500/8 text-indigo-700' },
+      { href: '/admin/reviews', label: 'Danh gia', icon: Star, tone: 'from-amber-500/20 to-yellow-500/8 text-amber-700' },
+      { href: '/admin/returns', label: 'Doi tra', icon: PackageSearch, tone: 'from-rose-500/20 to-fuchsia-500/8 text-rose-700' },
+    ],
+  },
+  {
+    label: 'Nguoi dung',
+    items: [
+      { href: '/admin/users', label: 'Nguoi dung', icon: Users, tone: 'from-sky-500/20 to-cyan-500/8 text-sky-700' },
+      { href: '/admin/wallets', label: 'Vi nguoi dung', icon: Wallet, tone: 'from-emerald-500/20 to-cyan-500/8 text-emerald-700' },
+      { href: '/admin/wallet-topups', label: 'Duyet nap vi', icon: BadgeDollarSign, tone: 'from-amber-500/20 to-orange-500/8 text-amber-700' },
+    ],
+  },
 ];
+
+const FLAT_NAV_ITEMS = NAV_SECTIONS.flatMap((section) => section.items);
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -35,6 +83,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       window.location.replace(`${AUTH_URL}/login`);
       return;
     }
+
     fetch(`${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000'}/auth/me`, {
       credentials: 'include',
     })
@@ -55,58 +104,128 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white shadow-sm">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Link href="/admin" className="flex items-center gap-2 text-lg font-bold text-indigo-600">
-              <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                <img src="/lishop-logo.png" alt="Lishop logo" className="h-full w-full object-contain p-1" />
+    <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_18%,#f8fafc_100%)] text-slate-900">
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-0 h-72 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.14),transparent_32%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.14),transparent_28%)]" />
+
+      <header className="sticky top-0 z-30 border-b border-white/70 bg-white/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <Link href="/admin" className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/lishop-logo.png" alt="Lishop logo" className="h-9 w-9 object-contain" />
               </span>
-              <span>Lishop Admin</span>
-            </Link>
-            {stats && (
-              <div className="hidden items-center gap-4 text-xs text-gray-500 sm:flex">
-                <span>{stats.orderCount} đơn</span>
-                <span>{formatVND(stats.revenueVnd)} doanh thu</span>
-                <span>{stats.userCount} KH</span>
-                <span>{stats.productCount} SP</span>
+              <div className="min-w-0">
+                <p className="text-lg font-semibold text-slate-950">Lishop Admin</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Overview control center</p>
               </div>
-            )}
+            </Link>
+
+            {stats ? (
+              <div className="hidden items-center gap-2 lg:flex">
+                {[
+                  { label: 'Don', value: `${stats.orderCount}`, tone: 'bg-indigo-50 text-indigo-700' },
+                  { label: 'Doanh thu', value: formatVND(stats.revenueVnd), tone: 'bg-emerald-50 text-emerald-700' },
+                  { label: 'KH', value: `${stats.userCount}`, tone: 'bg-sky-50 text-sky-700' },
+                  { label: 'SP', value: `${stats.productCount}`, tone: 'bg-amber-50 text-amber-700' },
+                ].map((item) => (
+                  <div key={item.label} className={`rounded-full px-3 py-2 text-xs font-semibold ${item.tone}`}>
+                    <span className="mr-2 uppercase tracking-[0.22em] opacity-70">{item.label}</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
-          <a
-            href={SHELL_URL}
-            className="text-sm font-medium text-gray-500 hover:text-gray-700"
-          >
-            ← Trang chủ
-          </a>
+
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 md:flex">
+              <ShieldCheck className="h-4 w-4" />
+              He thong on dinh
+            </div>
+            <a
+              href={SHELL_URL}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Trang chu
+            </a>
+          </div>
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-screen-2xl gap-0">
-        {/* Sidebar */}
-        <nav className="sticky top-[53px] h-[calc(100vh-53px)] w-44 shrink-0 overflow-y-auto border-r border-gray-200 bg-white py-4">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`block px-4 py-2 text-sm font-medium transition-colors ${
-                  active
-                    ? 'bg-indigo-50 text-indigo-700 border-r-2 border-indigo-600'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+      <div className="relative z-10 mx-auto flex max-w-[1600px] gap-6 px-4 py-6">
+        <aside className="sticky top-[97px] hidden h-[calc(100vh-121px)] w-72 shrink-0 overflow-y-auto rounded-[28px] border border-white/70 bg-white/85 p-4 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.45)] backdrop-blur xl:block">
+          <div className="mb-4 rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Workspace</p>
+            <p className="mt-2 text-lg font-semibold text-slate-950">Ban dieu khien van hanh</p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Theo doi doanh thu, don hang, ton kho va cac tac vu cham soc khach hang trong mot khung quan tri thong nhat.
+            </p>
+          </div>
 
-        {/* Main content */}
-        <main className="min-w-0 flex-1 px-6 py-6">
+          <nav className="space-y-5">
+            {NAV_SECTIONS.map((section) => (
+              <div key={section.label}>
+                <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                  {section.label}
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {section.items.map((item) => {
+                    const active = item.href === '/admin'
+                      ? pathname === '/admin'
+                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    const Icon = item.icon;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition ${
+                          active
+                            ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/10'
+                            : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-950'
+                        }`}
+                      >
+                        <span
+                          className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${
+                            active ? 'from-white/20 to-white/10 text-white' : item.tone
+                          }`}
+                        >
+                          <Icon className="h-4.5 w-4.5" />
+                        </span>
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="min-w-0 flex-1">
+          <div className="mb-5 flex flex-wrap items-center gap-2 xl:hidden">
+            {FLAT_NAV_ITEMS.map((item) => {
+              const active = item.href === '/admin'
+                ? pathname === '/admin'
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition ${
+                    active ? 'bg-slate-950 text-white' : 'bg-white text-slate-600 shadow-sm hover:text-slate-950'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
           {children}
         </main>
       </div>

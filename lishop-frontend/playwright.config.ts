@@ -6,6 +6,8 @@ export default defineConfig({
   timeout: 180_000,
   expect: { timeout: 20_000 },
   retries: process.env['CI'] ? 1 : 0,
+  // Local Windows dev servers in this monorepo are prone to browser/page crashes under high parallelism.
+  workers: process.env['CI'] ? undefined : 1,
   use: {
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

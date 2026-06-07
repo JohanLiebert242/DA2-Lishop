@@ -1,9 +1,13 @@
 'use client';
 
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { AlertTriangle, BarChart3, BrainCircuit, PackageSearch, Sparkles, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatVND } from '@lishop/shared';
 import { adminApi } from '../../../lib/admin-api';
+import { AdminEmptyState } from '../_components/admin-empty-state';
+import { AdminMetricCard } from '../_components/admin-metric-card';
+import { AdminPageHeader } from '../_components/admin-page-header';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Cho xac nhan',
@@ -33,18 +37,36 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
+      <AdminPageHeader
+        icon={BarChart3}
+        title="Phan tich"
+        description="Khung bao cao chi tiet cho doanh thu, top san pham, trang thai don va AI insights. Trang nay duoc toi uu de demo nhanh tinh hinh kinh doanh va ra quyet dinh."
+        badge="Analytics"
+        tone="sky"
+        stats={[
+          { label: 'Doanh thu', value: isLoading ? '...' : kpis[0]!.value },
+          { label: 'Don hang', value: isLoading ? '...' : kpis[1]!.value },
+          { label: 'AOV', value: isLoading ? '...' : kpis[2]!.value },
+          { label: 'Khach moi', value: isLoading ? '...' : kpis[3]!.value },
+        ]}
+      />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {kpis.map((item) => (
-          <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{item.label}</p>
-            <p className="mt-2 text-xl font-bold text-gray-900">{isLoading ? '...' : item.value}</p>
-          </div>
-        ))}
+        <AdminMetricCard icon={Sparkles} label={kpis[0]!.label} value={isLoading ? '...' : kpis[0]!.value} hint="Revenue snapshot" tone="emerald" />
+        <AdminMetricCard icon={BarChart3} label={kpis[1]!.label} value={isLoading ? '...' : kpis[1]!.value} hint="Don hang trong ky" tone="indigo" />
+        <AdminMetricCard icon={Users} label={kpis[3]!.label} value={isLoading ? '...' : kpis[3]!.value} hint="Tang truong tai khoan" tone="sky" />
+        <AdminMetricCard
+          icon={PackageSearch}
+          label="Ton kho thap"
+          value={analytics ? analytics.lowStockProducts.length.toLocaleString('vi-VN') : '...'}
+          hint="SKU can bo sung"
+          tone="amber"
+        />
       </div>
 
       <section
         data-testid="admin-analytics-ai"
-        className="rounded-xl border border-sky-200 bg-white p-5 shadow-sm"
+        className="rounded-[28px] border border-sky-200/80 bg-white p-5 shadow-[0_18px_48px_-36px_rgba(14,165,233,0.4)]"
       >
         <div className="flex flex-wrap items-center gap-3">
           <div className="mr-auto">
@@ -118,12 +140,17 @@ export default function AnalyticsPage() {
         )}
       </section>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Doanh thu 30 ngay gan nhat</h2>
         {isLoading ? (
           <p className="py-8 text-center text-sm text-gray-400">Dang tai...</p>
         ) : !analytics || analytics.dailyRevenue.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gray-400">Chua co du lieu doanh thu.</p>
+          <AdminEmptyState
+            icon={BarChart3}
+            title="Chua co du lieu doanh thu"
+            description="Khi dashboard nhan du lieu giao dich, bieu do doanh thu se xuat hien o day de so sanh tung ngay."
+            tone="indigo"
+          />
         ) : (
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={analytics.dailyRevenue} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
@@ -148,7 +175,7 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
           <div className="border-b px-4 py-3">
             <h2 className="text-sm font-semibold text-gray-900">Top 5 san pham theo doanh thu</h2>
           </div>
@@ -180,7 +207,7 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
           <div className="border-b px-4 py-3">
             <h2 className="text-sm font-semibold text-gray-900">Trang thai don hang</h2>
           </div>
@@ -200,9 +227,15 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b px-4 py-3">
-          <h2 className="text-sm font-semibold text-gray-900">San pham sap het hang</h2>
+      <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
+        <div className="flex items-center gap-3 border-b px-4 py-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">San pham sap het hang</h2>
+            <p className="text-xs text-gray-500">Theo doi nhanh cac SKU can bo sung trong dashboard.</p>
+          </div>
         </div>
         <div className="divide-y divide-gray-100">
           {(analytics?.lowStockProducts ?? []).map((product) => (
@@ -217,7 +250,14 @@ export default function AnalyticsPage() {
             </div>
           ))}
           {!isLoading && (!analytics || analytics.lowStockProducts.length === 0) && (
-            <p className="px-4 py-8 text-center text-sm text-gray-400">Khong co san pham ton kho thap.</p>
+            <div className="p-4">
+              <AdminEmptyState
+                icon={BrainCircuit}
+                title="Ton kho dang an toan"
+                description="Chua co san pham nao roi vao nguong canh bao, nen ban co the tap trung vao phan tich va tang truong."
+                tone="emerald"
+              />
+            </div>
           )}
         </div>
       </div>
