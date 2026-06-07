@@ -1,5 +1,31 @@
 import { AuthController } from './auth.controller';
 
+describe('AuthController credentials', () => {
+  const authService = {
+    register: jest.fn(),
+  };
+  const res = {
+    setCookie: jest.fn(),
+  };
+
+  beforeEach(() => jest.resetAllMocks());
+
+  it('does not create login cookies after registration', async () => {
+    authService.register.mockResolvedValue(undefined);
+    const controller = new AuthController(authService as never);
+
+    const result = await controller.register({
+      email: 'new@example.com',
+      password: 'Customer@123',
+      firstName: 'New',
+      lastName: 'User',
+    });
+
+    expect(result).toEqual({ message: 'Đăng ký thành công. Vui lòng đăng nhập để tiếp tục.' });
+    expect(res.setCookie).not.toHaveBeenCalled();
+  });
+});
+
 describe('AuthController OAuth initiate', () => {
   const authService = {} as never;
   const req = { headers: { host: 'localhost:4000' }, protocol: 'http' };

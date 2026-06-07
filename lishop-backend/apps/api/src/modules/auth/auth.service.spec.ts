@@ -75,11 +75,11 @@ describe('AuthService — credentials', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('should create user, send verification email, return tokens', async () => {
+    it('should create user, send verification email, and not issue login tokens', async () => {
       usersService.findByEmail.mockResolvedValue(null);
       const created = { ...mockUser, email: 'new@example.com', passwordHash: 'hashed' };
       usersService.create.mockResolvedValue(created);
-      const result = await service.register({
+      await service.register({
         email: 'new@example.com',
         password: 'pass1234',
         firstName: 'New',
@@ -87,8 +87,8 @@ describe('AuthService — credentials', () => {
       });
       expect(usersService.create).toHaveBeenCalled();
       expect(mailService.sendVerificationEmail).toHaveBeenCalledWith('new@example.com', expect.any(String));
-      expect(result).toHaveProperty('accessToken');
-      expect(result).toHaveProperty('refreshToken');
+      expect(jwtService.signAccessToken).not.toHaveBeenCalled();
+      expect(jwtService.signRefreshToken).not.toHaveBeenCalled();
     });
   });
 

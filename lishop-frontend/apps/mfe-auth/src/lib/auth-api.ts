@@ -19,9 +19,13 @@ export interface AuthTokens {
   accessToken: string;
 }
 
+export interface RegisterResponse {
+  message: string;
+}
+
 export const authApi = {
   register: (body: { email: string; password: string; firstName: string; lastName: string }) =>
-    apiFetch<AuthTokens>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
+    apiFetch<RegisterResponse>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
 
   login: (body: { email: string; password: string }) =>
     apiFetch<AuthTokens>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),

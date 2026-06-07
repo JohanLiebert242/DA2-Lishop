@@ -60,12 +60,9 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register a new account' })
-  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: FastifyReply) {
-    const { accessToken, refreshToken } = await this.authService.register(dto);
-    res.setCookie('lishop_at', accessToken, ACCESS_COOKIE_OPTIONS);
-    res.setCookie('lishop_session', '1', SESSION_COOKIE_OPTIONS);
-    res.setCookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTIONS);
-    return { accessToken };
+  async register(@Body() dto: RegisterDto) {
+    await this.authService.register(dto);
+    return { message: 'Đăng ký thành công. Vui lòng đăng nhập để tiếp tục.' };
   }
 
   @Public()

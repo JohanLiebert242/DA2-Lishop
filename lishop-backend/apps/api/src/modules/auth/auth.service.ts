@@ -32,7 +32,7 @@ export class AuthService {
     private readonly mailService: MailService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthTokens> {
+  async register(dto: RegisterDto): Promise<void> {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) throw new ConflictException('Email already registered');
 
@@ -48,7 +48,6 @@ export class AuthService {
     await this.redisService.setex(`email_verify:${verifyToken}`, EMAIL_VERIFY_TTL, user.id);
     await this.mailService.sendVerificationEmail(user.email, verifyToken);
 
-    return this.issueTokens(user);
   }
 
   async login(dto: LoginDto): Promise<AuthTokens> {

@@ -35,7 +35,7 @@ export default function RegisterPage() {
       await authApi.register(data);
       toast.success('Tạo tài khoản thành công');
       setSuccess(true);
-      setTimeout(() => { window.location.href = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010'; }, 500);
+      setTimeout(() => { window.location.href = '/login'; }, 500);
     } catch (e) {
       const message = (e as Error).message;
       setServerError(message);
@@ -53,7 +53,7 @@ export default function RegisterPage() {
             </svg>
           </div>
           <p className="text-lg font-bold text-stone-900">Tài khoản đã được tạo!</p>
-          <p className="text-sm text-muted-foreground">Đang chuyển hướng về trang chủ...</p>
+          <p className="text-sm text-muted-foreground">Đang chuyển hướng đến trang đăng nhập...</p>
         </div>
       </div>
     );
