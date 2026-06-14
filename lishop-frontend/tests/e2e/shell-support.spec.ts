@@ -50,6 +50,74 @@ test.describe('shell support center', () => {
     await expect(page.getByText('Bạn có thể vào mục Đơn hàng để theo dõi')).toBeVisible();
   });
 
+  test('marks notification badge as read when opening the notifications panel', async ({ page }) => {
+    let markAllCalled = false;
+
+    await page.context().addCookies([
+      { name: 'lishop_session', value: '1', domain: 'localhost', path: '/', sameSite: 'Lax' },
+    ]);
+
+    await page.addInitScript(() => {
+      window.localStorage.setItem('lishop_notification_count', '3');
+    });
+
+    await page.route('**/auth/me', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: 'user-shell-notifications',
+            email: 'shell-notifications@lishop.vn',
+            firstName: 'Shell',
+            lastName: 'Notifications',
+            role: 'CUSTOMER',
+            emailVerified: true,
+          },
+        }),
+      });
+    });
+
+    await page.route('**/notifications?*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [
+            {
+              id: 'notif-1',
+              title: 'Order shipped',
+              body: 'Your order is on the way.',
+              isRead: false,
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.route('**/notifications/read-all', async (route) => {
+      markAllCalled = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { count: 3 } }),
+      });
+    });
+
+    await page.goto(`${SHELL_URL}/support`, { waitUntil: 'networkidle' });
+
+    const notificationButton = page.locator('button[aria-label]').first();
+    await expect(notificationButton).toContainText('3');
+
+    await notificationButton.click();
+
+    await expect.poll(() => markAllCalled).toBe(true);
+    await expect(notificationButton).not.toContainText('3');
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem('lishop_notification_count')))
+      .toBe('0');
+  });
+
   test('updates header avatar when profile data changes', async ({ page }) => {
     const initialAvatar = 'data:image/png;base64,aW5pdGlhbA==';
     const nextAvatar = 'data:image/png;base64,dXBkYXRlZA==';

@@ -2,9 +2,10 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { FormEvent, useEffect, useState } from 'react';
 import { formatVND } from '@lishop/shared';
+import { eventBus, LishopEvent } from '@lishop/event-bus';
 import { useAuth } from '../hooks/use-auth';
 
 const MFE = {
@@ -18,16 +19,10 @@ const MFE = {
   admin: process.env['NEXT_PUBLIC_MFE_ADMIN_URL'] ?? 'http://localhost:3009',
 } as const;
 
-const DAILY_COUPON_VALUES = [5000, 10000, 15000, 20000, 30000, 50000];
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
 interface WalletInfo {
   balanceVnd: number;
-}
-
-function getDailyCouponValue(index: number) {
-  const daySeed = Math.floor(Date.now() / 86_400_000);
-  return DAILY_COUPON_VALUES[(daySeed + index) % DAILY_COUPON_VALUES.length] ?? 5000;
 }
 
 function useCartCount() {
@@ -58,36 +53,69 @@ function useCartCount() {
   return count;
 }
 
+function useNotificationCount() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const read = () => {
+      const raw = window.localStorage.getItem('lishop_notification_count');
+      setCount(raw ? parseInt(raw, 10) : 0);
+    };
+
+    read();
+    window.addEventListener('storage', read);
+    const handleCountUpdated = ({ count: nextCount }: { count: number }) => setCount(nextCount);
+    eventBus.on(LishopEvent.NOTIFICATION_COUNT_UPDATED, handleCountUpdated);
+
+    return () => {
+      window.removeEventListener('storage', read);
+      eventBus.off(LishopEvent.NOTIFICATION_COUNT_UPDATED, handleCountUpdated);
+    };
+  }, []);
+
+  return count;
+}
+
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const cartCount = useCartCount();
+  const notificationCount = useNotificationCount();
   const [query, setQuery] = useState('');
   const [showCoupons, setShowCoupons] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
 
-  const dailyCoupons = useMemo(
-    () => [
-      {
-        title: 'Coupon chào ngày mới',
-        value: getDailyCouponValue(0),
-        code: 'DAILY-LI',
-        desc: 'Dùng cho đơn mỹ phẩm, thời trang và đồ gia dụng hôm nay.',
-      },
-      {
-        title: 'Ưu đãi giờ vàng',
-        value: getDailyCouponValue(2),
-        code: 'GOLDEN-LI',
-        desc: 'Mở trong ngày, số lượng giới hạn cho thành viên Lishop.',
-      },
-      {
-        title: 'Nhắc nhẹ đơn lớn',
-        value: getDailyCouponValue(4),
-        code: 'PLUS-LI',
-        desc: 'Đơn từ 30 triệu sẽ nhận thêm coupon 10% cho lần mua kế.',
-      },
-    ],
-    [],
-  );
+  const queryClient = useQueryClient();
+  const notifPreviewEnabled = isAuthenticated && showCoupons;
+  const { data: notificationPreview = [] } = useQuery({
+    queryKey: ['shell-notification-preview'],
+    enabled: notifPreviewEnabled,
+    staleTime: 10_000,
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/notifications?page=1&limit=5`, { credentials: 'include' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? 'KhÃ´ng táº£i Ä‘Æ°á»£c thÃ´ng bÃ¡o');
+      return (json.data ?? json) as Array<{ id: string; title: string; body: string; isRead: boolean }>;
+    },
+  });
+
+  const markAllReadOptimistic = () => {
+    window.localStorage.setItem('lishop_notification_count', '0');
+    eventBus.emit(LishopEvent.NOTIFICATION_COUNT_UPDATED, { count: 0 });
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: 'lishop_notification_count',
+        newValue: '0',
+      }),
+    );
+  };
+
+  const markAllReadServer = async () => {
+    try {
+      await fetch(`${API_URL}/notifications/read-all`, { method: 'PATCH', credentials: 'include' });
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ['shell-notification-preview'] });
+    }
+  };
 
   const { data: wallet } = useQuery({
     queryKey: ['shell-wallet'],
@@ -159,45 +187,64 @@ export function Header() {
               <button
                 type="button"
                 onClick={() => {
-                  setShowCoupons((value) => !value);
+                  const next = !showCoupons;
+                  setShowCoupons(next);
                   setShowAccount(false);
+                  if (next && isAuthenticated) {
+                    // When the user opens notifications from the shell, consider them seen.
+                    markAllReadOptimistic();
+                    void markAllReadServer();
+                  }
                 }}
                 className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-stone-200 bg-white text-stone-600 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
-                aria-label="Thông báo coupon"
+                aria-label="Thông báo"
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-black text-white">
-                  {dailyCoupons.length}
-                </span>
+                {notificationCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-black text-white">
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                )}
               </button>
 
               {showCoupons && (
                 <div className="absolute right-0 mt-3 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl shadow-stone-900/12">
                   <div className="border-b border-stone-100 bg-stone-950 px-4 py-3 text-white">
-                    <p className="text-sm font-black">Coupon hôm nay</p>
-                    <p className="mt-0.5 text-xs text-stone-300">Mỗi ngày có ưu đãi nhỏ từ 5K đến 50K.</p>
+                    <p className="text-sm font-black">Thông báo</p>
+                    <p className="mt-0.5 text-xs text-stone-300">Cập nhật đơn hàng, khuyến mãi và hệ thống.</p>
                   </div>
                   <div className="divide-y divide-stone-100">
-                    {dailyCoupons.map((coupon) => (
-                      <Link key={coupon.code} href={`${MFE.promotions}/promotions`} className="block px-4 py-3 transition hover:bg-amber-50" onClick={() => setShowCoupons(false)}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-black text-stone-900">{coupon.title}</p>
-                            <p className="mt-1 text-xs leading-relaxed text-stone-500">{coupon.desc}</p>
-                            <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-stone-400">{coupon.code}</p>
-                          </div>
-                          <span className="shrink-0 rounded-xl bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-700">
-                            -{formatVND(coupon.value)}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
+                    {notificationPreview.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-stone-600">
+                        Chưa có thông báo mới.
+                      </div>
+                    ) : (
+                      notificationPreview.map((item) => (
+                        <Link
+                          key={item.id}
+                          href={`${MFE.notifications}/notifications`}
+                          className="block px-4 py-3 transition hover:bg-stone-50"
+                          onClick={() => setShowCoupons(false)}
+                        >
+                          <p className={`text-sm font-black ${item.isRead ? 'text-stone-700' : 'text-stone-950'}`}>
+                            {item.title}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-xs text-stone-500">{item.body}</p>
+                        </Link>
+                      ))
+                    )}
                   </div>
-                  <Link href={`${MFE.notifications}/notifications`} className="block border-t border-stone-100 px-4 py-3 text-center text-xs font-black text-stone-700 transition hover:bg-stone-50">
-                    Xem tất cả thông báo
-                  </Link>
+                  <div className="border-t border-stone-100 p-2">
+                    <Link
+                      href={`${MFE.notifications}/notifications`}
+                      className="block rounded-xl px-3 py-2.5 text-center text-xs font-black text-stone-700 transition hover:bg-stone-50"
+                      onClick={() => setShowCoupons(false)}
+                    >
+                      Xem tất cả thông báo
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>

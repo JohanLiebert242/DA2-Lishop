@@ -35,7 +35,7 @@ export class WalletController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Create a pending wallet top-up bank transfer request' })
   topUp(@CurrentUser('id') userId: string, @Body() dto: TopUpWalletDto) {
-    return this.walletService.topUp(userId, dto.amountVnd);
+    return this.walletService.topUp(userId, dto.amountVnd, dto.transferCode);
   }
 
   @Post('convert-points')

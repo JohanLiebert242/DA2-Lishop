@@ -24,18 +24,19 @@ export class WalletService {
   async topUp(
     userId: string,
     amountVnd: number,
+    transferCode?: string,
   ): Promise<{ request: WalletTopupRequestItem; bankTransfer: BankTransferInfo; paymentUrl: null }> {
-    const transferCode = this.generateTransferCode();
+    const finalTransferCode = transferCode ?? this.generateTransferCode();
     const request = await this.repo.createTopupRequest(userId, amountVnd, {
       ...TOPUP_BANK,
-      transferCode,
+      transferCode: finalTransferCode,
     });
 
     return {
       request,
       bankTransfer: {
         ...TOPUP_BANK,
-        transferCode,
+        transferCode: finalTransferCode,
         amountVnd,
       },
       paymentUrl: null,

@@ -87,9 +87,42 @@ test.describe('profile wallet', () => {
     let topupRequestCalls = 0;
     await addLoginCookies(page);
     await mockWalletApis(page);
+
     await page.route('**/wallet/topup', async (route) => {
       topupRequestCalls += 1;
-      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+      const json = route.request().postDataJSON() as { amountVnd: number; transferCode?: string };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            request: {
+              id: 'topup-1',
+              userId: 'wallet-user',
+              walletId: 'wallet-e2e',
+              amountVnd: json.amountVnd,
+              status: 'PENDING',
+              transferCode: json.transferCode ?? 'LSW-E2E',
+              bankName: 'Demo Bank',
+              bankAccountNumber: '1900',
+              bankAccountName: 'LISHOP',
+              adminNote: null,
+              reviewedById: null,
+              reviewedAt: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            bankTransfer: {
+              bankName: 'Demo Bank',
+              bankAccountNumber: '1900',
+              bankAccountName: 'LISHOP',
+              transferCode: json.transferCode ?? 'LSW-E2E',
+              amountVnd: json.amountVnd,
+            },
+            paymentUrl: null,
+          },
+        }),
+      });
     });
 
     await page.goto(`${PROFILE_URL}/wallet`, { waitUntil: 'networkidle' });
@@ -102,6 +135,10 @@ test.describe('profile wallet', () => {
     await expect(page.getByTestId('wallet-topup-qr')).toBeVisible();
     await expect(page.getByText('10.000 ₫', { exact: true })).toBeVisible();
     expect(topupRequestCalls).toBe(0);
+
+    await page.getByTestId('wallet-topup-confirm-transfer').click();
+    await expect(page.getByText(/Đã gửi yêu cầu xác nhận chuyển khoản/i)).toBeVisible();
+    expect(topupRequestCalls).toBe(1);
 
     const pointsAmount = page.getByTestId('wallet-points-amount');
     await pointsAmount.fill('10000');
@@ -116,8 +153,7 @@ test.describe('profile wallet', () => {
     await page.getByTestId('wallet-points-amount').fill('100');
     await page.getByTestId('wallet-points-submit').click();
 
-    await expect(
-      page.getByText('Không đủ điểm tích lũy. Bạn hiện có 5 điểm, cần 100 điểm'),
-    ).toBeVisible();
+    await expect(page.getByText('Không đủ điểm tích lũy. Bạn hiện có 5 điểm, cần 100 điểm')).toBeVisible();
   });
 });
+

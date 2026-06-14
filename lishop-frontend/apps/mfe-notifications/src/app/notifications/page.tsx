@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hasSessionCookie } from '@lishop/shared';
+import { eventBus, LishopEvent } from '@lishop/event-bus';
 import {
   notificationsApi,
   NotificationItem,
@@ -24,11 +25,12 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 function updateUnreadCount(notifications: NotificationItem[]) {
-  const unreadCount = notifications.filter((item) => !item.isRead).length.toString();
-  window.localStorage.setItem('lishop_notification_count', unreadCount);
+  const unreadCount = notifications.filter((item) => !item.isRead).length;
+  window.localStorage.setItem('lishop_notification_count', unreadCount.toString());
+  eventBus.emit(LishopEvent.NOTIFICATION_COUNT_UPDATED, { count: unreadCount });
   window.dispatchEvent(new StorageEvent('storage', {
     key: 'lishop_notification_count',
-    newValue: unreadCount,
+    newValue: unreadCount.toString(),
   }));
 }
 

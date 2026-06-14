@@ -59,10 +59,10 @@ export const walletApi = {
   getWallet: () => apiFetch<WalletInfo>('/wallet'),
   getTransactions: () => apiFetch<WalletTx[]>('/wallet/transactions'),
   getTopupRequests: () => apiFetch<WalletTopupRequest[]>('/wallet/topup-requests'),
-  topUp: (amountVnd: number) =>
+  topUp: (amountVnd: number, transferCode?: string) =>
     apiFetch<TopupResponse>('/wallet/topup', {
       method: 'POST',
-      body: JSON.stringify({ amountVnd }),
+      body: JSON.stringify({ amountVnd, ...(transferCode ? { transferCode } : {}) }),
     }),
   convertPoints: (points: number) =>
     apiFetch<{ wallet: WalletInfo; pointsConverted: number; amountCredited: number }>(

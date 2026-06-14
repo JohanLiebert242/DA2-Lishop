@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AccountSidebar } from '../../components/account-sidebar';
 import { addressesApi, Address, CreateAddressInput } from '../../lib/addresses-api';
@@ -43,6 +43,133 @@ interface GeocodeResult {
 interface MapPoint {
   lat: number;
   lon: number;
+}
+
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
+
+let googleMapsLoader: Promise<void> | null = null;
+
+function loadGoogleMaps(apiKey: string): Promise<void> {
+  if (typeof window === 'undefined') return Promise.reject(new Error('no window'));
+  if (window.google?.maps) return Promise.resolve();
+  if (googleMapsLoader) return googleMapsLoader;
+
+  googleMapsLoader = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[data-google-maps-loader="1"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('Google Maps failed to load')));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.dataset.googleMapsLoader = '1';
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Google Maps failed to load'));
+    document.head.appendChild(script);
+  });
+
+  return googleMapsLoader;
+}
+
+function GooglePickerMap({
+  apiKey,
+  point,
+  label,
+  isResolving,
+  onPick,
+}: {
+  apiKey: string;
+  point: MapPoint;
+  label: string;
+  isResolving: boolean;
+  onPick: (point: MapPoint) => void;
+}) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let disposed = false;
+    loadGoogleMaps(apiKey)
+      .then(() => {
+        if (disposed) return;
+        const el = mapRef.current;
+        const google = window.google;
+        if (!el || !google?.maps) return;
+
+        if (!mapInstanceRef.current) {
+          mapInstanceRef.current = new google.maps.Map(el, {
+            center: { lat: point.lat, lng: point.lon },
+            zoom: 15,
+            disableDefaultUI: true,
+            clickableIcons: false,
+          });
+          markerRef.current = new google.maps.Marker({
+            position: { lat: point.lat, lng: point.lon },
+            map: mapInstanceRef.current,
+          });
+          mapInstanceRef.current.addListener('click', (event: any) => {
+            const lat = event?.latLng?.lat?.();
+            const lng = event?.latLng?.lng?.();
+            if (typeof lat === 'number' && typeof lng === 'number') {
+              onPick({ lat, lon: lng });
+            }
+          });
+        }
+      })
+      .catch(() => {
+        if (!disposed) setLoadFailed(true);
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [apiKey, onPick, point.lat, point.lon]);
+
+  useEffect(() => {
+    const google = window.google;
+    if (!google?.maps) return;
+    if (!mapInstanceRef.current) return;
+    const next = { lat: point.lat, lng: point.lon };
+    markerRef.current?.setPosition?.(next);
+    mapInstanceRef.current.panTo?.(next);
+  }, [point.lat, point.lon]);
+
+  if (loadFailed) {
+    return (
+      <div className="rounded-xl border border-stone-200 bg-white p-3 text-sm text-stone-600">
+        Không tải được Google Maps, đang dùng bản đồ dự phòng.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+      <div className="relative h-72 overflow-hidden bg-stone-100" aria-label="Chọn vị trí trên bản đồ">
+        <div ref={mapRef} className="absolute inset-0" />
+        {isResolving && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-sm font-bold text-indigo-700 backdrop-blur-sm">
+            Đang đọc địa chỉ từ bản đồ...
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs text-stone-600">
+        <span className="font-semibold">{label || 'Nhấn trên bản đồ để đặt ghim giao hàng'}</span>
+        <span className="font-mono">
+          {point.lat.toFixed(5)}, {point.lon.toFixed(5)}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function buildAddressFromResult(result: GeocodeResult): CreateAddressInput {
@@ -132,6 +259,21 @@ function AddressPickerMap({
   isResolving: boolean;
   onPick: (point: MapPoint) => void;
 }) {
+  const googleKey = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'] ?? '';
+  const isWebDriver =
+    typeof navigator !== 'undefined' && (navigator as unknown as { webdriver?: boolean }).webdriver;
+  if (googleKey && !isWebDriver) {
+    return (
+      <GooglePickerMap
+        apiKey={googleKey}
+        point={point}
+        label={label}
+        isResolving={isResolving}
+        onPick={onPick}
+      />
+    );
+  }
+
   const mapRef = useRef<HTMLDivElement>(null);
   const [tileLoadFailed, setTileLoadFailed] = useState(false);
   const centerPixel = latLonToPixel(point.lat, point.lon, MAP_ZOOM);

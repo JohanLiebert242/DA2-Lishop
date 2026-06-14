@@ -259,6 +259,38 @@ export default function WalletPage() {
                       </div>
                     </dl>
                   </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      data-testid="wallet-topup-confirm-transfer"
+                      onClick={() => {
+                        const exists = topupRequests.some((r) => r.transferCode === bankTransfer.transferCode);
+                        if (exists) {
+                          setTopUpMsg('Yêu cầu xác nhận đã được gửi. Vui lòng chờ admin duyệt.');
+                          setTimeout(() => setTopUpMsg(''), 5000);
+                          return;
+                        }
+
+                        walletApi
+                          .topUp(bankTransfer.amountVnd, bankTransfer.transferCode)
+                          .then(() => queryClient.invalidateQueries({ queryKey: ['wallet-topup-requests'] }))
+                          .then(() => {
+                            setTopUpMsg('Đã gửi yêu cầu xác nhận chuyển khoản. Vui lòng chờ xử lý.');
+                            setTimeout(() => setTopUpMsg(''), 6000);
+                          })
+                          .catch((err: unknown) => {
+                            setTopUpMsg(err instanceof Error ? err.message : 'Không thể tạo yêu cầu nạp ví.');
+                            setTimeout(() => setTopUpMsg(''), 6000);
+                          });
+                      }}
+                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    >
+                      Đã chuyển khoản
+                    </button>
+                    <span className="text-xs text-stone-600">
+                      Nhấn sau khi bạn đã chuyển đúng số tiền và nội dung để gửi yêu cầu xác nhận.
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
