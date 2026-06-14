@@ -6,6 +6,7 @@ import { ProductsRepository } from './products.repository';
 import { CategoriesService } from '../categories/categories.service';
 import { WishlistService } from '../wishlist/wishlist.service';
 import { OrdersService } from '../orders/orders.service';
+import { RedisService } from '../redis/redis.service';
 
 const mockProduct = {
   id: 'p1',
@@ -42,6 +43,7 @@ describe('ProductsService', () => {
   };
   const categoriesService = { findBySlug: jest.fn(), create: jest.fn() };
   const config = { get: jest.fn() };
+  const redisService = { get: jest.fn(), setex: jest.fn() };
 
   beforeEach(async () => {
     config.get.mockImplementation((key: string) => {
@@ -49,6 +51,8 @@ describe('ProductsService', () => {
       return '';
     });
     global.fetch = jest.fn();
+    redisService.get.mockResolvedValue(null);
+    redisService.setex.mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
       providers: [
         ProductsService,
@@ -57,6 +61,7 @@ describe('ProductsService', () => {
         { provide: ConfigService, useValue: config },
         { provide: WishlistService, useValue: wishlistService },
         { provide: OrdersService, useValue: ordersService },
+        { provide: RedisService, useValue: redisService },
       ],
     }).compile();
     service = module.get(ProductsService);
@@ -126,6 +131,7 @@ describe('ProductsService', () => {
       if (key === 'OPENAI_MODEL') return 'gpt-5.2';
       return '';
     });
+    redisService.get.mockResolvedValue(null);
     repo.findMany.mockResolvedValue({ items: [mockProduct], nextCursor: null });
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
@@ -144,6 +150,7 @@ describe('ProductsService', () => {
     );
     const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
     expect(JSON.stringify(body)).toContain('iPhone 15');
+    expect(JSON.stringify(body)).not.toContain('"images"');
     expect(result.fallback).toBe(false);
     expect(result.mode).toBe('advice');
     expect(result.reply).toContain('iPhone 15');
@@ -237,6 +244,7 @@ describe('ProductsService', () => {
         if (key === 'OPENAI_MODEL') return 'gpt-5.2';
         return '';
       });
+      redisService.get.mockResolvedValue(null);
 
       repo.findFeatured.mockResolvedValue([productA, productB] as any);
       (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 429 });
@@ -253,6 +261,7 @@ describe('ProductsService', () => {
         if (key === 'OPENAI_MODEL') return 'gpt-5.2';
         return '';
       });
+      redisService.get.mockResolvedValue(null);
 
       repo.findFeatured.mockResolvedValue([productA, productB] as any);
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -269,6 +278,12 @@ describe('ProductsService', () => {
       expect(result.fallback).toBe(false);
       expect(result.reason).toBeDefined();
       expect(result.items.map((i) => i.slug)).toEqual(['product-b', 'product-a']);
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      const text = body.input[0].content[0].text as string;
+      expect(text).toContain('candidate_products');
+      expect(text).toContain('"name": "Product A"');
+      expect(text).toContain('"priceVnd": 20000000');
+      expect(text).not.toContain('candidate_slugs');
     });
 
     it('adversarial AI returns non-candidate slugs -> ignore and fallback true', async () => {
@@ -299,6 +314,40 @@ describe('ProductsService', () => {
       const result = await service.recommendations({ userId: 'u1', limit: 2, context: 'need' });
       expect(result.fallback).toBe(true);
       expect(result.items.map((i) => i.slug)).toEqual(['product-a', 'product-b']);
+    });
+
+    it('uses cached discovery response when available', async () => {
+      redisService.get.mockResolvedValue(JSON.stringify({
+        reply: 'cached reply',
+        mode: 'advice',
+        fallback: false,
+      }));
+      repo.findMany.mockResolvedValue({ items: [mockProduct], nextCursor: null });
+
+      const result = await service.discoverWithAi('tu van nhanh');
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result.reply).toBe('cached reply');
+      expect(result.items).toHaveLength(1);
+    });
+
+    it('uses cached recommendation order when available', async () => {
+      config.get.mockImplementation((key: string) => {
+        if (key === 'OPENAI_API_KEY') return 'sk-test';
+        if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+        return '';
+      });
+      redisService.get.mockResolvedValue(JSON.stringify({
+        orderedSlugs: ['product-b', 'product-a'],
+        reason: 'cached reason',
+      }));
+
+      const result = await service.recommendations({ userId: 'u1', limit: 2, context: 'need' });
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result.fallback).toBe(false);
+      expect(result.items.map((item) => item.slug)).toEqual(['product-b', 'product-a']);
+      expect(result.reason).toBe('cached reason');
     });
   });
 
