@@ -39,6 +39,8 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   STRIPE: 'Stripe',
   VNPAY: 'VNPay',
   MOMO: 'Momo',
+  ZALOPAY: 'ZaloPay',
+  WALLET: 'Ví Lishop',
   PAYPAL: 'PayPal',
 };
 
@@ -220,6 +222,16 @@ export default function OrderDetailPage({ params }: Props) {
     },
   });
 
+  const confirmDeliveredMutation = useMutation({
+    mutationFn: () => ordersApi.confirmDelivered(id),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['order', id], updated);
+      queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['tracking', id] });
+      queryClient.invalidateQueries({ queryKey: ['invoice', id] });
+    },
+  });
+
   const isCancellable = order?.status === 'PENDING' || order?.status === 'PROCESSING';
   const shipment = trackingData?.shipment ?? null;
 
@@ -318,6 +330,16 @@ export default function OrderDetailPage({ params }: Props) {
           <span className={`rounded-full px-3 py-1.5 text-sm font-medium ${STATUS_COLORS[order.status]}`}>
             {STATUS_LABELS[order.status]}
           </span>
+          {order.status === 'SHIPPED' && (
+            <button
+              type="button"
+              onClick={() => confirmDeliveredMutation.mutate()}
+              disabled={confirmDeliveredMutation.isPending}
+              className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {confirmDeliveredMutation.isPending ? 'Đang xác nhận...' : 'Đã nhận hàng'}
+            </button>
+          )}
           {isCancellable && (
             <button
               type="button"
@@ -339,6 +361,13 @@ export default function OrderDetailPage({ params }: Props) {
       {cancelMutation.isError && (
         <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
           {cancelMutation.error instanceof Error ? cancelMutation.error.message : 'Hủy đơn thất bại'}
+        </p>
+      )}
+      {confirmDeliveredMutation.isError && (
+        <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+          {confirmDeliveredMutation.error instanceof Error
+            ? confirmDeliveredMutation.error.message
+            : 'Xác nhận nhận hàng thất bại'}
         </p>
       )}
 

@@ -318,4 +318,38 @@ export class OrdersRepository {
       return normalizeOrder(cancelled);
     });
   }
+
+  async confirmDelivered(id: string): Promise<OrderWithDetails> {
+    return prisma.$transaction(async (tx) => {
+      const shipment = await tx.shipment.findUnique({
+        where: { orderId: id },
+        select: { id: true },
+      });
+
+      if (!shipment) {
+        throw new Error('Shipment not found');
+      }
+
+      await tx.shipmentEvent.create({
+        data: {
+          shipmentId: shipment.id,
+          status: 'DELIVERED',
+          description: 'Khách hàng đã xác nhận nhận hàng thành công',
+        },
+      });
+
+      await tx.shipment.update({
+        where: { id: shipment.id },
+        data: { deliveredAt: new Date() },
+      });
+
+      const delivered = await tx.order.update({
+        where: { id },
+        data: { status: OrderStatus.DELIVERED },
+        include: ORDER_INCLUDE,
+      });
+
+      return normalizeOrder(delivered);
+    });
+  }
 }

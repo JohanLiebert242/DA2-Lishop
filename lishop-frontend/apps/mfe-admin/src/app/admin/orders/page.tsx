@@ -19,6 +19,14 @@ function OrderRow({ order }: { order: AdminOrderItem }) {
     mutationFn: (status: OrderStatus) => adminApi.updateOrderStatus(order.id, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] }),
   });
+  const handoffMutation = useMutation({
+    mutationFn: () =>
+      adminApi.addTrackingEvent(order.id, {
+        status: 'PICKED_UP',
+        description: 'Đơn hàng đã được bàn giao cho đơn vị vận chuyển.',
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] }),
+  });
 
   const displayStatus: OrderStatus = mutation.isPending ? mutation.variables! : order.status;
 
@@ -48,6 +56,22 @@ function OrderRow({ order }: { order: AdminOrderItem }) {
         </select>
       </td>
       <td className="px-4 py-3 text-xs text-gray-500">{order.itemCount} sp</td>
+      <td className="px-4 py-3">
+        {order.status === 'PROCESSING' ? (
+          <button
+            type="button"
+            onClick={() => handoffMutation.mutate()}
+            disabled={handoffMutation.isPending}
+            className="rounded-md bg-sky-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-sky-700 disabled:opacity-50"
+          >
+            {handoffMutation.isPending ? 'Đang bàn giao...' : 'Bàn giao VC'}
+          </button>
+        ) : (
+          <span className="text-xs text-gray-400">
+            {order.status === 'SHIPPED' ? 'Đang vận chuyển' : '—'}
+          </span>
+        )}
+      </td>
     </tr>
   );
 }
@@ -126,6 +150,7 @@ export default function OrdersPage() {
                 <th className="px-4 py-2 text-left">Ngày đặt</th>
                 <th className="px-4 py-2 text-left">Trạng thái</th>
                 <th className="px-4 py-2 text-left">SL</th>
+                <th className="px-4 py-2 text-left">Luồng gợi ý</th>
               </tr>
             </thead>
             <tbody>

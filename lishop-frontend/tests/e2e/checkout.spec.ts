@@ -13,7 +13,7 @@ type ProductSummary = {
   variants?: { id: string; stock: number; isDefault: boolean }[];
 };
 
-type PaymentMethod = 'COD' | 'VNPAY' | 'MOMO';
+type PaymentMethod = 'COD' | 'VNPAY' | 'MOMO' | 'ZALOPAY';
 
 async function unwrap<T>(response: { json(): Promise<unknown> }): Promise<T> {
   const json = await response.json();
@@ -156,10 +156,17 @@ test.describe('checkout flow', () => {
     expect(page.url().startsWith(ORDERS_URL)).toBeTruthy();
   });
 
-  for (const method of ['VNPAY', 'MOMO'] as PaymentMethod[]) {
-    test(`customer can place an order with ${method} and return from the local gateway`, async ({ page }) => {
+  for (const method of ['VNPAY', 'MOMO', 'ZALOPAY'] as PaymentMethod[]) {
+    test(`customer can place an order with ${method} through the local simulator`, async ({ page }) => {
       const accessToken = await prepareCheckout(page);
       await placeOrder(page, method);
+
+      await expect(page).toHaveURL(/\/checkout\/payment-simulator\?/, {
+        timeout: 30_000,
+      });
+      await expect(page.getByRole('heading', { name: /mô phỏng thanh toán/i })).toBeVisible();
+      await expect(page.getByText(new RegExp(method, 'i')).first()).toBeVisible();
+      await page.getByRole('link', { name: /thanh toán thành công/i }).click();
 
       await expect(page).toHaveURL(/\/checkout\/payment-result\?success=true&orderId=/, {
         timeout: 30_000,

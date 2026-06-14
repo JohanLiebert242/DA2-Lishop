@@ -3,12 +3,12 @@ import { createHmac } from 'crypto';
 
 @Injectable()
 export class PaymentsGatewayService {
-  private getMockPaymentUrl(orderId: string): string {
-    const mockReturnUrl =
-      process.env['PAYMENT_MOCK_RETURN_URL'] ||
-      'http://localhost:4000/payments/mock/return';
-    const params = new URLSearchParams({ orderId, success: 'true' });
-    return `${mockReturnUrl}?${params.toString()}`;
+  private getMockPaymentUrl(orderId: string, method: 'VNPAY' | 'MOMO' | 'ZALOPAY'): string {
+    const simulatorUrl =
+      process.env['PAYMENT_SIMULATOR_URL'] ||
+      'http://localhost:3004/checkout/payment-simulator';
+    const params = new URLSearchParams({ orderId, method });
+    return `${simulatorUrl}?${params.toString()}`;
   }
 
   private usesDemoVNPayCredentials(tmnCode: string, hashSecret: string): boolean {
@@ -25,6 +25,10 @@ export class PaymentsGatewayService {
       accessKey === 'DEMO_ACCESS' ||
       secretKey === 'DEMO_SECRET'
     );
+  }
+
+  private usesDemoZaloPayCredentials(appId: string, key1: string): boolean {
+    return appId === '2554' || key1 === 'sdngKKJmqEMzvh5QQcdD2A9XBSKUNaYn';
   }
 
   // ─── VNPAY ───────────────────────────────────────────────────────────────────
@@ -45,7 +49,7 @@ export class PaymentsGatewayService {
       'http://localhost:3004/checkout/payment-result';
 
     if (this.usesDemoVNPayCredentials(tmnCode, hashSecret)) {
-      return this.getMockPaymentUrl(orderId);
+      return this.getMockPaymentUrl(orderId, 'VNPAY');
     }
 
     const now = new Date();
@@ -112,7 +116,7 @@ export class PaymentsGatewayService {
     const requestId = `${orderId}-${Date.now()}`;
     if (this.usesDemoMoMoCredentials(partnerCode, accessKey, secretKey)) {
       return {
-        payUrl: this.getMockPaymentUrl(orderId),
+        payUrl: this.getMockPaymentUrl(orderId, 'MOMO'),
         requestId,
       };
     }
@@ -206,6 +210,13 @@ export class PaymentsGatewayService {
     const returnUrl =
       process.env['ZALOPAY_RETURN_URL'] ??
       'http://localhost:3004/checkout/payment-result';
+
+    if (this.usesDemoZaloPayCredentials(appId, key1)) {
+      return {
+        orderUrl: this.getMockPaymentUrl(orderId, 'ZALOPAY'),
+        zpTransToken: `${orderId}-simulated`,
+      };
+    }
 
     const now = new Date();
     const appTransId = `${now.getFullYear().toString().slice(2)}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${orderId.slice(0, 8)}`;

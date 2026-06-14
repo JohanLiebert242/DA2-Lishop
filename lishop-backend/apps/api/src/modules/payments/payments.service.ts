@@ -195,6 +195,14 @@ export class PaymentsService {
   }
 
   confirmPaymentAdmin(orderId: string): Promise<PaymentInfo> {
-    return this.repo.confirmPayment(orderId);
+    return this.repo.confirmPayment(orderId).then(async (payment) => {
+      if (payment.method === PaymentMethod.COD) {
+        await prisma.order.update({
+          where: { id: orderId },
+          data: { status: OrderStatus.PROCESSING },
+        });
+      }
+      return payment;
+    });
   }
 }

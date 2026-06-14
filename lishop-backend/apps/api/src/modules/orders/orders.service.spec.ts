@@ -76,6 +76,7 @@ describe('OrdersService', () => {
     findByUserId: jest.fn(),
     findByIdAndUserId: jest.fn(),
     cancelOrder: jest.fn(),
+    confirmDelivered: jest.fn(),
   };
   const addressRepo = { findById: jest.fn() };
   const cartService = { getCart: jest.fn(), clearCart: jest.fn() };
@@ -221,5 +222,39 @@ describe('OrdersService', () => {
       'order1',
     );
     expect(result.status).toBe(OrderStatus.CANCELLED);
+  });
+
+  it('confirmDelivered throws NotFoundException when order not found', async () => {
+    repo.findByIdAndUserId.mockResolvedValue(null);
+    await expect(service.confirmDelivered('u1', 'order99')).rejects.toThrow(NotFoundException);
+  });
+
+  it('confirmDelivered throws BadRequestException when order is not shipped', async () => {
+    repo.findByIdAndUserId.mockResolvedValue({ ...mockOrder, status: OrderStatus.PROCESSING });
+    await expect(service.confirmDelivered('u1', 'order1')).rejects.toThrow(BadRequestException);
+  });
+
+  it('confirmDelivered marks a shipped order as delivered and creates notification', async () => {
+    const shippedOrder = { ...mockOrder, status: OrderStatus.SHIPPED };
+    const deliveredOrder = {
+      ...mockOrder,
+      status: OrderStatus.DELIVERED,
+      shipment: { deliveredAt: new Date() },
+    };
+    repo.findByIdAndUserId.mockResolvedValue(shippedOrder);
+    repo.confirmDelivered.mockResolvedValue(deliveredOrder);
+    notifRepo.createNotification.mockResolvedValue({});
+
+    const result = await service.confirmDelivered('u1', 'order1');
+
+    expect(repo.confirmDelivered).toHaveBeenCalledWith('order1');
+    expect(notifRepo.createNotification).toHaveBeenCalledWith(
+      'u1',
+      'Bạn đã xác nhận nhận hàng',
+      `Đơn hàng #LS-123456 đã được xác nhận giao thành công.`,
+      'ORDER_STATUS',
+      'order1',
+    );
+    expect(result.status).toBe(OrderStatus.DELIVERED);
   });
 });

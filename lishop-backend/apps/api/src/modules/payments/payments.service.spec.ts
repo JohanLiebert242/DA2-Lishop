@@ -141,6 +141,18 @@ describe('PaymentsService', () => {
     expect(result.status).toBe('COMPLETED');
   });
 
+  it('confirmPaymentAdmin advances the order lifecycle for COD confirmation', async () => {
+    repo.confirmPayment.mockResolvedValue({ ...mockPayment, status: 'COMPLETED' });
+
+    await service.confirmPaymentAdmin('order1');
+
+    expect(repo.confirmPayment).toHaveBeenCalledWith('order1');
+    expect(prisma.order.update).toHaveBeenCalledWith({
+      where: { id: 'order1' },
+      data: { status: 'PROCESSING' },
+    });
+  });
+
   describe('handleVNPayReturn', () => {
     it('returns failure when signature is invalid', async () => {
       gateway.verifyVNPayReturn.mockReturnValue(false);

@@ -136,6 +136,8 @@ export const ordersApi = {
   getOrder: (id: string) => apiFetch<OrderSummary>(`/orders/${id}`),
   cancelOrder: (id: string) =>
     apiFetch<OrderSummary>(`/orders/${id}/cancel`, { method: 'PATCH' }),
+  confirmDelivered: (id: string) =>
+    apiFetch<OrderSummary>(`/orders/${id}/confirm-delivered`, { method: 'PATCH' }),
   initiatePayment: (orderId: string) =>
     apiFetch<{ paymentUrl: string | null; status: string }>(`/payments/${orderId}/initiate`, {
       method: 'POST',

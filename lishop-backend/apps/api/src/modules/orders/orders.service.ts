@@ -182,4 +182,26 @@ export class OrdersService {
       );
     return cancelled;
   }
+
+  async confirmDelivered(userId: string, orderId: string): Promise<OrderWithDetails> {
+    const order = await this.repo.findByIdAndUserId(orderId, userId);
+    if (!order) throw new NotFoundException('Đơn hàng không tồn tại');
+    if (order.status !== OrderStatus.SHIPPED) {
+      throw new BadRequestException('Chỉ có thể xác nhận nhận hàng khi đơn đang giao');
+    }
+
+    const delivered = await this.repo.confirmDelivered(orderId);
+    this.notifRepo
+      .createNotification(
+        userId,
+        'Bạn đã xác nhận nhận hàng',
+        `Đơn hàng #${order.orderNumber} đã được xác nhận giao thành công.`,
+        'ORDER_STATUS',
+        orderId,
+      )
+      .catch((err: unknown) =>
+        console.error('[OrdersService] Failed to create confirm-delivery notification', err),
+      );
+    return delivered;
+  }
 }

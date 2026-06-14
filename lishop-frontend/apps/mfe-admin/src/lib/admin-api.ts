@@ -141,6 +141,14 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+  addTrackingEvent: (
+    id: string,
+    data: { status: 'PICKED_UP' | 'IN_TRANSIT' | 'ARRIVED' | 'DELIVERED' | 'FAILED'; description: string; location?: string },
+  ) =>
+    apiFetch<void>(`/admin/orders/${id}/tracking`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   listUsers: () => apiFetch<AdminUserItem[]>('/admin/users'),
   listCoupons: () => apiFetch<AdminCoupon[]>('/admin/coupons'),
   createCoupon: (data: CreateCouponInput) =>

@@ -24,7 +24,7 @@ describe('PaymentsGatewayService', () => {
     jest.restoreAllMocks();
   });
 
-  it('uses the local mock return URL for VNPay when demo credentials are active', () => {
+  it('uses the local checkout payment simulator URL for VNPay when demo credentials are active', () => {
     const url = new URL(
       service.generateVNPayUrl(
         '11111111-2222-3333-4444-555555555555',
@@ -34,12 +34,12 @@ describe('PaymentsGatewayService', () => {
       ),
     );
 
-    expect(`${url.origin}${url.pathname}`).toBe('http://localhost:4000/payments/mock/return');
+    expect(`${url.origin}${url.pathname}`).toBe('http://localhost:3004/checkout/payment-simulator');
     expect(url.searchParams.get('orderId')).toBe('11111111-2222-3333-4444-555555555555');
-    expect(url.searchParams.get('success')).toBe('true');
+    expect(url.searchParams.get('method')).toBe('VNPAY');
   });
 
-  it('uses the local mock return URL for MoMo when demo credentials are active', async () => {
+  it('uses the local checkout payment simulator URL for MoMo when demo credentials are active', async () => {
     const fetchSpy = jest.spyOn(global, 'fetch');
 
     const result = await service.generateMoMoUrl(
@@ -49,8 +49,23 @@ describe('PaymentsGatewayService', () => {
     const url = new URL(result.payUrl);
 
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(`${url.origin}${url.pathname}`).toBe('http://localhost:4000/payments/mock/return');
+    expect(`${url.origin}${url.pathname}`).toBe('http://localhost:3004/checkout/payment-simulator');
     expect(url.searchParams.get('orderId')).toBe('11111111-2222-3333-4444-555555555555');
-    expect(url.searchParams.get('success')).toBe('true');
+    expect(url.searchParams.get('method')).toBe('MOMO');
+  });
+
+  it('uses the local checkout payment simulator URL for ZaloPay when demo credentials are active', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
+
+    const result = await service.generateZaloPayUrl(
+      '11111111-2222-3333-4444-555555555555',
+      120000,
+    );
+    const url = new URL(result.orderUrl);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(`${url.origin}${url.pathname}`).toBe('http://localhost:3004/checkout/payment-simulator');
+    expect(url.searchParams.get('orderId')).toBe('11111111-2222-3333-4444-555555555555');
+    expect(url.searchParams.get('method')).toBe('ZALOPAY');
   });
 });
