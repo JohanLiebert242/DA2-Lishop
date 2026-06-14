@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import fastifyCookie from '@fastify/cookie';
+import fastifyStatic from '@fastify/static';
+import * as path from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -11,6 +13,11 @@ async function bootstrap() {
   );
 
   await (app as any).register(fastifyCookie);
+  await (app as any).register(fastifyStatic, {
+    root: path.resolve(process.cwd(), 'uploads'),
+    prefix: '/uploads/',
+    decorateReply: false,
+  });
 
   const allowedOrigins = process.env['ALLOWED_ORIGINS']?.split(',');
   app.enableCors({

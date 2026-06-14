@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
@@ -21,6 +22,10 @@ import { ChatbotService } from './chatbot.service';
 import { IsString } from 'class-validator';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { AddMessageDto } from './dto/add-message.dto';
+import { UploadSupportMediaDto } from './dto/upload-support-media.dto';
+import { mkdir, writeFile } from 'fs/promises';
+import * as path from 'path';
+import { randomUUID } from 'crypto';
 
 class ChatRequestDto {
   @IsString()
@@ -37,6 +42,40 @@ export class SupportController {
   ) {}
 
   // ---- Ticket routes (auth required) ----
+
+  @Post('uploads')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload support ticket media (images) and get a public URL' })
+  async upload(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UploadSupportMediaDto,
+  ) {
+    const match = /^data:(image\/(png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dto.dataUrl ?? '');
+    if (!match) {
+      throw new BadRequestException('Unsupported media. Use data URL for png/jpeg/webp.');
+    }
+
+    const mime = match[1]!;
+    const ext = (match[2] === 'jpg' ? 'jpeg' : match[2])!;
+    const base64 = match[3]!;
+    const bytes = Buffer.from(base64, 'base64');
+
+    // Basic size guard (~2MB raw)
+    if (bytes.length > 2_000_000) {
+      throw new BadRequestException('File too large (max ~2MB).');
+    }
+
+    const dir = path.resolve(process.cwd(), 'uploads', 'support', userId);
+    await mkdir(dir, { recursive: true });
+    const id = randomUUID();
+    const filename = `${id}.${ext}`;
+    const fullPath = path.join(dir, filename);
+    await writeFile(fullPath, bytes);
+
+    return { url: `/uploads/support/${encodeURIComponent(userId)}/${encodeURIComponent(filename)}`, mime };
+  }
 
   @Post('tickets')
   @HttpCode(HttpStatus.CREATED)

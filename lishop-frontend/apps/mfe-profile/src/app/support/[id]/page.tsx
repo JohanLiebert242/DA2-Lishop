@@ -29,6 +29,11 @@ const STATUS_CONFIG: Record<TicketStatus, { label: string; className: string }> 
   CLOSED:      { label: 'Đã đóng',      className: 'bg-gray-100 text-gray-600' },
 };
 
+function extractImageUrls(text: string): string[] {
+  const urls = (text.match(/https?:\/\/[^\s)]+/g) ?? []).filter(Boolean);
+  return urls.filter((u) => /\.(png|jpe?g|webp)(\?|#|$)/i.test(u));
+}
+
 export default function TicketDetailPage() {
   const params = useParams();
   const id = params['id'] as string;
@@ -146,6 +151,7 @@ export default function TicketDetailPage() {
                   </p>
                 ) : (
                   ticket.messages.map((msg: TicketMessage) => {
+                    const imageUrls = extractImageUrls(msg.content ?? '');
                     if (msg.isAdmin) {
                       return (
                         <div key={msg.id} className="flex gap-3">
@@ -156,6 +162,19 @@ export default function TicketDetailPage() {
                             <p className="mb-1 text-xs font-semibold text-indigo-600">Hỗ trợ viên</p>
                             <div className="rounded-2xl rounded-tl-sm bg-gray-100 px-4 py-3">
                               <p className="text-sm text-gray-800 whitespace-pre-wrap">{msg.content}</p>
+                              {imageUrls.length > 0 && (
+                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                  {imageUrls.map((url) => (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      key={url}
+                                      src={url}
+                                      alt="Attachment"
+                                      className="aspect-video w-full rounded-xl object-cover ring-1 ring-gray-200"
+                                    />
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <p className="mt-1 text-xs text-gray-400">
                               {new Date(msg.createdAt).toLocaleString('vi-VN')}
@@ -173,6 +192,19 @@ export default function TicketDetailPage() {
                           <p className="mb-1 text-right text-xs font-semibold text-gray-600">Bạn</p>
                           <div className="rounded-2xl rounded-tr-sm bg-blue-50 px-4 py-3">
                             <p className="text-sm text-gray-800 whitespace-pre-wrap">{msg.content}</p>
+                            {imageUrls.length > 0 && (
+                              <div className="mt-3 grid grid-cols-2 gap-2">
+                                {imageUrls.map((url) => (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    key={url}
+                                    src={url}
+                                    alt="Attachment"
+                                    className="aspect-video w-full rounded-xl object-cover ring-1 ring-gray-200"
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <p className="mt-1 text-right text-xs text-gray-400">
                             {new Date(msg.createdAt).toLocaleString('vi-VN')}

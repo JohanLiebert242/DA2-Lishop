@@ -91,3 +91,10 @@ export function getFaq(): Promise<FaqGroup[]> {
 export function searchFaq(q: string): Promise<FaqItem[]> {
   return apiFetch<FaqItem[]>(`/support/faq/search?q=${encodeURIComponent(q)}`);
 }
+
+export function uploadSupportMedia(dataUrl: string, filename?: string): Promise<{ url: string; mime?: string }> {
+  return apiFetch<{ url: string; mime?: string }>('/support/uploads', {
+    method: 'POST',
+    body: JSON.stringify({ dataUrl, ...(filename ? { filename } : {}) }),
+  });
+}
