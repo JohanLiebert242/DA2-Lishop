@@ -45,5 +45,7 @@ test.describe('catalog AI product discovery', () => {
     await expect(panel).toContainText('iPhone 15 phù hợp');
     await expect(panel.getByRole('link', { name: /iPhone 15/i })).toBeVisible();
     await expect(panel).toContainText('20.000.000');
+    await panel.getByRole('link', { name: /iPhone 15/i }).click();
+    await expect(page).toHaveURL(/\/products\/iphone-15$/);
   });
 });

@@ -30,6 +30,15 @@ const ATTRIBUTE_LABELS: Record<string, string> = {
   format: 'Định dạng',
 };
 
+const TAG_BADGE_STYLES = [
+  'border-rose-200 bg-rose-50 text-rose-700',
+  'border-amber-200 bg-amber-50 text-amber-700',
+  'border-emerald-200 bg-emerald-50 text-emerald-700',
+  'border-sky-200 bg-sky-50 text-sky-700',
+  'border-violet-200 bg-violet-50 text-violet-700',
+  'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700',
+];
+
 function formatAttributeLabel(key: string) {
   return ATTRIBUTE_LABELS[key.toLowerCase()] ?? key;
 }
@@ -106,11 +115,11 @@ function slugifyShopName(name: string) {
 }
 
 function isVideoUrl(url: string) {
-  return /\.(mp4|webm|ogg)(\?.*)?$/i.test(url);
+  return /^data:video\//i.test(url) || /\.(mp4|webm|ogg)(?:[?#&].*)?$/i.test(url);
 }
 
 function isImageUrl(url: string) {
-  return /\.(avif|gif|jpe?g|png|webp)(\?.*)?$/i.test(url);
+  return /^data:image\//i.test(url) || /\.(avif|gif|jpe?g|png|webp)(?:[?#&].*)?$/i.test(url);
 }
 
 function ReviewMedia({ url }: { url: string }) {
@@ -839,25 +848,41 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
   const shopName = product?.brand ? `Cửa hàng ${product.brand}` : 'Cửa hàng chính hãng Lishop';
   const shopSlug = slugifyShopName(product?.brand ?? shopName);
 
-  function handleAttributeSelect(key: string, value: string) {
-    const nextAttributes = { ...selectedAttributes, [key]: value };
-    const nextVariant = variants.find((variant) =>
+  function findBestVariantMatch(nextAttributes: Record<string, string>, changedKey: string) {
+    const variantsInStock = variants.filter((variant) => variant.stock > 0);
+    const candidates = variantsInStock.length > 0 ? variantsInStock : variants;
+    const exactMatch = candidates.find((variant) =>
       attributeKeys.every((attrKey) => !nextAttributes[attrKey] || variant.attributes?.[attrKey] === nextAttributes[attrKey]),
     );
 
-    setSelectedAttributes(nextAttributes);
+    if (exactMatch) return exactMatch;
+
+    const rankedCandidates = candidates
+      .filter((variant) => variant.attributes?.[changedKey] === nextAttributes[changedKey])
+      .map((variant) => ({
+        variant,
+        score: attributeKeys.reduce((score, attrKey) => {
+          if (attrKey === changedKey) return score + 100;
+          if (!nextAttributes[attrKey]) return score;
+          return variant.attributes?.[attrKey] === nextAttributes[attrKey] ? score + 10 : score;
+        }, 0),
+      }))
+      .sort((left, right) => right.score - left.score);
+
+    return rankedCandidates[0]?.variant ?? null;
+  }
+
+  function handleAttributeSelect(key: string, value: string) {
+    const nextAttributes = { ...selectedAttributes, [key]: value };
+    const nextVariant = findBestVariantMatch(nextAttributes, key);
+
+    setSelectedAttributes(nextVariant?.attributes ?? nextAttributes);
     setSelectedVariantId(nextVariant?.id ?? null);
     setQty(1);
   }
 
   function isAttributeValueAvailable(key: string, value: string) {
-    return variants.some((variant) =>
-      variant.stock > 0
-      && variant.attributes?.[key] === value
-      && attributeKeys.every((attrKey) =>
-        attrKey === key || !selectedAttributes[attrKey] || variant.attributes?.[attrKey] === selectedAttributes[attrKey],
-      ),
-    );
+    return variants.some((variant) => variant.stock > 0 && variant.attributes?.[key] === value);
   }
 
   function scrollToSizeGuide() {
@@ -1130,9 +1155,12 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
           {product.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {product.tags.map(({ tag }) => (
-                <span key={tag.name} className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
-                  {tag.name}
+              {product.tags.map(({ tag }, index) => (
+                <span
+                  key={tag.name}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${TAG_BADGE_STYLES[index % TAG_BADGE_STYLES.length]}`}
+                >
+                  #{tag.name}
                 </span>
               ))}
             </div>

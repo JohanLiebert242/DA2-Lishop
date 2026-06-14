@@ -8,6 +8,14 @@ import { formatVND } from '@lishop/shared';
 import type { ProductSummary } from '../lib/catalog-api';
 import { addToWishlist, getWishlist, isLoggedIn, removeFromWishlist } from '../lib/wishlist-api';
 
+const TAG_BADGE_STYLES = [
+  'border-rose-200 bg-rose-50 text-rose-700',
+  'border-amber-200 bg-amber-50 text-amber-700',
+  'border-emerald-200 bg-emerald-50 text-emerald-700',
+  'border-sky-200 bg-sky-50 text-sky-700',
+  'border-violet-200 bg-violet-50 text-violet-700',
+];
+
 function Stars({ rating, count }: { rating: number; count: number }) {
   return (
     <div className="flex items-center gap-1">
@@ -45,6 +53,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
     hasFreeShipping ? 'Miễn phí giao hàng' : null,
     displayStock > 0 ? 'Còn hàng' : null,
   ].filter(Boolean) as string[];
+  const visibleTags = product.tags.slice(0, 3);
 
   const { data: wishlistIds = [] } = useQuery({
     queryKey: ['wishlist'],
@@ -129,6 +138,18 @@ export function ProductCard({ product }: { product: ProductSummary }) {
                   className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-semibold text-stone-600"
                 >
                   {badge}
+                </span>
+              ))}
+            </div>
+          )}
+          {visibleTags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {visibleTags.map(({ tag }, index) => (
+                <span
+                  key={tag.name}
+                  className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${TAG_BADGE_STYLES[index % TAG_BADGE_STYLES.length]}`}
+                >
+                  #{tag.name}
                 </span>
               ))}
             </div>

@@ -68,6 +68,68 @@ async function getVariantProduct(request: APIRequestContext) {
   return product!;
 }
 
+function getVariantCombo(product: ProductSummary) {
+  const attributeValues = new Map<string, Set<string>>();
+
+  for (const variant of product.variants) {
+    for (const [key, value] of Object.entries(variant.attributes ?? {})) {
+      if (!value) continue;
+      const values = attributeValues.get(key) ?? new Set<string>();
+      values.add(value);
+      attributeValues.set(key, values);
+    }
+  }
+
+  const candidateKeys = Array.from(attributeValues.entries())
+    .filter(([, values]) => values.size > 1)
+    .map(([key]) => key);
+
+  for (let i = 0; i < candidateKeys.length; i += 1) {
+    for (let j = i + 1; j < candidateKeys.length; j += 1) {
+      const firstKey = candidateKeys[i];
+      const secondKey = candidateKeys[j];
+      const inStockVariants = product.variants.filter((variant) => variant.stock > 0);
+      const firstValues = Array.from(attributeValues.get(firstKey) ?? []);
+      const secondValues = Array.from(attributeValues.get(secondKey) ?? []);
+
+      for (const firstValue of firstValues) {
+        for (const secondValue of secondValues) {
+          const matched = inStockVariants.find(
+            (variant) =>
+              variant.attributes?.[firstKey] === firstValue
+              && variant.attributes?.[secondKey] === secondValue,
+          );
+
+          if (!matched) continue;
+
+          const alternateFirst = inStockVariants.find(
+            (variant) =>
+              variant.attributes?.[firstKey] !== firstValue
+              && variant.attributes?.[secondKey] === secondValue,
+          );
+          const alternateSecond = inStockVariants.find(
+            (variant) =>
+              variant.attributes?.[firstKey] === firstValue
+              && variant.attributes?.[secondKey] !== secondValue,
+          );
+
+          if (alternateFirst && alternateSecond) {
+            return {
+              firstKey,
+              firstValue,
+              secondKey,
+              secondValue,
+              matchedVariant: matched,
+            };
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 async function registerCustomer(request: APIRequestContext, suffix: string) {
   const email = `e2e-${Date.now()}-${suffix}@lishop.vn`;
   const response = await request.post(`${API_URL}/auth/register`, {
@@ -213,10 +275,23 @@ test.describe('catalog product and feedback experience', () => {
     expect(variantWithImage).toBeTruthy();
     const selectableValue = Object.values(variantWithImage!.attributes)[0];
     const expectedImageUrl = variantWithImage!.imageUrl!;
+    const variantCombo = getVariantCombo(product);
 
     await expect(page.getByTestId('product-main-image')).toBeVisible();
     await page.getByRole('button', { name: selectableValue, exact: true }).click();
     await expect(page.getByTestId('product-main-image')).toHaveAttribute('src', new RegExp(encodeURIComponent(expectedImageUrl).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+
+    if (variantCombo) {
+      await page.getByRole('button', { name: variantCombo.firstValue, exact: true }).click();
+      await page.getByRole('button', { name: variantCombo.secondValue, exact: true }).click();
+      await expect(
+        page.getByText(
+          new RegExp(`${variantCombo.matchedVariant.attributes[variantCombo.firstKey]}\\s*\\/\\s*${variantCombo.matchedVariant.attributes[variantCombo.secondKey]}`),
+        ),
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: variantCombo.firstValue, exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: variantCombo.secondValue, exact: true })).toHaveAttribute('aria-pressed', 'true');
+    }
 
     await page.getByTestId('shop-profile-link').click();
     await expect(page).toHaveURL(/\/shops\//);
