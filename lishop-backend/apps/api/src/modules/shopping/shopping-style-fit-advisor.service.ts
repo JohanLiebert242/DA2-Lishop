@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ProductVariant } from '@lishop/database';
 import { ProductsService } from '../products/products.service';
+import { RedisService } from '../redis/redis.service';
+import { DEFAULT_OPENAI_MODEL, requestOpenAiText } from '../../common/ai/openai-responses';
 
-const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
-const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
 const FIT_VALUES = ['slim', 'regular', 'relaxed', 'oversized'] as const;
 const CONFIDENCE_VALUES = ['low', 'medium', 'high'] as const;
 
@@ -37,6 +37,7 @@ export class ShoppingStyleFitAdvisorService {
   constructor(
     private readonly productsService: ProductsService,
     private readonly config: ConfigService,
+    private readonly redisService: RedisService,
   ) {}
 
   async advise(dto: StyleFitAdvisorRequest): Promise<StyleFitAdvisorResponse> {
@@ -52,62 +53,47 @@ export class ShoppingStyleFitAdvisorService {
       return this.buildFallback(product.name, product.variants, dto);
     }
 
+    const cacheKey = this.buildCacheKey(dto);
+    const cached = await this.readCachedJson<Record<string, unknown>>(cacheKey);
+    if (cached) {
+      const resolved = this.resolveAiResponse(cached, product.variants, sizeVariants);
+      if (resolved) return resolved;
+    }
+
     try {
-      const response = await fetch(OPENAI_RESPONSES_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
-          instructions: this.buildPrompt(),
-          input: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'input_text',
-                  text: [
-                    'Thong tin khach hang:',
-                    JSON.stringify(this.toShopperContext(dto), null, 2),
-                    '',
-                    'San pham va bien the hop le:',
-                    JSON.stringify({
-                      id: product.id,
-                      name: product.name,
-                      description: product.description,
-                      brand: product.brand,
-                      category: product.category,
-                      images: product.images,
-                      variants: product.variants.map((variant) => ({
-                        id: variant.id,
-                        name: variant.name,
-                        sku: variant.sku,
-                        stock: variant.stock,
-                        attributes: variant.attributes,
-                        size: this.getSizeValue(variant),
-                      })),
-                    }, null, 2),
-                  ].join('\n'),
-                },
-              ],
-            },
-          ],
-          max_output_tokens: 500,
-        }),
+      const text = await requestOpenAiText({
+        apiKey,
+        model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
+        instructions: this.buildPrompt(),
+        inputText: [
+          'Thong tin khach hang:',
+          JSON.stringify(this.toShopperContext(dto), null, 2),
+          '',
+          'San pham va bien the hop le:',
+          JSON.stringify({
+            id: product.id,
+            name: product.name,
+            brand: product.brand,
+            category: product.category?.name,
+            variants: product.variants.map((variant) => ({
+              id: variant.id,
+              name: variant.name,
+              stock: variant.stock,
+              size: this.getSizeValue(variant),
+              attributes: variant.attributes,
+            })),
+          }, null, 2),
+        ].join('\n'),
+        maxOutputTokens: 500,
       });
 
-      if (!response.ok) {
-        throw new Error(`OpenAI request failed with status ${response.status}`);
-      }
-
-      const payload = await response.json() as { output_text?: string; output?: unknown };
-      const parsed = this.parseAdvisorOutput(this.extractOutputText(payload));
+      const parsed = this.parseAdvisorOutput(text);
       const resolved = this.resolveAiResponse(parsed, product.variants, sizeVariants);
       if (!resolved) {
         return this.buildFallback(product.name, product.variants, dto);
       }
+
+      await this.writeCachedJson(cacheKey, parsed, 180);
       return resolved;
     } catch (err) {
       console.error('[ShoppingStyleFitAdvisorService] AI advisor failed; returning fallback', err);
@@ -273,21 +259,33 @@ export class ShoppingStyleFitAdvisorService {
     return cleaned.length > 0 ? cleaned : fallback;
   }
 
-  private extractOutputText(payload: { output_text?: string; output?: unknown }): string {
-    if (typeof payload.output_text === 'string') return payload.output_text;
-    if (!Array.isArray(payload.output)) return '';
+  private buildCacheKey(dto: StyleFitAdvisorRequest) {
+    return [
+      'cache:ai:style-fit',
+      dto.productId,
+      dto.heightCm,
+      dto.weightKg,
+      dto.preferredFit,
+      dto.bodyShape ?? '-',
+      dto.occasion ?? '-',
+      dto.notes ?? '-',
+    ].join(':').toLowerCase().slice(0, 220);
+  }
 
-    const parts: string[] = [];
-    for (const item of payload.output) {
-      if (!item || typeof item !== 'object') continue;
-      const content = (item as { content?: unknown }).content;
-      if (!Array.isArray(content)) continue;
-      for (const contentItem of content) {
-        if (!contentItem || typeof contentItem !== 'object') continue;
-        const text = (contentItem as { text?: unknown }).text;
-        if (typeof text === 'string') parts.push(text);
-      }
+  private async readCachedJson<T>(key: string): Promise<T | null> {
+    try {
+      const cached = await this.redisService.get(key);
+      return cached ? JSON.parse(cached) as T : null;
+    } catch {
+      return null;
     }
-    return parts.join('\n');
+  }
+
+  private async writeCachedJson(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+    try {
+      await this.redisService.setex(key, ttlSeconds, JSON.stringify(value));
+    } catch {
+      // ignore cache write failures
+    }
   }
 }

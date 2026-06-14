@@ -4,6 +4,7 @@ import { FaqRepository } from './faq.repository';
 import { ProductsService } from '../products/products.service';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../orders/orders.service';
+import { RedisService } from '../redis/redis.service';
 
 const mockProduct: any = {
   id: 'p1',
@@ -30,6 +31,7 @@ describe('ChatbotService', () => {
   const faqRepo = { search: jest.fn() };
   const config = { get: jest.fn() };
   const ordersService = { findMyOrders: jest.fn() };
+  const redisService = { get: jest.fn(), setex: jest.fn() };
   const originalFetch = global.fetch;
 
   beforeEach(async () => {
@@ -41,6 +43,8 @@ describe('ChatbotService', () => {
       return '';
     });
     global.fetch = jest.fn();
+    redisService.get.mockResolvedValue(null);
+    redisService.setex.mockResolvedValue(undefined);
 
     const module = await Test.createTestingModule({
       providers: [
@@ -49,6 +53,7 @@ describe('ChatbotService', () => {
         { provide: FaqRepository, useValue: faqRepo },
         { provide: ConfigService, useValue: config },
         { provide: OrdersService, useValue: ordersService },
+        { provide: RedisService, useValue: redisService },
       ],
     }).compile();
     service = module.get(ChatbotService);
@@ -83,6 +88,10 @@ describe('ChatbotService', () => {
     expect(result.type).toBe('products');
     expect(result.reply).toContain('iPhone 15');
     expect(result.data).toHaveLength(1);
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    const text = body.input[0].content[0].text as string;
+    expect(text).toContain('"name": "iPhone 15"');
+    expect(text).not.toContain('https://img.url');
   });
 
   it('adds recent order context for authenticated tracking questions', async () => {
@@ -115,6 +124,22 @@ describe('ChatbotService', () => {
     const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
     expect(JSON.stringify(body)).toContain('LS-123');
     expect(JSON.stringify(body)).toContain('GHN001');
+  });
+
+  it('uses cached AI reply when available', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    productsService.findMany.mockResolvedValue({ items: [mockProduct], nextCursor: null });
+    redisService.get.mockResolvedValue(JSON.stringify({ reply: 'cached chatbot reply' }));
+
+    const result = await service.reply('tu van iphone chup anh dep');
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.reply).toBe('cached chatbot reply');
+    expect(result.type).toBe('products');
   });
 
   it('falls back to rule-based response when OpenAI is not configured', async () => {

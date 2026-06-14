@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { ShoppingStyleFitAdvisorService } from './shopping-style-fit-advisor.service';
 import { ProductsService } from '../products/products.service';
+import { RedisService } from '../redis/redis.service';
 
 const variants = [
   {
@@ -64,17 +65,21 @@ describe('ShoppingStyleFitAdvisorService', () => {
   let originalFetch: typeof global.fetch;
   const productsService = { findById: jest.fn() };
   const config = { get: jest.fn<string, [string]>((key: string) => (key === 'OPENAI_MODEL' ? 'gpt-5.2' : '')) };
+  const redisService = { get: jest.fn(), setex: jest.fn() };
 
   beforeEach(async () => {
     originalFetch = global.fetch;
     global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
     productsService.findById.mockResolvedValue(product);
     config.get.mockImplementation((key: string) => (key === 'OPENAI_MODEL' ? 'gpt-5.2' : ''));
+    redisService.get.mockResolvedValue(null);
+    redisService.setex.mockResolvedValue(undefined);
     const moduleRef = await Test.createTestingModule({
       providers: [
         ShoppingStyleFitAdvisorService,
         { provide: ProductsService, useValue: productsService },
         { provide: ConfigService, useValue: config },
+        { provide: RedisService, useValue: redisService },
       ],
     }).compile();
     service = moduleRef.get(ShoppingStyleFitAdvisorService);
@@ -153,7 +158,7 @@ describe('ShoppingStyleFitAdvisorService', () => {
     expect(result.recommendedSize).toBe('M');
   });
 
-  it('includes product images in the OpenAI product context', async () => {
+  it('sends slim variant data to OpenAI', async () => {
     config.get.mockImplementation((key: string) => {
       if (key === 'OPENAI_API_KEY') return 'sk-test';
       if (key === 'OPENAI_MODEL') return 'gpt-5.2';
@@ -185,8 +190,10 @@ describe('ShoppingStyleFitAdvisorService', () => {
     const body = JSON.parse(init.body);
     const text = body.input[0].content[0].text as string;
 
-    expect(text).toContain('"images"');
-    expect(text).toContain('https://example.com/a.jpg');
+    expect(text).toContain('"name": "Ao blazer basic"');
+    expect(text).toContain('"size": "M"');
+    expect(text).not.toContain('"images"');
+    expect(text).not.toContain('https://example.com/a.jpg');
   });
 
   it('returns deterministic fallback when OpenAI key is missing', async () => {
@@ -270,5 +277,33 @@ describe('ShoppingStyleFitAdvisorService', () => {
     expect(result.fallback).toBe(true);
     expect(result.recommendedVariantId).toBeUndefined();
     expect(result.confidence).toBe('low');
+  });
+
+  it('uses cached AI result when available', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    redisService.get.mockResolvedValue(JSON.stringify({
+      recommendedVariantId: 'v-m',
+      recommendedSize: 'M',
+      confidence: 'high',
+      fitSummary: 'cached',
+      reasons: ['cached'],
+      styleTips: [],
+      warnings: [],
+    }));
+
+    const result = await service.advise({
+      productId: 'p1',
+      heightCm: 170,
+      weightKg: 62,
+      preferredFit: 'regular',
+    });
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.fallback).toBe(false);
+    expect(result.recommendedVariantId).toBe('v-m');
   });
 });

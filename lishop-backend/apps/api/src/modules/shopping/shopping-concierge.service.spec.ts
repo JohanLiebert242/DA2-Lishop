@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { ProductsService } from '../products/products.service';
 import { ShoppingConciergeService } from './shopping-concierge.service';
+import { RedisService } from '../redis/redis.service';
 
 const productA: any = {
   id: 'p1',
@@ -51,6 +52,7 @@ describe('ShoppingConciergeService', () => {
   const config = {
     get: jest.fn(),
   };
+  const redisService = { get: jest.fn(), setex: jest.fn() };
 
   beforeEach(async () => {
     originalFetch = global.fetch;
@@ -59,6 +61,8 @@ describe('ShoppingConciergeService', () => {
       if (key === 'OPENAI_MODEL') return 'gpt-5.2';
       return '';
     });
+    redisService.get.mockResolvedValue(null);
+    redisService.setex.mockResolvedValue(undefined);
     productsService.findMany.mockResolvedValue({ items: [productA, productB], nextCursor: null });
     productsService.findFeatured.mockResolvedValue([productA, productB]);
 
@@ -67,6 +71,7 @@ describe('ShoppingConciergeService', () => {
         ShoppingConciergeService,
         { provide: ProductsService, useValue: productsService },
         { provide: ConfigService, useValue: config },
+        { provide: RedisService, useValue: redisService },
       ],
     }).compile();
 
@@ -116,6 +121,10 @@ describe('ShoppingConciergeService', () => {
     expect(result.items).toHaveLength(2);
     expect(result.cartPlan).toHaveLength(2);
     expect(result.cartPlan[0]).toEqual(expect.objectContaining({ productId: 'p1', quantity: 1 }));
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    const text = body.input[0].content[0].text as string;
+    expect(text).toContain('"name": "Ao khoac di lam"');
+    expect(text).not.toContain('https://example.com/a.jpg');
   });
 
   it('returns fallback cart plan when OpenAI key is missing', async () => {
@@ -161,5 +170,47 @@ describe('ShoppingConciergeService', () => {
     expect(result.items).toHaveLength(2);
     expect(result.cartPlan).toHaveLength(2);
     expect(result.reply).toContain('goi y');
+  });
+
+  it('drops invalid productId from AI actions', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({
+          reply: 'Da loc action.',
+          cartPlan: [{ productId: 'p1', quantity: 1, reason: 'Hop' }],
+          actions: [
+            { type: 'VIEW_PRODUCT', label: 'Xem sai', productId: 'not-real' },
+            { type: 'VIEW_PRODUCT', label: 'Xem dung', productId: 'p1' },
+          ],
+        }),
+      }),
+    });
+
+    const result = await service.ask('Toi can combo di lam');
+
+    expect(result.actions).toEqual([
+      { type: 'VIEW_PRODUCT', label: 'Xem dung', productId: 'p1' },
+    ]);
+  });
+
+  it('uses cached concierge response when available', async () => {
+    redisService.get.mockResolvedValue(JSON.stringify({
+      reply: 'cached concierge',
+      cartPlan: [{ productId: 'p1', name: productA.name, slug: productA.slug, quantity: 1, priceVnd: productA.priceVnd, imageUrl: 'https://example.com/a.jpg', reason: 'cached' }],
+      actions: [{ type: 'ADD_TO_CART', label: 'Them goi y vao gio' }],
+      fallback: false,
+    }));
+
+    const result = await service.ask('Can mua do di lam');
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.reply).toBe('cached concierge');
+    expect(result.items).toHaveLength(2);
   });
 });

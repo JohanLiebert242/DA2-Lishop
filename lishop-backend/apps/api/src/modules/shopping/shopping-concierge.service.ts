@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ProductsService } from '../products/products.service';
-
-const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
-const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
+import { RedisService } from '../redis/redis.service';
+import { DEFAULT_OPENAI_MODEL, requestOpenAiText } from '../../common/ai/openai-responses';
 
 export type ConciergeActionType = 'ADD_TO_CART' | 'VIEW_PRODUCT' | 'ASK_CLARIFYING_QUESTION';
 
@@ -49,6 +48,7 @@ export class ShoppingConciergeService {
   constructor(
     private readonly productsService: ProductsService,
     private readonly config: ConfigService,
+    private readonly redisService: RedisService,
   ) {}
 
   async ask(message: string): Promise<ShoppingConciergeResponse> {
@@ -56,49 +56,37 @@ export class ShoppingConciergeService {
     const result = await this.productsService.findMany({ q: normalizedMessage, limit: 8 });
     const seededProducts = result.items.length > 0 ? result.items : await this.productsService.findFeatured(8);
     const items = seededProducts.map((product) => this.toConciergeProduct(product));
-    const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
+    const cacheKey = `cache:ai:shopping-concierge:${this.normalizeCacheText(normalizedMessage)}`;
+    const cached = await this.readCachedJson<Omit<ShoppingConciergeResponse, 'items'>>(cacheKey);
+    if (cached) return { ...cached, items };
 
+    const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
     if (!apiKey) {
       return this.buildFallback(normalizedMessage, items);
     }
 
     try {
-      const response = await fetch(OPENAI_RESPONSES_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
-          instructions: this.buildPrompt(),
-          input: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'input_text',
-                  text: [
-                    `Yeu cau mua sam cua khach: ${normalizedMessage}`,
-                    '',
-                    'San pham ung vien tu catalog Lishop:',
-                    JSON.stringify(items, null, 2),
-                  ].join('\n'),
-                },
-              ],
-            },
-          ],
-          max_output_tokens: 750,
-        }),
+      const text = await requestOpenAiText({
+        apiKey,
+        model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
+        instructions: this.buildPrompt(),
+        inputText: [
+          `Yeu cau mua sam cua khach: ${normalizedMessage}`,
+          '',
+          'San pham ung vien tu catalog Lishop:',
+          JSON.stringify(items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            slug: item.slug,
+            priceVnd: item.priceVnd,
+            stock: item.stock,
+            averageRating: item.averageRating,
+            reviewCount: item.reviewCount,
+            brand: item.brand,
+          })), null, 2),
+        ].join('\n'),
+        maxOutputTokens: 750,
       });
-
-      if (!response.ok) {
-        throw new Error(`OpenAI request failed with status ${response.status}`);
-      }
-
-      const payload = await response.json() as { output_text?: string; output?: unknown };
-      const text = this.extractOutputText(payload).trim();
-      if (!text) throw new Error('OpenAI response did not include text output');
 
       const parsed = JSON.parse(text) as Partial<{
         reply: string;
@@ -106,17 +94,18 @@ export class ShoppingConciergeService {
         actions: ConciergeAction[];
       }>;
       const cartPlan = this.resolveCartPlan(parsed.cartPlan, items);
-      const actions = this.resolveActions(parsed.actions, cartPlan);
-
-      return {
+      const actions = this.resolveActions(parsed.actions, cartPlan, items);
+      const payload = {
         reply: typeof parsed.reply === 'string' && parsed.reply.trim()
           ? parsed.reply.trim()
           : this.buildDefaultReply(normalizedMessage, cartPlan),
-        items,
         cartPlan,
         actions,
-        fallback: false,
+        fallback: false as const,
       };
+
+      await this.writeCachedJson(cacheKey, payload, 90);
+      return { ...payload, items };
     } catch (err) {
       console.error('[ShoppingConciergeService] AI concierge failed; returning fallback', err);
       return this.buildFallback(normalizedMessage, items);
@@ -130,7 +119,8 @@ export class ShoppingConciergeService {
       'Chi tra ve JSON hop le, khong markdown, khong giai thich ngoai JSON.',
       'Schema: {"reply":"string","cartPlan":[{"productId":"string","quantity":number,"reason":"string"}],"actions":[{"type":"ADD_TO_CART|VIEW_PRODUCT|ASK_CLARIFYING_QUESTION","label":"string","productId":"string optional"}]}.',
       'cartPlan chi duoc dung productId co trong danh sach ung vien va stock > 0.',
-      'Khong tu checkout, khong hua khuyen mai, khong bia gia, stock, giao hang hay uu dai.',
+      'Neu action co productId thi productId do phai co trong danh sach ung vien.',
+      'Khong tu checkout, khong hua khuyen mai, khong bua gia, stock, giao hang hay uu dai.',
       'Neu yeu cau mo ho, hay tra ve action ASK_CLARIFYING_QUESTION va cartPlan co the rong hoac rat nho.',
     ].join('\n');
   }
@@ -179,12 +169,18 @@ export class ShoppingConciergeService {
     return plan;
   }
 
-  private resolveActions(actions: ConciergeAction[] | undefined, cartPlan: ConciergeCartItem[]): ConciergeAction[] {
+  private resolveActions(
+    actions: ConciergeAction[] | undefined,
+    cartPlan: ConciergeCartItem[],
+    items: ConciergeProduct[],
+  ): ConciergeAction[] {
     if (!Array.isArray(actions) || actions.length === 0) {
       return cartPlan.length > 0
         ? [{ type: 'ADD_TO_CART', label: 'Them goi y vao gio' }]
         : [{ type: 'ASK_CLARIFYING_QUESTION', label: 'Mo ta them nhu cau' }];
     }
+
+    const validProductIds = new Set(items.map((item) => item.id));
 
     return actions
       .filter((action) =>
@@ -193,11 +189,15 @@ export class ShoppingConciergeService {
         && typeof action.label === 'string'
         && action.label.trim().length > 0,
       )
+      .filter((action) =>
+        action.type !== 'VIEW_PRODUCT'
+        || (typeof action.productId === 'string' && validProductIds.has(action.productId)),
+      )
       .slice(0, 5)
       .map((action) => ({
         type: action.type,
         label: action.label.trim(),
-        ...(action.productId ? { productId: action.productId } : {}),
+        ...(action.productId && validProductIds.has(action.productId) ? { productId: action.productId } : {}),
       }));
   }
 
@@ -240,21 +240,24 @@ export class ShoppingConciergeService {
     };
   }
 
-  private extractOutputText(payload: { output_text?: string; output?: unknown }): string {
-    if (typeof payload.output_text === 'string') return payload.output_text;
-    if (!Array.isArray(payload.output)) return '';
+  private normalizeCacheText(value: string) {
+    return value.toLowerCase().trim().replace(/\s+/g, '-').slice(0, 120);
+  }
 
-    const parts: string[] = [];
-    for (const item of payload.output) {
-      if (!item || typeof item !== 'object') continue;
-      const content = (item as { content?: unknown }).content;
-      if (!Array.isArray(content)) continue;
-      for (const contentItem of content) {
-        if (!contentItem || typeof contentItem !== 'object') continue;
-        const text = (contentItem as { text?: unknown }).text;
-        if (typeof text === 'string') parts.push(text);
-      }
+  private async readCachedJson<T>(key: string): Promise<T | null> {
+    try {
+      const cached = await this.redisService.get(key);
+      return cached ? JSON.parse(cached) as T : null;
+    } catch {
+      return null;
     }
-    return parts.join('\n');
+  }
+
+  private async writeCachedJson(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+    try {
+      await this.redisService.setex(key, ttlSeconds, JSON.stringify(value));
+    } catch {
+      // ignore cache write failures
+    }
   }
 }

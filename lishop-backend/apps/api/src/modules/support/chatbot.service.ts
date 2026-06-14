@@ -4,6 +4,8 @@ import { ProductsService } from '../products/products.service';
 import { OrdersService } from '../orders/orders.service';
 import { FaqRepository } from './faq.repository';
 import { FAQ } from '@lishop/database';
+import { RedisService } from '../redis/redis.service';
+import { DEFAULT_OPENAI_MODEL, requestOpenAiText } from '../../common/ai/openai-responses';
 
 export interface ProductSummary {
   id: string;
@@ -44,28 +46,20 @@ interface AiContext {
   orderTrackingRequiresLogin: boolean;
 }
 
-const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
-const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
+const PRODUCT_KEYWORDS = ['gia', 'bao nhieu', 're nhat', 'dat nhat', 'tim', 'san pham', 'tu van', 'mua', 'nen chon'];
+const COMPARE_KEYWORDS = ['so sanh', 'khac nhau', 'hon', 'doi chieu', 'compare'];
+const ORDER_KEYWORDS = ['theo doi', 'tracking', 'don hang', 'kiem tra don'];
+const RETURN_KEYWORDS = ['doi tra', 'hoan tien', 'tra hang', 'refund'];
+const SHIPPING_KEYWORDS = ['van chuyen', 'giao hang', 'ship', 'phi ship'];
+const PAYMENT_KEYWORDS = ['thanh toan', 'payment', 'cod', 'vnpay', 'momo'];
+const CONTACT_KEYWORDS = ['lien he', 'ho tro', 'gap nguoi that', 'tu van'];
 
-const PRODUCT_KEYWORDS = ['giá', 'bao nhiêu', 'rẻ nhất', 'đắt nhất', 'tìm', 'sản phẩm', 'tư vấn', 'mua', 'nên chọn'];
-const COMPARE_KEYWORDS = ['so sánh', 'khác nhau', 'hơn', 'đối chiếu', 'compare'];
-const ORDER_KEYWORDS = ['theo dõi', 'tracking', 'đơn hàng', 'kiểm tra đơn'];
-const RETURN_KEYWORDS = ['đổi trả', 'hoàn tiền', 'trả hàng', 'refund'];
-const SHIPPING_KEYWORDS = ['vận chuyển', 'giao hàng', 'ship', 'phí ship'];
-const PAYMENT_KEYWORDS = ['thanh toán', 'payment', 'cod', 'vnpay', 'momo'];
-const CONTACT_KEYWORDS = ['liên hệ', 'hỗ trợ', 'gặp người thật', 'tư vấn'];
-
-const CANNED_ORDER = `Để theo dõi đơn hàng, bạn đăng nhập và vào mục "Đơn hàng" trong tài khoản. Mỗi đơn hàng có thông tin cập nhật trạng thái và lịch sử vận chuyển chi tiết.`;
-
-const CANNED_RETURN = `Chính sách đổi trả: Bạn có 7 ngày kể từ khi nhận hàng để yêu cầu đổi trả. Vào mục "Đơn hàng", chọn đơn hàng đã giao và nhấn "Yêu cầu đổi trả". Chúng tôi sẽ xử lý trong vòng 3-5 ngày làm việc.`;
-
-const CANNED_SHIPPING = `Chúng tôi hỗ trợ các đơn vị vận chuyển: GHN (2 ngày), GHTK (3 ngày), Viettel Post (4 ngày). Phí vận chuyển tính theo khu vực và trọng lượng sản phẩm, hiển thị khi thanh toán.`;
-
-const CANNED_PAYMENT = `Chúng tôi chấp nhận: COD (thanh toán khi nhận hàng), VNPAY, MoMo, Stripe, PayPal. Bạn có thể chọn phương thức thanh toán khi đặt hàng.`;
-
-const CANNED_CONTACT = `Bạn cần hỗ trợ trực tiếp từ nhân viên? Vui lòng tạo yêu cầu hỗ trợ trong mục "Hỗ trợ" của tài khoản. Chúng tôi sẽ phản hồi trong vòng 24 giờ.`;
-
-const DEFAULT_REPLY = `Tôi chưa hiểu câu hỏi này. Bạn có thể tạo yêu cầu hỗ trợ trong mục "Hỗ trợ" để được nhân viên tư vấn trực tiếp.`;
+const CANNED_ORDER = 'Để theo dõi đơn hàng, bạn đăng nhập và vào mục "Đơn hàng" trong tài khoản. Mỗi đơn hàng có thông tin cập nhật trạng thái và lịch sử vận chuyển chi tiết.';
+const CANNED_RETURN = 'Chính sách đổi trả: Bạn có 7 ngày kể từ khi nhận hàng để yêu cầu đổi trả. Vào mục "Đơn hàng", chọn đơn hàng đã giao và nhấn "Yêu cầu đổi trả". Chúng tôi sẽ xử lý trong vòng 3-5 ngày làm việc.';
+const CANNED_SHIPPING = 'Chúng tôi hỗ trợ các đơn vị vận chuyển: GHN (2 ngày), GHTK (3 ngày), Viettel Post (4 ngày). Phí vận chuyển tính theo khu vực và trọng lượng sản phẩm, hiển thị khi thanh toán.';
+const CANNED_PAYMENT = 'Chúng tôi chấp nhận: COD, VNPAY, MoMo, Stripe, PayPal. Bạn có thể chọn phương thức thanh toán khi đặt hàng.';
+const CANNED_CONTACT = 'Bạn cần hỗ trợ trực tiếp từ nhân viên? Vui lòng tạo yêu cầu hỗ trợ trong mục "Hỗ trợ" của tài khoản. Chúng tôi sẽ phản hồi trong vòng 24 giờ.';
+const DEFAULT_REPLY = 'Tôi chưa hiểu câu hỏi này. Bạn có thể tạo yêu cầu hỗ trợ trong mục "Hỗ trợ" để được nhân viên tư vấn trực tiếp.';
 
 @Injectable()
 export class ChatbotService {
@@ -74,6 +68,7 @@ export class ChatbotService {
     private readonly faqRepo: FaqRepository,
     private readonly config: ConfigService,
     private readonly ordersService: OrdersService,
+    private readonly redisService: RedisService,
   ) {}
 
   async reply(message: string, context: ChatbotReplyContext = {}): Promise<ChatbotResponse> {
@@ -95,42 +90,24 @@ export class ChatbotService {
   ): Promise<ChatbotResponse> {
     const lower = message.toLowerCase();
     const aiContext = await this.buildAiContext(message, lower, context);
-    const response = await fetch(OPENAI_RESPONSES_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
-        instructions: this.buildSystemPrompt(),
-        input: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'input_text',
-                text: [
-                  `Câu hỏi khách hàng: ${message}`,
-                  '',
-                  'Dữ liệu nội bộ Lishop dạng JSON. Chỉ dùng dữ liệu này khi nói về sản phẩm, chính sách, hoặc đơn hàng:',
-                  JSON.stringify(aiContext, null, 2),
-                ].join('\n'),
-              },
-            ],
-          },
-        ],
-        max_output_tokens: 700,
-      }),
+    const cacheKey = this.buildCacheKey(message, context, aiContext);
+    const cached = await this.readCachedJson<{ reply: string }>(cacheKey);
+    const reply = cached?.reply ?? await requestOpenAiText({
+      apiKey,
+      model: this.config.get<string>('OPENAI_MODEL') || DEFAULT_OPENAI_MODEL,
+      instructions: this.buildSystemPrompt(),
+      inputText: [
+        `Cau hoi khach hang: ${message}`,
+        '',
+        'Du lieu noi bo Lishop dang JSON. Chi dung du lieu nay khi noi ve san pham, chinh sach, hoac don hang:',
+        JSON.stringify(this.toPromptContext(aiContext), null, 2),
+      ].join('\n'),
+      maxOutputTokens: 700,
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI request failed with status ${response.status}`);
+    if (!cached) {
+      await this.writeCachedJson(cacheKey, { reply }, 60);
     }
-
-    const payload = await response.json() as { output_text?: string; output?: unknown };
-    const reply = this.extractOutputText(payload).trim();
-    if (!reply) throw new Error('OpenAI response did not include text output');
 
     if (aiContext.products.length > 0 && this.matches(lower, [...PRODUCT_KEYWORDS, ...COMPARE_KEYWORDS])) {
       return { reply, type: 'products', data: aiContext.products };
@@ -182,32 +159,13 @@ export class ChatbotService {
 
   private buildSystemPrompt(): string {
     return [
-      'Bạn là trợ lý AI chăm sóc khách hàng của Lishop, một sàn thương mại điện tử.',
-      'Luôn trả lời bằng tiếng Việt tự nhiên, thân thiện, ngắn gọn nhưng đủ ý.',
-      'Bạn có thể trả lời câu hỏi chung, tư vấn sản phẩm, so sánh sản phẩm, hướng dẫn theo dõi đơn hàng, hướng dẫn đổi trả, thanh toán và vận chuyển.',
-      'Khi tư vấn hoặc so sánh sản phẩm, chỉ dựa vào danh sách sản phẩm trong dữ liệu nội bộ. Nếu thiếu dữ liệu, hãy hỏi thêm nhu cầu, ngân sách, thương hiệu hoặc tính năng mong muốn.',
-      'Khi nói về đơn hàng, chỉ dùng dữ liệu đơn hàng được cung cấp. Nếu khách chưa đăng nhập hoặc không có dữ liệu đơn hàng, hướng dẫn họ đăng nhập và vào mục Đơn hàng hoặc tạo yêu cầu hỗ trợ.',
-      'Không bịa mã vận đơn, trạng thái đơn hàng, chính sách, giá, tồn kho hoặc khuyến mãi.',
-      'Nếu câu hỏi nằm ngoài dữ liệu Lishop, trả lời hữu ích ở mức tổng quát và khuyến khích tạo ticket khi cần nhân viên hỗ trợ.',
+      'Ban la tro ly AI cham soc khach hang cua Lishop.',
+      'Luon tra loi bang tieng Viet tu nhien, than thien, ngan gon nhung du y.',
+      'Khi tu van hoac so sanh san pham, chi dua vao danh sach san pham trong du lieu noi bo.',
+      'Khi noi ve don hang, chi dung du lieu don hang duoc cung cap.',
+      'Khong bua ma van don, trang thai don hang, chinh sach, gia, ton kho hoac khuyen mai.',
+      'Neu cau hoi nam ngoai du lieu Lishop, tra loi huu ich o muc tong quat va khuyen khich tao ticket khi can nhan vien ho tro.',
     ].join('\n');
-  }
-
-  private extractOutputText(payload: { output_text?: string; output?: unknown }): string {
-    if (typeof payload.output_text === 'string') return payload.output_text;
-    if (!Array.isArray(payload.output)) return '';
-
-    const parts: string[] = [];
-    for (const item of payload.output) {
-      if (!item || typeof item !== 'object') continue;
-      const content = (item as { content?: unknown }).content;
-      if (!Array.isArray(content)) continue;
-      for (const contentItem of content) {
-        if (!contentItem || typeof contentItem !== 'object') continue;
-        const text = (contentItem as { text?: unknown }).text;
-        if (typeof text === 'string') parts.push(text);
-      }
-    }
-    return parts.join('\n');
   }
 
   private async replyWithRules(message: string): Promise<ChatbotResponse> {
@@ -243,13 +201,33 @@ export class ChatbotService {
       return { reply: CANNED_CONTACT, type: 'text' };
     }
 
-    // Fallback: search FAQ
     const faqs = await this.faqRepo.search(message);
     if (faqs.length > 0) {
       return { reply: 'Tìm thấy thông tin liên quan trong FAQ:', type: 'faq', data: faqs };
     }
 
     return { reply: DEFAULT_REPLY, type: 'text' };
+  }
+
+  private toPromptContext(aiContext: AiContext) {
+    return {
+      products: aiContext.products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        priceVnd: product.priceVnd,
+        averageRating: product.averageRating,
+        brand: product.brand,
+        stock: product.stock,
+      })),
+      faqs: aiContext.faqs.map((faq) => ({
+        question: faq.question,
+        answer: faq.answer,
+        category: faq.category,
+      })),
+      orders: aiContext.orders,
+      orderTrackingRequiresLogin: aiContext.orderTrackingRequiresLogin,
+    };
   }
 
   private toProductSummary(p: {
@@ -289,5 +267,34 @@ export class ChatbotService {
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/đ/g, 'd');
+  }
+
+  private buildCacheKey(message: string, context: ChatbotReplyContext, aiContext: AiContext) {
+    return [
+      'cache:ai:chatbot',
+      this.normalizeText(message).replace(/\s+/g, '-'),
+      context.userId ?? 'guest',
+      aiContext.products.map((product) => product.slug).join(',') || '-',
+      aiContext.faqs.map((faq) => faq.id).join(',') || '-',
+      aiContext.orders.map((order) => order.orderNumber).join(',') || '-',
+      aiContext.orderTrackingRequiresLogin ? 'login' : 'ready',
+    ].join(':').slice(0, 240);
+  }
+
+  private async readCachedJson<T>(key: string): Promise<T | null> {
+    try {
+      const cached = await this.redisService.get(key);
+      return cached ? JSON.parse(cached) as T : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async writeCachedJson(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+    try {
+      await this.redisService.setex(key, ttlSeconds, JSON.stringify(value));
+    } catch {
+      // ignore cache write failures
+    }
   }
 }
