@@ -51,7 +51,9 @@ async function getVariantProduct(request: APIRequestContext) {
     candidates.push(...products.items.filter((item) => {
       const variantImages = new Set(item.variants.map((variant) => variant.imageUrl).filter(Boolean));
       const maxVariantStock = Math.max(...item.variants.map((variant) => variant.stock ?? 0));
-      return item.brand && item.images.length >= 2 && item.variants.length >= 2 && variantImages.size >= 2 && maxVariantStock > 0;
+      // This suite creates multiple delivered purchases for the same product to unlock "verified purchase" reviews.
+      // Pick a product that can survive the stock consumption across those flows.
+      return item.brand && item.images.length >= 2 && item.variants.length >= 2 && variantImages.size >= 2 && maxVariantStock >= 8;
     }));
     cursor = products.nextCursor ?? null;
     if (!cursor) break;
@@ -219,20 +221,30 @@ test.describe('catalog product and feedback experience', () => {
     await page.getByTestId('shop-profile-link').click();
     await expect(page).toHaveURL(/\/shops\//);
     await expect(page.locator('[data-testid="shop-product-card"]').first()).toBeVisible();
+    await page.getByTestId('shop-back-to-product').click();
+    await expect(page).toHaveURL(new RegExp(`/products/${product.slug}$`));
 
     await page.goto(`${CATALOG_URL}/products/${product.slug}`);
     await expect(page.locator('[data-testid="description-image"]').first()).toBeVisible();
+    await expect(page.getByText('Mô tả sản phẩm')).toBeVisible();
+    await expect(page.getByText('AI chọn cỡ')).toHaveCount(0);
 
     await page.getByTestId('write-review-button').click();
     await page.getByTestId('review-content').fill('E2E visible feedback with media');
-    await page.getByTestId('review-media-url').fill([
-      'https://dummyimage.com/320x240/000/fff.png?text=visible-review',
-      'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-    ].join('\n'));
+    await expect(page.getByText('Media URL')).toHaveCount(0);
+    await page.getByTestId('review-media-upload').setInputFiles({
+      name: 'visible-review.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    });
+    await expect(page.locator('[data-testid="review-upload-preview-image"]')).toBeVisible();
     await page.getByTestId('submit-review-button').click();
     await expect(page.getByText('E2E visible feedback with media')).toBeVisible();
     await expect(page.locator('[data-testid="review-media-image"]').first()).toBeVisible();
-    await expect(page.locator('[data-testid="review-media-video"]').first()).toBeVisible();
+    await expect(page.getByText('Xem media')).toHaveCount(0);
 
     await page.getByTestId('review-filter-5').click();
     await expect(page.locator('[data-testid="review-card"]').first()).toContainText(/E2E seeded feedback 2|E2E seeded feedback 4|E2E seeded feedback 6|E2E visible feedback/);

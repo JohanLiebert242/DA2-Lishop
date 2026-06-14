@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 const CATALOG_URL = process.env['E2E_CATALOG_URL'] ?? 'http://localhost:3002';
 
 test.describe('catalog product filters', () => {
-  test('shows contextual badges for sale, free shipping, and in-stock products', async ({ page }) => {
+  test('shows readable contextual badges and product card CTA text', async ({ page }) => {
     await page.route('**/categories', async (route) => {
       await route.fulfill({
         status: 200,
@@ -61,8 +61,10 @@ test.describe('catalog product filters', () => {
     await expect(firstCard.getByText('Đang giảm giá')).toBeVisible();
     await expect(firstCard.getByText('Miễn phí giao hàng')).toBeVisible();
     await expect(firstCard.getByText('Còn hàng')).toBeVisible();
+    await expect(firstCard.getByText('Xem chi tiết')).toBeVisible();
 
     await page.getByRole('button', { name: '1 sao' }).click();
     await expect(page.getByText('Loa mini 1 sao')).toBeVisible();
   });
 });
+

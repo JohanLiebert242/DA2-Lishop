@@ -95,7 +95,7 @@ export function ProductFilters({
         <input
           type="text"
           value={q}
-          onChange={e => onQChange(e.target.value)}
+          onChange={(e) => onQChange(e.target.value)}
           placeholder="Tìm kiếm..."
           className="input-field w-48 py-2 pl-8 pr-4 text-sm"
         />
@@ -103,11 +103,11 @@ export function ProductFilters({
 
       <select
         value={brand}
-        onChange={e => onBrandChange(e.target.value)}
+        onChange={(e) => onBrandChange(e.target.value)}
         className="input-field min-w-36 py-2 pr-8 text-sm font-medium"
       >
         <option value="">Thương hiệu</option>
-        {BRAND_OPTIONS.map(option => (
+        {BRAND_OPTIONS.map((option) => (
           <option key={option} value={option}>{option}</option>
         ))}
       </select>
@@ -124,7 +124,7 @@ export function ProductFilters({
             max={PRICE_MAX}
             step={PRICE_STEP}
             value={minPriceNumber}
-            onChange={e => handleMinPrice(e.target.value)}
+            onChange={(e) => handleMinPrice(e.target.value)}
             className="h-2 cursor-pointer accent-indigo-600"
             aria-label="Giá tối thiểu"
           />
@@ -134,7 +134,7 @@ export function ProductFilters({
             max={PRICE_MAX}
             step={PRICE_STEP}
             value={maxPriceNumber}
-            onChange={e => handleMaxPrice(e.target.value)}
+            onChange={(e) => handleMaxPrice(e.target.value)}
             className="h-2 cursor-pointer accent-indigo-600"
             aria-label="Giá tối đa"
           />
@@ -164,7 +164,7 @@ export function ProductFilters({
       <div className="relative">
         <select
           value={sort}
-          onChange={e => onSortChange(e.target.value)}
+          onChange={(e) => onSortChange(e.target.value)}
           className="input-field cursor-pointer appearance-none py-2 pr-8 text-sm font-medium"
         >
           <option value="newest">Mới nhất</option>
@@ -178,17 +178,17 @@ export function ProductFilters({
       </div>
 
       <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700">
-        <input type="checkbox" checked={onSale} onChange={e => onOnSaleChange(e.target.checked)} className="h-4 w-4 accent-indigo-600" />
+        <input type="checkbox" checked={onSale} onChange={(e) => onOnSaleChange(e.target.checked)} className="h-4 w-4 accent-indigo-600" />
         Đang giảm giá
       </label>
 
       <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700">
-        <input type="checkbox" checked={freeShipping} onChange={e => onFreeShippingChange(e.target.checked)} className="h-4 w-4 accent-indigo-600" />
+        <input type="checkbox" checked={freeShipping} onChange={(e) => onFreeShippingChange(e.target.checked)} className="h-4 w-4 accent-indigo-600" />
         Miễn phí giao hàng
       </label>
 
       <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700">
-        <input type="checkbox" checked={inStock} onChange={e => onInStockChange(e.target.checked)} className="h-4 w-4 accent-indigo-600" />
+        <input type="checkbox" checked={inStock} onChange={(e) => onInStockChange(e.target.checked)} className="h-4 w-4 accent-indigo-600" />
         Còn hàng
       </label>
 

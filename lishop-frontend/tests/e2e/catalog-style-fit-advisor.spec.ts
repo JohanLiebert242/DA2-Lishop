@@ -43,8 +43,8 @@ async function getSizedVariantProduct(request: APIRequestContext) {
   return product!;
 }
 
-test.describe('catalog AI style fit advisor', () => {
-  test('shows AI fit advice and auto-selects the recommended variant', async ({ page, request }) => {
+test.describe('catalog style fit advisor', () => {
+  test('shows fit advice and auto-selects the recommended variant', async ({ page, request }) => {
     const product = await getSizedVariantProduct(request);
     const recommendedVariant = product.variants.find((variant) => variant.attributes?.size && variant.stock > 0)
       ?? product.variants.find((variant) => variant.attributes?.size);
@@ -73,13 +73,13 @@ test.describe('catalog AI style fit advisor', () => {
     await page.goto(`${CATALOG_URL}/products/${product.slug}`, { waitUntil: 'domcontentloaded' });
 
     const panel = page.getByTestId('style-fit-advisor');
-    await panel.getByRole('button', { name: 'AI chọn cỡ' }).click();
+    await panel.getByRole('button', { name: 'Tư vấn chọn cỡ' }).click();
     await panel.getByLabel('Chiều cao (cm)').fill('170');
     await panel.getByLabel('Cân nặng (kg)').fill('62');
-    await panel.getByRole('button', { name: 'Nhận gợi ý AI' }).click();
+    await panel.getByRole('button', { name: 'Nhận gợi ý' }).click();
 
     await expect(panel).toContainText('Cỡ này sẽ gọn dáng');
-    await expect(panel).toContainText(`Cỡ ${recommendedVariant!.attributes.size}`);
+    await expect(panel).toContainText(`Cỡ gợi ý: ${recommendedVariant!.attributes.size}`);
     await expect(page.getByRole('button', { name: recommendedVariant!.attributes.size, exact: true })).toHaveAttribute('aria-pressed', 'true');
   });
 });

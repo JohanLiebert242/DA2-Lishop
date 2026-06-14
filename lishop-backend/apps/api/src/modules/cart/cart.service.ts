@@ -162,7 +162,10 @@ export class CartService {
 
     const variant = requestedVariantId
       ? variants.find((item) => item.id === requestedVariantId)
-      : variants.find((item) => item.isDefault) ?? variants[0];
+      : variants.find((item) => item.isDefault && item.stock > 0)
+        ?? variants.find((item) => item.stock > 0)
+        ?? variants.find((item) => item.isDefault)
+        ?? variants[0];
 
     if (!variant) throw new BadRequestException('Product variant is invalid');
     if (variant.productId !== product.id) throw new BadRequestException('Product variant does not belong to product');

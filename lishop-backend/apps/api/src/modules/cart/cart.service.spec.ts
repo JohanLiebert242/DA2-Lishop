@@ -138,6 +138,51 @@ describe('CartService', () => {
     expect(cart.subtotalVnd).toBe(79980000);
   });
 
+  it('addItem falls back to an in-stock variant when default variant is out of stock', async () => {
+    const defaultVariant = {
+      id: 'v-default',
+      productId: 'p1',
+      sku: 'OUT-OF-STOCK',
+      name: 'Default variant',
+      priceVnd: 20000000,
+      priceUsd: 800,
+      stock: 0,
+      weightGrams: 240,
+      attributes: { size: 'M' },
+      imageUrl: null,
+      isDefault: true,
+      isActive: true,
+    };
+    const inStockVariant = {
+      id: 'v-stock',
+      productId: 'p1',
+      sku: 'IN-STOCK',
+      name: 'In-stock variant',
+      priceVnd: 21000000,
+      priceUsd: 840,
+      stock: 3,
+      weightGrams: 245,
+      attributes: { size: 'L' },
+      imageUrl: null,
+      isDefault: false,
+      isActive: true,
+    };
+
+    repo.findProduct.mockResolvedValue({
+      id: 'p1',
+      stock: 10,
+      variants: [defaultVariant, inStockVariant],
+    });
+    repo.addOrUpdate.mockResolvedValue(undefined);
+    repo.findByUserId.mockResolvedValue([makeRow({ variantId: 'v-stock', variant: inStockVariant, quantity: 1 })]);
+    redis.get.mockResolvedValue(null);
+
+    const cart = await service.addItem('u1', { productId: 'p1', quantity: 1 });
+
+    expect(repo.addOrUpdate).toHaveBeenCalledWith('u1', 'p1', 'v-stock', 1);
+    expect(cart.items[0]?.variantId).toBe('v-stock');
+  });
+
   it('applyCoupon stores code in Redis and returns cart with discount', async () => {
     repo.findByUserId.mockResolvedValue([makeRow()]);
     redis.get.mockResolvedValue(null);

@@ -17,7 +17,9 @@ test.describe('catalog product detail layout', () => {
     await expect(shopSection).toBeVisible();
     await expect(shopSection.getByText('Chat Ngay')).toBeVisible();
     await expect(shopSection.getByTestId('shop-profile-link')).toBeVisible();
-    await expect(shopSection).toContainText('Tỉ Lệ Phản Hồi');
+    await expect(shopSection).toContainText('Thương hiệu');
+    await expect(shopSection).toContainText('Danh mục');
+    await expect(shopSection).toContainText('Biến thể');
 
     await expect(detailShell).toBeVisible();
     await expect(detailMain).toBeVisible();

@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatVND } from '@lishop/shared';
 import type { ProductSummary } from '../lib/catalog-api';
-import { getWishlist, addToWishlist, removeFromWishlist, isLoggedIn } from '../lib/wishlist-api';
+import { addToWishlist, getWishlist, isLoggedIn, removeFromWishlist } from '../lib/wishlist-api';
 
 function Stars({ rating, count }: { rating: number; count: number }) {
   return (
@@ -36,7 +36,8 @@ export function ProductCard({ product }: { product: ProductSummary }) {
   const defaultVariant =
     product.variants?.find((variant) => variant.isDefault) ?? product.variants?.[0] ?? null;
   const displayPriceVnd = defaultVariant?.priceVnd ?? product.priceVnd;
-  const displayStock = defaultVariant?.stock ?? product.stock;
+  // Stock is exposed at product-level in the API; default variant might be 0 even when other variants are in stock.
+  const displayStock = product.stock;
   const hasSaleTag = product.tags.some((entry) => entry.tag.name.toLowerCase() === 'sale');
   const hasFreeShipping = displayPriceVnd >= 500_000;
   const badgeItems = [
@@ -53,8 +54,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
   const isWishlisted = new Set(wishlistIds).has(product.id);
 
   const toggleMutation = useMutation({
-    mutationFn: () =>
-      isWishlisted ? removeFromWishlist(product.id) : addToWishlist(product.id),
+    mutationFn: () => (isWishlisted ? removeFromWishlist(product.id) : addToWishlist(product.id)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
   });
 
@@ -82,40 +82,38 @@ export function ProductCard({ product }: { product: ProductSummary }) {
               onError={() => setImageFailed(true)}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-faint text-sm">
-              ChÆ°a cÃ³ áº£nh
-            </div>
+            <div className="flex h-full items-center justify-center text-faint text-sm">Chưa có ảnh</div>
           )}
 
-          {/* Category badge */}
           <div className="absolute top-2.5 left-2.5">
             <span className="rounded-lg bg-white/95 backdrop-blur-sm px-2 py-0.5 text-xs font-semibold text-indigo-600 shadow-sm">
               {product.category.name}
             </span>
           </div>
 
-          {/* Heart button */}
           <button
             onClick={handleHeartClick}
             disabled={toggleMutation.isPending}
             className="absolute top-2.5 right-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm transition-transform hover:scale-110 disabled:opacity-60"
-            aria-label={isWishlisted ? 'XÃ³a khá»i yÃªu thÃ­ch' : 'ThÃªm vÃ o yÃªu thÃ­ch'}
+            aria-label={isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
           >
-            <span className={`text-sm leading-none ${isWishlisted ? 'text-red-500' : 'text-gray-400'}`}>
-              {isWishlisted ? 'â™¥' : 'â™¡'}
+            <span
+              className={`text-sm leading-none ${isWishlisted ? 'text-red-500' : 'text-gray-400'}`}
+            >
+              {isWishlisted ? '♥' : '♡'}
             </span>
           </button>
 
           {displayStock === 0 && (
             <div className="absolute inset-0 flex items-center justify-center bg-stone-900/50 backdrop-blur-[1px]">
               <span className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-stone-700">
-                Háº¿t hÃ ng
+                Hết hàng
               </span>
             </div>
           )}
 
           <div className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-indigo-900/80 to-transparent px-3 py-3 transition-transform duration-200 group-hover:translate-y-0">
-            <p className="text-center text-xs font-medium text-white/90">Xem chi tiáº¿t â†’</p>
+            <p className="text-center text-xs font-medium text-white/90">Xem chi tiết →</p>
           </div>
         </div>
 
@@ -136,14 +134,10 @@ export function ProductCard({ product }: { product: ProductSummary }) {
             </div>
           )}
           {product.brand && (
-            <p className="text-xs font-semibold text-stone-500">ThÆ°Æ¡ng hiá»‡u: {product.brand}</p>
+            <p className="text-xs font-semibold text-stone-500">Thương hiệu: {product.brand}</p>
           )}
-          {product.averageRating > 0 && (
-            <Stars rating={product.averageRating} count={product.reviewCount} />
-          )}
-          <p className="mt-auto text-base font-black text-indigo-600">
-            {formatVND(displayPriceVnd)}
-          </p>
+          {product.averageRating > 0 && <Stars rating={product.averageRating} count={product.reviewCount} />}
+          <p className="mt-auto text-base font-black text-indigo-600">{formatVND(displayPriceVnd)}</p>
         </div>
       </div>
     </Link>

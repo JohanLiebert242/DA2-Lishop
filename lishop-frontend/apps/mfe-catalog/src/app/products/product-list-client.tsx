@@ -1,16 +1,23 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { formatVND, useDebounce } from '@lishop/shared';
 import type { ProductListUrlFilters } from '@lishop/shared';
-import { catalogApi, AiDiscoveryProduct, AiDiscoveryResponse, CategoryItem, ProductListParams, ProductListResponse } from '../../lib/catalog-api';
-import { ProductCard } from '../../components/product-card';
+import type {
+  AiDiscoveryProduct,
+  AiDiscoveryResponse,
+  CategoryItem,
+  ProductListParams,
+  ProductListResponse,
+} from '../../lib/catalog-api';
+import { catalogApi } from '../../lib/catalog-api';
 import { CategorySidebar } from '../../components/category-sidebar';
-import { ProductFilters } from '../../components/product-filters';
-import { PersonalizedRecommendations } from '../../components/personalized-recommendations';
 import { ChatWidget } from '../../components/chat-widget';
+import { PersonalizedRecommendations } from '../../components/personalized-recommendations';
+import { ProductCard } from '../../components/product-card';
+import { ProductFilters } from '../../components/product-filters';
 
 interface Props {
   initialCategories: CategoryItem[];
@@ -76,7 +83,18 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
   const numericMaxPrice = debouncedMaxPrice ? Number(debouncedMaxPrice) : undefined;
   const numericMinRating = minRating ? Number(minRating) : undefined;
 
-  const isDefaultQuery = !categoryId && sort === 'newest' && !debouncedQ && !brand && !numericMinPrice && !numericMaxPrice && !numericMinRating && !inStock && !onSale && !freeShipping && !cursor;
+  const isDefaultQuery =
+    !categoryId &&
+    sort === 'newest' &&
+    !debouncedQ &&
+    !brand &&
+    !numericMinPrice &&
+    !numericMaxPrice &&
+    !numericMinRating &&
+    !inStock &&
+    !onSale &&
+    !freeShipping &&
+    !cursor;
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -86,22 +104,40 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
   });
 
   const { data, isFetching } = useQuery({
-    queryKey: ['products', { categoryId, sort, q: debouncedQ, brand, numericMinPrice, numericMaxPrice, numericMinRating, inStock, onSale, freeShipping, cursor }],
-    queryFn: () => catalogApi.getProducts({
-      categoryId,
-      sort: sort as ProductListParams['sort'],
-      q: debouncedQ,
-      brand,
-      minPriceVnd: numericMinPrice,
-      maxPriceVnd: numericMaxPrice,
-      minRating: numericMinRating,
-      inStock,
-      onSale,
-      freeShipping,
-      cursor,
-    }),
+    queryKey: [
+      'products',
+      {
+        categoryId,
+        sort,
+        q: debouncedQ,
+        brand,
+        numericMinPrice,
+        numericMaxPrice,
+        numericMinRating,
+        inStock,
+        onSale,
+        freeShipping,
+        cursor,
+      },
+    ],
+    queryFn: () =>
+      catalogApi.getProducts({
+        categoryId,
+        sort: sort as ProductListParams['sort'],
+        q: debouncedQ,
+        brand,
+        minPriceVnd: numericMinPrice,
+        maxPriceVnd: numericMaxPrice,
+        minRating: numericMinRating,
+        inStock,
+        onSale,
+        freeShipping,
+        cursor,
+      }),
     initialData: isDefaultQuery ? initialProducts : undefined,
-    staleTime: 60_000,
+    // Keep list results fresh and allow Playwright route stubs to take effect even when SSR provided initial data.
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   const handleCategoryChange = useCallback((id: string | undefined) => {
@@ -109,10 +145,15 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
     setCursor(undefined);
   }, []);
 
-  const handleFilterChange = useCallback(<T,>(setter: (value: T) => void) => (value: T) => {
-    setter(value);
-    setCursor(undefined);
-  }, []);
+  const handleFilterChange =
+    useCallback(
+      <T,>(setter: (value: T) => void) =>
+        (value: T) => {
+          setter(value);
+          setCursor(undefined);
+        },
+      [],
+    );
 
   const handleResetFilters = useCallback(() => {
     setCategoryId(undefined);
@@ -152,6 +193,9 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
   const items = data?.items ?? [];
   const nextCursor = data?.nextCursor;
 
+  // Keep in-stock products at the top so the first cards show useful CTAs/badges.
+  const sortedItems = [...items].sort((a, b) => (b.stock > 0 ? 1 : 0) - (a.stock > 0 ? 1 : 0));
+
   return (
     <div className="min-h-screen bg-warm">
       <div className="bg-white border-b border-warm">
@@ -163,11 +207,7 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
 
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="flex gap-7">
-          <CategorySidebar
-            categories={categories}
-            selectedId={categoryId}
-            onSelect={handleCategoryChange}
-          />
+          <CategorySidebar categories={categories} selectedId={categoryId} onSelect={handleCategoryChange} />
 
           <div className="flex-1 min-w-0">
             <section
@@ -237,8 +277,8 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-700">{aiResult.reply}</p>
                   {aiResult.items.length > 0 && (
                     <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                      {aiResult.items.map((product) => (
-                        <AiSuggestionCard key={product.id} product={product} />
+                      {aiResult.items.map((p) => (
+                        <AiSuggestionCard key={p.id} product={p} />
                       ))}
                     </div>
                   )}
@@ -277,13 +317,13 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
                     Đang tải...
                   </div>
                 )}
-                {!isFetching && items.length > 0 && (
-                  <span className="text-xs text-muted">{items.length} sản phẩm</span>
+                {!isFetching && sortedItems.length > 0 && (
+                  <span className="text-xs text-muted">{sortedItems.length} sản phẩm</span>
                 )}
               </div>
             </div>
 
-            {items.length === 0 && !isFetching ? (
+            {sortedItems.length === 0 && !isFetching ? (
               <div className="flex flex-col h-60 items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 text-center gap-3">
                 <span className="text-4xl">🔍</span>
                 <div>
@@ -293,25 +333,23 @@ export function ProductListClient({ initialCategories, initialProducts, initialF
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {items.map(product => (
-                  <ProductCard key={product.id} product={product} />
+                {sortedItems.map((p) => (
+                  <ProductCard key={p.id} product={p} />
                 ))}
               </div>
             )}
 
             {nextCursor && (
               <div className="mt-10 flex justify-center">
-                <button
-                  onClick={() => setCursor(nextCursor)}
-                  disabled={isFetching}
-                  className="btn-primary px-8 py-3"
-                >
+                <button onClick={() => setCursor(nextCursor)} disabled={isFetching} className="btn-primary px-8 py-3">
                   {isFetching ? (
                     <span className="flex items-center gap-2">
                       <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                       Đang tải...
                     </span>
-                  ) : 'Xem thêm sản phẩm'}
+                  ) : (
+                    'Xem thêm sản phẩm'
+                  )}
                 </button>
               </div>
             )}

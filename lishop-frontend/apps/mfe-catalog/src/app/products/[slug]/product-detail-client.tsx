@@ -144,10 +144,19 @@ function ReviewMedia({ url }: { url: string }) {
       rel="noreferrer"
       className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50"
     >
-      Xem media
+      Mở liên kết
     </a>
   );
 }
+
+type ReviewUploadDraft = {
+  id: string;
+  name: string;
+  type: string;
+  previewUrl: string;
+  persistedUrl: string;
+  revokeOnCleanup: boolean;
+};
 
 type SizeGuideRow = {
   size: string;
@@ -299,8 +308,7 @@ function ReviewsSection({ productId }: { productId: string }) {
   const [sortOrder, setSortOrder] = useState<'newest' | 'highest' | 'lowest'>('newest');
   const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all');
   const [reviewPage, setReviewPage] = useState(1);
-  const [mediaUrlInput, setMediaUrlInput] = useState('');
-  const [mediaPreviews, setMediaPreviews] = useState<Array<{ name: string; type: string; url: string }>>([]);
+  const [reviewUploads, setReviewUploads] = useState<ReviewUploadDraft[]>([]);
   const [isLoggedInNow, setIsLoggedInNow] = useState(false);
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
 
@@ -310,9 +318,13 @@ function ReviewsSection({ productId }: { productId: string }) {
 
   useEffect(() => {
     return () => {
-      mediaPreviews.forEach((media) => URL.revokeObjectURL(media.url));
+      reviewUploads.forEach((media) => {
+        if (media.revokeOnCleanup) {
+          URL.revokeObjectURL(media.previewUrl);
+        }
+      });
     };
-  }, [mediaPreviews]);
+  }, [reviewUploads]);
 
   const { data: reviews = [] } = useQuery({
     queryKey: ['reviews', productId],
@@ -332,11 +344,7 @@ function ReviewsSection({ productId }: { productId: string }) {
 
   const submitMutation = useMutation({
     mutationFn: () => {
-      const mediaLines = mediaUrlInput
-        .split('\n')
-        .map((url) => url.trim())
-        .filter(Boolean)
-        .map((url) => `Media: ${url}`);
+      const mediaLines = reviewUploads.map((media) => `Media: ${media.persistedUrl}`);
       const reviewContent = [content.trim(), ...mediaLines].filter(Boolean).join('\n');
 
       if (editingReviewId) return catalogApi.updateReview(editingReviewId, rating, reviewContent || undefined);
@@ -349,9 +357,12 @@ function ReviewsSection({ productId }: { productId: string }) {
       setContent('');
       setRating(5);
       setEditingReviewId(null);
-      setMediaUrlInput('');
-      setMediaPreviews((previous) => {
-        previous.forEach((media) => URL.revokeObjectURL(media.url));
+      setReviewUploads((previous) => {
+        previous.forEach((media) => {
+          if (media.revokeOnCleanup) {
+            URL.revokeObjectURL(media.previewUrl);
+          }
+        });
         return [];
       });
       toast.success(editingReviewId ? 'Đánh giá đã được cập nhật!' : 'Đánh giá của bạn đã được gửi!');
@@ -388,16 +399,30 @@ function ReviewsSection({ productId }: { productId: string }) {
     setReviewPage(1);
   }, [ratingFilter, sortOrder, productId]);
 
-  function handleMediaFilesChange(event: ChangeEvent<HTMLInputElement>) {
+  function fileToDataUrl(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ''));
+      reader.onerror = () => reject(new Error(`Không thể đọc tệp ${file.name}`));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleMediaFilesChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
-    setMediaPreviews((previous) => {
-      previous.forEach((media) => URL.revokeObjectURL(media.url));
-      return files.map((file) => ({
+    const nextUploads = await Promise.all(
+      files.map(async (file) => ({
+        id: `${file.name}-${file.size}-${file.lastModified}`,
         name: file.name,
         type: file.type,
-        url: URL.createObjectURL(file),
-      }));
-    });
+        previewUrl: URL.createObjectURL(file),
+        persistedUrl: await fileToDataUrl(file),
+        revokeOnCleanup: true,
+      })),
+    );
+
+    setReviewUploads((previous) => [...previous, ...nextUploads]);
+    event.target.value = '';
   }
 
   function startEditingReview(review: ReviewInfo) {
@@ -405,7 +430,16 @@ function ReviewsSection({ productId }: { productId: string }) {
     setEditingReviewId(review.id);
     setRating(review.rating);
     setContent(parsed.body);
-    setMediaUrlInput(parsed.mediaLinks.join('\n'));
+    setReviewUploads(
+      parsed.mediaLinks.map((url, index) => ({
+        id: `${review.id}-${index}`,
+        name: `review-media-${index + 1}`,
+        type: isVideoUrl(url) ? 'video/*' : isImageUrl(url) ? 'image/*' : 'application/octet-stream',
+        previewUrl: url,
+        persistedUrl: url,
+        revokeOnCleanup: false,
+      })),
+    );
     setShowForm(true);
   }
 
@@ -461,39 +495,34 @@ function ReviewsSection({ productId }: { productId: string }) {
             data-testid="review-content"
             className="mt-3 w-full resize-none rounded-xl border border-warm px-3 py-2 text-sm bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-colors"
           />
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3">
             <label className="block">
-              <span className="text-xs font-bold uppercase tracking-wide text-muted">Media URL</span>
-              <textarea
-                value={mediaUrlInput}
-                onChange={(e) => setMediaUrlInput(e.target.value)}
-                placeholder="https://... (moi link mot dong)"
-                rows={2}
-                data-testid="review-media-url"
-                className="mt-1 w-full resize-none rounded-xl border border-warm bg-white px-3 py-2 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-bold uppercase tracking-wide text-muted">Anh / video</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-muted">Ảnh đánh giá</span>
               <input
                 type="file"
-                accept="image/*,video/*"
+                data-testid="review-media-upload"
+                accept="image/*"
                 multiple
                 onChange={handleMediaFilesChange}
                 className="mt-1 block w-full cursor-pointer rounded-xl border border-dashed border-warm bg-white px-3 py-2 text-sm text-stone-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-indigo-700"
               />
-              <p className="mt-1 text-xs text-muted">Tệp đang được xem trước trên máy, URL sẽ được lưu cùng nội dung đánh giá.</p>
+              <p className="mt-1 text-xs text-muted">Ảnh sẽ được xem trước ngay và hiển thị cùng review sau khi gửi.</p>
             </label>
           </div>
-          {mediaPreviews.length > 0 && (
+          {reviewUploads.length > 0 && (
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-              {mediaPreviews.map((media) => (
-                <div key={media.url} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-warm bg-white">
+              {reviewUploads.map((media) => (
+                <div key={media.id} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-warm bg-white">
                   {media.type.startsWith('video/') ? (
-                    <video src={media.url} className="h-full w-full object-cover" muted />
+                    <video src={media.previewUrl} className="h-full w-full object-cover" muted />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={media.url} alt={media.name} className="h-full w-full object-cover" />
+                    <img
+                      src={media.previewUrl}
+                      alt={media.name}
+                      data-testid="review-upload-preview-image"
+                      className="h-full w-full object-cover"
+                    />
                   )}
                 </div>
               ))}
@@ -526,7 +555,7 @@ function ReviewsSection({ productId }: { productId: string }) {
           <div className="flex flex-wrap gap-2">
             {(['all', 5, 4, 3, 2, 1] as const).map((star) => {
               const isSelected = ratingFilter === star;
-              const label = star === 'all' ? 'Tat ca' : `${star} sao`;
+              const label = star === 'all' ? 'Tất cả' : `${star} sao`;
 
               return (
                 <button
@@ -619,7 +648,7 @@ function ReviewsSection({ productId }: { productId: string }) {
                 disabled={reviewPage === 1}
                 className="rounded-lg border border-warm px-3 py-1.5 text-xs font-bold text-stone-600 transition hover:bg-warm-100 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Truoc
+                Tr??c
               </button>
               <span data-testid="review-page-indicator" className="text-xs font-semibold text-muted">
                 {reviewPage}/{totalReviewPages}
@@ -931,14 +960,14 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('');
-  const shopReviewCount = Math.max(product.reviewCount, 23500);
-  const shopProductCount = Math.max(product.stock * 10 + variants.length, 96);
+  const shopReviewCount = Math.max(product.reviewCount, 1);
+  const shopProductCount = Math.max(product.stock + variants.length, 1);
   const shopFollowerCount = Math.max(likeCount * 4, 84300);
   const currentVariantSummary = selectedVariant ? getVariantLabel(selectedVariant) : 'Đang cập nhật';
   const materialLabel = product.tags[0]?.tag.name ?? 'Đang cập nhật';
   const featuredImage = product.images.find((image) => !failedImageIds.has(image.id)) ?? product.images[0];
   const detailRows = [
-    { label: 'Danh Mục', value: product.category.name },
+    { label: 'Danh mục', value: product.category.name },
     { label: 'Kho', value: effectiveStock > 0 ? 'CÒN HÀNG' : 'HẾT HÀNG' },
     { label: 'Phân loại hiện tại', value: currentVariantSummary },
     { label: 'SKU', value: effectiveSku ?? 'Đang cập nhật' },
@@ -1031,10 +1060,10 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warm bg-white px-4 py-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-stone-700">
               <span className="text-lg text-red-500">♥</span>
-              {likeCount.toLocaleString('vi-VN')} luot thich
+              {likeCount.toLocaleString('vi-VN')} lượt thích
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wide text-muted">Chia se</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-muted">Chia sẻ</span>
               <button
                 type="button"
                 onClick={() => handleShare('facebook')}
@@ -1112,7 +1141,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
           {attributeOptions.length > 0 && (
             <div className="mt-5 space-y-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-stone-700">Tuy chon san pham</p>
+                <p className="text-sm font-semibold text-stone-700">Tùy chọn sản phẩm</p>
                 {selectedVariant && (
                   <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-600">
                     {getVariantLabel(selectedVariant)}
@@ -1151,7 +1180,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
               {!selectedVariant && (
                 <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 ring-1 ring-amber-200">
-                  Tuy chon nay hien chua co san. Hay chon to hop khac.
+                  Tùy chọn này hiện chưa có sẵn. Hãy chọn tổ hợp khác.
                 </p>
               )}
 
@@ -1163,7 +1192,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                       onClick={() => setShowStyleFitAdvisor((current) => !current)}
                       className="text-sm font-bold text-indigo-700 transition hover:text-indigo-800"
                     >
-                      AI chọn cỡ
+                      Tư vấn chọn cỡ
                     </button>
                     <button
                       type="button"
@@ -1175,7 +1204,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                   </div>
 
                   <p className="text-sm text-stone-600">
-                    Nhập số đo cơ bản để nhận gợi ý độ vừa vặn và tự động chọn biến thể phù hợp nếu AI tìm thấy.
+                    Nhập số đo cơ bản để nhận gợi ý độ vừa vặn và tự động chọn biến thể phù hợp nếu hệ thống tìm thấy.
                   </p>
 
                   {showStyleFitAdvisor && (
@@ -1264,11 +1293,11 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                           disabled={styleFitAdvisorMutation.isPending}
                           className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {styleFitAdvisorMutation.isPending ? 'Đang xin gợi ý...' : 'Nhận gợi ý AI'}
+                          {styleFitAdvisorMutation.isPending ? 'Đang xin gợi ý...' : 'Nhận gợi ý'}
                         </button>
                         {advisorResult?.recommendedSize && (
                           <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700">
-                            AI đề xuất: Cỡ {advisorResult.recommendedSize}
+                            Cỡ gợi ý: {advisorResult.recommendedSize}
                           </span>
                         )}
                         {advisorResult?.fallback && (
@@ -1285,13 +1314,13 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                       {advisorResult && (
                         <div className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
                           <div>
-                            <p className="text-xs font-black uppercase tracking-wide text-stone-500">Tom tat fit</p>
+                            <p className="text-xs font-black uppercase tracking-wide text-stone-500">Tóm tắt fit</p>
                             <p className="mt-1 text-sm text-stone-700">{advisorResult.fitSummary}</p>
                           </div>
 
                           {advisorResult.reasons.length > 0 && (
                             <div>
-                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">Ly do</p>
+                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">L? do</p>
                               <ul className="mt-2 space-y-1 text-sm text-stone-700">
                                 {advisorResult.reasons.map((reason) => (
                                   <li key={reason}>- {reason}</li>
@@ -1302,7 +1331,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
                           {advisorResult.styleTips.length > 0 && (
                             <div>
-                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">Goi y phoi do</p>
+                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">G?i ? ph?i ??</p>
                               <ul className="mt-2 space-y-1 text-sm text-stone-700">
                                 {advisorResult.styleTips.map((tip) => (
                                   <li key={tip}>- {tip}</li>
@@ -1313,7 +1342,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
                           {advisorResult.warnings.length > 0 && (
                             <div>
-                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">Luu y</p>
+                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">L?u ?</p>
                               <ul className="mt-2 space-y-1 text-sm text-amber-700">
                                 {advisorResult.warnings.map((warning) => (
                                   <li key={warning}>- {warning}</li>
@@ -1414,7 +1443,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
               <h2 className="truncate text-lg font-black text-stone-900">{shopName}</h2>
               <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-stone-500">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                Đang hoạt động
+                Đang bán {shopProductCount.toLocaleString('vi-VN')} sản phẩm
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -1425,7 +1454,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
                   Chat Ngay
                 </button>
                 <Link
-                  href={`/shops/${shopSlug}`}
+                  href={`/shops/${shopSlug}?fromProduct=${slug}`}
                   data-testid="shop-profile-link"
                   className="inline-flex h-9 items-center justify-center rounded-sm border border-stone-200 bg-white px-4 text-sm font-bold text-stone-700 transition hover:border-red-200 hover:text-red-500"
                 >
@@ -1439,9 +1468,9 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
             {[
               ['Đánh giá', formatCompactCount(shopReviewCount)],
               ['Sản phẩm', shopProductCount.toLocaleString('vi-VN')],
-              ['Tỉ Lệ Phản Hồi', '89%'],
-              ['Thời gian phản hồi', 'trong vài phút'],
-              ['Tham gia', '8 năm trước'],
+              ['Thương hiệu', product.brand ?? 'Lishop'],
+              ['Danh mục', product.category.name],
+              ['Biến thể', variants.length.toLocaleString('vi-VN')],
               ['Người theo dõi', formatCompactCount(shopFollowerCount)],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between gap-4 text-sm">
