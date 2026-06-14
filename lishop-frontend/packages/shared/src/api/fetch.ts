@@ -1,4 +1,9 @@
 const DEFAULT_AUTH_URL = 'http://localhost:3001';
+const DEFAULT_TIMEOUT_MS = 8000;
+
+export interface ApiRequestInit extends RequestInit {
+  timeoutMs?: number;
+}
 
 export function hasSessionCookie(): boolean {
   if (typeof document === 'undefined') return false;
@@ -6,10 +11,10 @@ export function hasSessionCookie(): boolean {
 }
 
 export function createApiFetch(apiUrl: string, authUrl = DEFAULT_AUTH_URL) {
-  async function doRequest(path: string, init: RequestInit): Promise<Response> {
+  async function doRequest(path: string, init: ApiRequestInit): Promise<Response> {
     // Avoid hanging SSR (and E2E) when the API is down by applying a bounded timeout
     // unless the caller already provided a signal.
-    const timeoutMs = 8000;
+    const timeoutMs = init.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const controller = init.signal ? null : new AbortController();
     const timeoutId = controller
       ? setTimeout(() => controller.abort(), timeoutMs)
@@ -30,7 +35,7 @@ export function createApiFetch(apiUrl: string, authUrl = DEFAULT_AUTH_URL) {
     }
   }
 
-  return async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
     let res = await doRequest(path, init);
 
     if (res.status === 401) {

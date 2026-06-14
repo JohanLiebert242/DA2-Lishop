@@ -221,6 +221,7 @@ export const catalogApi = {
     apiFetch<StyleFitAdvisorResponse>('/shopping/style-fit-advisor', {
       method: 'POST',
       body: JSON.stringify(payload),
+      timeoutMs: 20_000,
     }),
 
   getRecommendations: (limit = 8, context: 'products' | 'home' = 'products') =>
