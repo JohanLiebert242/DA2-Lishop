@@ -870,7 +870,12 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
   }
 
   function isAttributeValueAvailable(key: string, value: string) {
-    return variants.some((variant) => variant.stock > 0 && variant.attributes?.[key] === value);
+    // Check if this attribute value, combined with currently selected attributes, exists in stock
+    const nextAttributes = { ...selectedAttributes, [key]: value };
+    return variants.some((variant) =>
+      variant.stock > 0 &&
+      attributeKeys.every((attrKey) => !nextAttributes[attrKey] || variant.attributes?.[attrKey] === nextAttributes[attrKey]),
+    );
   }
 
   function scrollToSizeGuide() {
@@ -1336,7 +1341,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
                           {advisorResult.reasons.length > 0 && (
                             <div>
-                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">L? do</p>
+                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">Lý do</p>
                               <ul className="mt-2 space-y-1 text-sm text-stone-700">
                                 {advisorResult.reasons.map((reason) => (
                                   <li key={reason}>- {reason}</li>
@@ -1347,7 +1352,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
                           {advisorResult.styleTips.length > 0 && (
                             <div>
-                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">G?i ? ph?i ??</p>
+                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">Gợi ý phối đồ</p>
                               <ul className="mt-2 space-y-1 text-sm text-stone-700">
                                 {advisorResult.styleTips.map((tip) => (
                                   <li key={tip}>- {tip}</li>
@@ -1358,7 +1363,7 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
 
                           {advisorResult.warnings.length > 0 && (
                             <div>
-                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">L?u ?</p>
+                              <p className="text-xs font-black uppercase tracking-wide text-stone-500">Lưu ý</p>
                               <ul className="mt-2 space-y-1 text-sm text-amber-700">
                                 {advisorResult.warnings.map((warning) => (
                                   <li key={warning}>- {warning}</li>
