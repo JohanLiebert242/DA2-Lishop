@@ -283,6 +283,8 @@ describe('ProductsService', () => {
       expect(text).toContain('candidate_products');
       expect(text).toContain('"name": "Product A"');
       expect(text).toContain('"priceVnd": 20000000');
+      expect(text).toContain('"tags": [');
+      expect(text).toContain('"smartphone"');
       expect(text).not.toContain('candidate_slugs');
     });
 
