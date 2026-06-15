@@ -184,6 +184,11 @@ export interface CurrentUserInfo {
   lastName: string;
 }
 
+export interface UploadedReviewMedia {
+  url: string;
+  mime?: string;
+}
+
 export const catalogApi = {
   getCategories: () =>
     apiFetch<CategoryItem[]>('/categories'),
@@ -251,6 +256,12 @@ export const catalogApi = {
     apiFetch<ReviewInfo>(`/reviews/${reviewId}`, {
       method: 'PATCH',
       body: JSON.stringify({ rating, content }),
+    }),
+
+  uploadReviewMedia: (dataUrl: string, filename?: string) =>
+    apiFetch<UploadedReviewMedia>('/support/uploads', {
+      method: 'POST',
+      body: JSON.stringify({ dataUrl, ...(filename ? { filename } : {}) }),
     }),
 
   getCurrentUser: () =>

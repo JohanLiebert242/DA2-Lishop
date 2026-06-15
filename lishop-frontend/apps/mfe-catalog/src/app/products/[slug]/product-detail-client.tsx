@@ -21,6 +21,7 @@ import { getWishlist, addToWishlist, removeFromWishlist, isLoggedIn } from '../.
 import { ChatWidget } from '../../../components/chat-widget';
 
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 const REVIEWS_PER_PAGE = 5;
 
 const ATTRIBUTE_LABELS: Record<string, string> = {
@@ -229,7 +230,7 @@ function StoreChatPanel({
     setMessages([
       {
         from: 'shop',
-        text: `Chao ban, ${shopName} co the tu van them ve ${productName}${variantLabel ? ` - ${variantLabel}` : ''}.`,
+        text: `Chào bạn, ${shopName} có thể tư vấn thêm về ${productName}${variantLabel ? ` - ${variantLabel}` : ''}.`,
         time: new Date().toISOString(),
       },
     ]);
@@ -248,7 +249,7 @@ function StoreChatPanel({
       { from: 'buyer', text, time: now },
       {
         from: 'shop',
-        text: 'Shop da nhan tin nhan. Tu van vien se phan hoi som; ban co the gui them mau sac, kich co hoac ngan sach mong muon.',
+        text: 'Shop đã nhận tin nhắn. Tư vấn viên sẽ phản hồi sớm; bạn có thể gửi thêm màu sắc, kích cỡ hoặc ngân sách mong muốn.',
         time: now,
       },
     ]);
@@ -262,7 +263,7 @@ function StoreChatPanel({
       <div className="flex items-center justify-between bg-red-500 px-4 py-3 text-white">
         <div>
           <p className="font-bold">{shopName}</p>
-          <p className="text-xs text-red-50">Chat voi cua hang</p>
+          <p className="text-xs text-red-50">Chat với cửa hàng</p>
         </div>
         <button type="button" onClick={onClose} className="rounded-full px-2 py-1 text-sm font-bold hover:bg-red-600">x</button>
       </div>
@@ -282,11 +283,11 @@ function StoreChatPanel({
           onKeyDown={(event) => {
             if (event.key === 'Enter') sendMessage();
           }}
-          placeholder="Nhap tin nhan..."
+          placeholder="Nhập tin nhắn..."
           className="min-w-0 flex-1 rounded-full border border-stone-200 px-3 py-2 text-sm outline-none focus:border-red-300"
         />
         <button type="button" onClick={sendMessage} className="rounded-full bg-red-500 px-4 text-sm font-bold text-white hover:bg-red-600">
-          Gui
+          Gửi
         </button>
       </div>
     </div>
@@ -325,6 +326,21 @@ function ReviewsSection({ productId }: { productId: string }) {
     setIsLoggedInNow(isLoggedIn());
   }, []);
 
+  function resetReviewDraft() {
+    setShowForm(false);
+    setContent('');
+    setRating(5);
+    setEditingReviewId(null);
+    setReviewUploads((previous) => {
+      previous.forEach((media) => {
+        if (media.revokeOnCleanup) {
+          URL.revokeObjectURL(media.previewUrl);
+        }
+      });
+      return [];
+    });
+  }
+
   useEffect(() => {
     return () => {
       reviewUploads.forEach((media) => {
@@ -362,18 +378,7 @@ function ReviewsSection({ productId }: { productId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
       queryClient.invalidateQueries({ queryKey: ['product'] });
-      setShowForm(false);
-      setContent('');
-      setRating(5);
-      setEditingReviewId(null);
-      setReviewUploads((previous) => {
-        previous.forEach((media) => {
-          if (media.revokeOnCleanup) {
-            URL.revokeObjectURL(media.previewUrl);
-          }
-        });
-        return [];
-      });
+      resetReviewDraft();
       toast.success(editingReviewId ? 'Đánh giá đã được cập nhật!' : 'Đánh giá của bạn đã được gửi!');
     },
     onError: (err: Error) => {
@@ -420,14 +425,20 @@ function ReviewsSection({ productId }: { productId: string }) {
   async function handleMediaFilesChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     const nextUploads = await Promise.all(
-      files.map(async (file) => ({
-        id: `${file.name}-${file.size}-${file.lastModified}`,
-        name: file.name,
-        type: file.type,
-        previewUrl: URL.createObjectURL(file),
-        persistedUrl: await fileToDataUrl(file),
-        revokeOnCleanup: true,
-      })),
+      files.map(async (file) => {
+        const dataUrl = await fileToDataUrl(file);
+        const upload = await catalogApi.uploadReviewMedia(dataUrl, file.name);
+        const persistedUrl = upload.url.startsWith('http') ? upload.url : `${API_URL}${upload.url}`;
+
+        return {
+          id: `${file.name}-${file.size}-${file.lastModified}`,
+          name: file.name,
+          type: file.type,
+          previewUrl: URL.createObjectURL(file),
+          persistedUrl,
+          revokeOnCleanup: true,
+        };
+      }),
     );
 
     setReviewUploads((previous) => [...previous, ...nextUploads]);
@@ -481,7 +492,7 @@ function ReviewsSection({ productId }: { productId: string }) {
           )}
         </div>
         {isLoggedInNow && !showForm && (
-          <button onClick={() => setShowForm(true)} data-testid="write-review-button" className="btn-primary cursor-pointer">
+          <button onClick={() => { resetReviewDraft(); setShowForm(true); }} data-testid="write-review-button" className="btn-primary cursor-pointer">
             Viết đánh giá
           </button>
         )}
@@ -548,8 +559,7 @@ function ReviewsSection({ productId }: { productId: string }) {
             </button>
             <button
               onClick={() => {
-                setShowForm(false);
-                setEditingReviewId(null);
+                resetReviewDraft();
               }}
               className="cursor-pointer rounded-xl border border-warm px-4 py-2 text-sm font-semibold text-stone-600 hover:bg-warm-100 transition-colors"
             >
@@ -848,35 +858,13 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
   const shopName = product?.brand ? `Cửa hàng ${product.brand}` : 'Cửa hàng chính hãng Lishop';
   const shopSlug = slugifyShopName(product?.brand ?? shopName);
 
-  function findBestVariantMatch(nextAttributes: Record<string, string>, changedKey: string) {
-    const variantsInStock = variants.filter((variant) => variant.stock > 0);
-    const candidates = variantsInStock.length > 0 ? variantsInStock : variants;
-    const exactMatch = candidates.find((variant) =>
+  function handleAttributeSelect(key: string, value: string) {
+    const nextAttributes = { ...selectedAttributes, [key]: value };
+    const nextVariant = variants.find((variant) =>
       attributeKeys.every((attrKey) => !nextAttributes[attrKey] || variant.attributes?.[attrKey] === nextAttributes[attrKey]),
     );
 
-    if (exactMatch) return exactMatch;
-
-    const rankedCandidates = candidates
-      .filter((variant) => variant.attributes?.[changedKey] === nextAttributes[changedKey])
-      .map((variant) => ({
-        variant,
-        score: attributeKeys.reduce((score, attrKey) => {
-          if (attrKey === changedKey) return score + 100;
-          if (!nextAttributes[attrKey]) return score;
-          return variant.attributes?.[attrKey] === nextAttributes[attrKey] ? score + 10 : score;
-        }, 0),
-      }))
-      .sort((left, right) => right.score - left.score);
-
-    return rankedCandidates[0]?.variant ?? null;
-  }
-
-  function handleAttributeSelect(key: string, value: string) {
-    const nextAttributes = { ...selectedAttributes, [key]: value };
-    const nextVariant = findBestVariantMatch(nextAttributes, key);
-
-    setSelectedAttributes(nextVariant?.attributes ?? nextAttributes);
+    setSelectedAttributes(nextAttributes);
     setSelectedVariantId(nextVariant?.id ?? null);
     setQty(1);
   }
