@@ -38,6 +38,34 @@ describe('openai-responses helper', () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
+  it('logs retry attempts and terminal failures through the shared logger', async () => {
+    const logger = {
+      warn: jest.fn(),
+      error: jest.fn(),
+    };
+
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: false, status: 429 })
+      .mockResolvedValueOnce({ ok: false, status: 500 })
+      .mockResolvedValueOnce({ ok: false, status: 500 }) as any;
+
+    await expect(requestOpenAiText({
+      apiKey: 'sk-test',
+      instructions: 'Test',
+      inputText: 'Hello',
+      maxOutputTokens: 50,
+      retryDelayMs: 1,
+      requestLabel: 'products.rerank',
+      logger,
+    })).rejects.toThrow('OpenAI request failed with status 500');
+
+    expect(logger.warn).toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('products.rerank'),
+      expect.objectContaining({ attempt: 3 }),
+    );
+  });
+
   it('aborts long requests with timeout', async () => {
     jest.useFakeTimers();
 

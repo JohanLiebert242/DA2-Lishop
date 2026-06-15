@@ -15,6 +15,11 @@ export interface OpenAiTextRequestOptions {
   timeoutMs?: number;
   retries?: number;
   retryDelayMs?: number;
+  requestLabel?: string;
+  logger?: {
+    warn?: (message: string, meta?: Record<string, unknown>) => void;
+    error?: (message: string, meta?: Record<string, unknown>) => void;
+  };
 }
 
 export function extractOpenAiOutputText(payload: { output_text?: string; output?: unknown }): string {
@@ -39,11 +44,13 @@ export function extractOpenAiOutputText(payload: { output_text?: string; output?
 export async function requestOpenAiText(options: OpenAiTextRequestOptions): Promise<string> {
   const retries = options.retries ?? DEFAULT_RETRIES;
   const retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS;
+  const requestLabel = options.requestLabel ?? 'openai.responses';
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    const attemptNumber = attempt + 1;
 
     try {
       const response = await fetch(OPENAI_RESPONSES_URL, {
@@ -73,9 +80,19 @@ export async function requestOpenAiText(options: OpenAiTextRequestOptions): Prom
 
       if (!response.ok) {
         if (attempt < retries && RETRYABLE_STATUS_CODES.has(response.status)) {
+          options.logger?.warn?.(`[${requestLabel}] retrying OpenAI request after HTTP ${response.status}`, {
+            attempt: attemptNumber,
+            retries,
+            status: response.status,
+          });
           await sleep(retryDelayMs * (attempt + 1));
           continue;
         }
+        options.logger?.error?.(`[${requestLabel}] OpenAI request failed`, {
+          attempt: attemptNumber,
+          retries,
+          status: response.status,
+        });
         throw new Error(`OpenAI request failed with status ${response.status}`);
       }
 
@@ -86,8 +103,18 @@ export async function requestOpenAiText(options: OpenAiTextRequestOptions): Prom
     } catch (error) {
       lastError = error;
       if (!isRetryableError(error) || attempt >= retries) {
+        options.logger?.error?.(`[${requestLabel}] OpenAI request failed`, {
+          attempt: attemptNumber,
+          retries,
+          error: error instanceof Error ? error.message : String(error),
+        });
         throw error;
       }
+      options.logger?.warn?.(`[${requestLabel}] retrying OpenAI request after transport failure`, {
+        attempt: attemptNumber,
+        retries,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await sleep(retryDelayMs * (attempt + 1));
     } finally {
       clearTimeout(timeoutId);
