@@ -329,4 +329,67 @@ test.describe('catalog product and feedback experience', () => {
     await page.getByTestId('review-next-page').click();
     await expect(page.getByTestId('review-page-indicator')).toContainText('2/');
   });
+
+  test('review media uploads use a public URL instead of embedding base64 content', async ({ page, request }) => {
+    const product = await getVariantProduct(request);
+    const reviewer = await registerCustomer(request, 'review-upload-url');
+    const purchasableVariant = product.variants.find((variant) => variant.stock > 0) ?? product.variants[0];
+    await createDeliveredPurchase(request, reviewer.accessToken, product.id, purchasableVariant?.id);
+    await addLoginCookies(page, reviewer.accessToken);
+
+    await page.route('**/support/uploads', async (route) => {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            url: '/uploads/support/test-user/review-image.png',
+            mime: 'image/png',
+          },
+        }),
+      });
+    });
+
+    let submittedContent = '';
+    await page.route(`**/reviews/product/${product.id}`, async (route) => {
+      if (route.request().method() !== 'POST') {
+        await route.fallback();
+        return;
+      }
+      const body = route.request().postDataJSON() as { content?: string; rating?: number };
+      submittedContent = body.content ?? '';
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: 'review-uploaded',
+            userId: reviewer.accessToken,
+            userName: 'E2E Upload',
+            rating: body.rating ?? 5,
+            content: submittedContent,
+            verifiedPurchase: true,
+            createdAt: new Date().toISOString(),
+          },
+        }),
+      });
+    });
+
+    await page.goto(`${CATALOG_URL}/products/${product.slug}`);
+    await page.getByTestId('write-review-button').click();
+    await page.getByTestId('review-content').fill('Đánh giá tốt');
+    await page.getByTestId('review-media-upload').setInputFiles({
+      name: 'review-large-enough.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAY0lEQVR4nO3PQQ0AIBDAsAP/nuGNAvZoFSzZnpl5Z+1n7QH8Z0wGmAwQGSAyQGSAyQCRASIDRAaIDBAZIDJAZIDIAJEBIgNEBogMEBkgMkBkgMgAkQEiA0QGiAwQGSB6AK+GAU2R1v+VAAAAAElFTkSuQmCC',
+        'base64',
+      ),
+    });
+    await page.getByTestId('submit-review-button').click();
+
+    await expect.poll(() => submittedContent).toContain('/uploads/support/test-user/review-image.png');
+    expect(submittedContent).not.toContain('data:image/');
+    await expect(page.locator('[data-testid="review-media-image"]').first()).toBeVisible();
+  });
 });
