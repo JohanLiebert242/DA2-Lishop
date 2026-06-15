@@ -551,7 +551,7 @@ function ReviewsSection({ productId }: { productId: string }) {
           <div className="mt-3 flex gap-2">
             <button
               onClick={() => submitMutation.mutate()}
-              disabled={submitMutation.isPending}
+              disabled={submitMutation.isPending || isUploadingReviewMedia}
               data-testid="submit-review-button"
               className="btn-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >

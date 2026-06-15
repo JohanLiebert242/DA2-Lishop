@@ -63,7 +63,7 @@ test.describe('catalog style fit advisor', () => {
             fitSummary: 'Cỡ này sẽ gọn dáng và dễ mặc hằng ngày.',
             reasons: ['Chiều cao và cân nặng phù hợp với cỡ này.'],
             styleTips: ['Phối với quần ống đứng và giày tối giản.'],
-            warnings: [],
+            warnings: ['Nên đối chiếu thêm bảng số đo trước khi đặt hàng.'],
             fallback: false,
           },
         }),
@@ -80,6 +80,9 @@ test.describe('catalog style fit advisor', () => {
 
     await expect(panel).toContainText('Cỡ này sẽ gọn dáng');
     await expect(panel).toContainText(`Cỡ gợi ý: ${recommendedVariant!.attributes.size}`);
+    await expect(panel).toContainText('Lý do');
+    await expect(panel).toContainText('Gợi ý phối đồ');
+    await expect(panel).toContainText('Lưu ý');
     await expect(page.getByRole('button', { name: recommendedVariant!.attributes.size, exact: true })).toHaveAttribute('aria-pressed', 'true');
   });
 });

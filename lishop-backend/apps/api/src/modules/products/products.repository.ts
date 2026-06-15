@@ -55,6 +55,9 @@ export class ProductsRepository {
         OR: [
           { name: { contains: q, mode: Prisma.QueryMode.insensitive } },
           { description: { contains: q, mode: Prisma.QueryMode.insensitive } },
+          { category: { is: { name: { contains: q, mode: Prisma.QueryMode.insensitive } } } },
+          { category: { is: { slug: { contains: q, mode: Prisma.QueryMode.insensitive } } } },
+          { tags: { some: { tag: { name: { contains: q, mode: Prisma.QueryMode.insensitive } } } } },
         ],
       });
     }

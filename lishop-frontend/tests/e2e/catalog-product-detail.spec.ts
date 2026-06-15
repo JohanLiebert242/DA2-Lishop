@@ -284,6 +284,7 @@ test.describe('catalog product and feedback experience', () => {
     if (variantCombo) {
       await page.getByRole('button', { name: variantCombo.firstValue, exact: true }).click();
       await page.getByRole('button', { name: variantCombo.secondValue, exact: true }).click();
+      await expect(page.getByText('Tùy chọn này hiện chưa có sẵn. Hãy chọn tổ hợp khác.')).toHaveCount(0);
       await expect(
         page.getByText(
           new RegExp(`${variantCombo.matchedVariant.attributes[variantCombo.firstKey]}\\s*\\/\\s*${variantCombo.matchedVariant.attributes[variantCombo.secondKey]}`),

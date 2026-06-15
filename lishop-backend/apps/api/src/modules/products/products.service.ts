@@ -39,6 +39,21 @@ export interface RecommendationsResponse {
   fallback: boolean;
 }
 
+const DISCOVERY_SEARCH_ALIASES = [
+  {
+    triggers: ['laptop', 'may tinh xach tay', 'notebook'],
+    queries: ['laptop', 'MacBook', 'Dell', 'ThinkPad', 'HP', 'ASUS'],
+  },
+  {
+    triggers: ['dien thoai', 'smartphone', 'iphone', 'samsung'],
+    queries: ['dien thoai', 'iPhone', 'Samsung', 'smartphone'],
+  },
+  {
+    triggers: ['cham soc da', 'skincare', 'kem chong nang', 'la roche'],
+    queries: ['skincare', 'La Roche Posay', 'kem chong nang'],
+  },
+] as const;
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -80,9 +95,8 @@ export class ProductsService {
   async discoverWithAi(message: string): Promise<AiDiscoveryResponse> {
     const normalizedMessage = message.trim();
     const mode = this.detectDiscoveryMode(normalizedMessage);
-    const result = await this.repo.findMany({ q: normalizedMessage, limit: 6 });
-    const fallbackProducts = result.items.length > 0 ? result.items : await this.repo.findFeatured(6);
-    const items = fallbackProducts.map((product) => this.toAiDiscoveryProduct(product));
+    const candidates = await this.findDiscoveryCandidates(normalizedMessage);
+    const items = candidates.map((product) => this.toAiDiscoveryProduct(product));
     const cacheKey = this.buildDiscoveryCacheKey(mode, normalizedMessage);
     const cached = await this.readCachedJson<Omit<AiDiscoveryResponse, 'items'>>(cacheKey);
     if (cached) return { ...cached, items };
@@ -373,6 +387,38 @@ export class ProductsService {
       : 'advice';
   }
 
+  private async findDiscoveryCandidates(message: string): Promise<ProductWithDetails[]> {
+    const found = new Map<string, ProductWithDetails>();
+
+    for (const query of this.buildDiscoverySearchQueries(message)) {
+      const result = await this.repo.findMany({ q: query, limit: 6 });
+      for (const product of result.items) {
+        found.set(product.id, product);
+        if (found.size >= 6) return Array.from(found.values());
+      }
+
+      if (found.size > 0) return Array.from(found.values());
+    }
+
+    return this.repo.findFeatured(6);
+  }
+
+  private buildDiscoverySearchQueries(message: string): string[] {
+    const normalized = this.normalizeText(message);
+    const queries = [message];
+
+    for (const group of DISCOVERY_SEARCH_ALIASES) {
+      if (group.triggers.some((trigger) => normalized.includes(trigger))) {
+        queries.push(...group.queries);
+      }
+    }
+
+    return queries.filter((query, index, all) => {
+      const trimmed = query.trim();
+      return trimmed && all.findIndex((item) => item.trim().toLowerCase() === trimmed.toLowerCase()) === index;
+    });
+  }
+
   private discoveryFallback(
     message: string,
     mode: 'advice' | 'compare',
@@ -428,7 +474,7 @@ export class ProductsService {
   }
 
   private buildDiscoveryCacheKey(mode: 'advice' | 'compare', message: string) {
-    return `cache:ai:product-discovery:${mode}:${this.normalizeCacheText(message)}`;
+    return `cache:ai:product-discovery:v2:${mode}:${this.normalizeCacheText(message)}`;
   }
 
   private buildRecommendationsCacheKey(userId: string | undefined, context: string | undefined, limit: number) {

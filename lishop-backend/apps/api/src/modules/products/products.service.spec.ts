@@ -26,6 +26,18 @@ const mockProduct = {
   category: { id: 'c1', name: 'Electronics', slug: 'electronics' },
 };
 
+const laptopProduct = {
+  ...mockProduct,
+  id: 'p-laptop',
+  name: 'Dell XPS 15 9530',
+  slug: 'dell-xps-15-9530',
+  description: 'Laptop van phong cao cap',
+  priceVnd: 42990000,
+  categoryId: 'c-laptops',
+  tags: [{ tagId: 'brand-dell', tag: { name: 'brand:Dell' } }],
+  category: { id: 'c-laptops', name: 'Máy tính xách tay', slug: 'laptops' },
+};
+
 describe('ProductsService', () => {
   let service: ProductsService;
   const originalFetch = global.fetch;
@@ -195,6 +207,32 @@ describe('ProductsService', () => {
     expect(result.reply).toContain('Featured Phone');
   });
 
+  it('discoverWithAi retries with catalog keywords before using featured products', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    repo.findMany
+      .mockResolvedValueOnce({ items: [], nextCursor: null })
+      .mockResolvedValueOnce({ items: [laptopProduct], nextCursor: null });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ output_text: 'Dell XPS 15 9530 phu hop cho van phong va hoc tap.' }),
+    });
+
+    const result = await service.discoverWithAi('tu van laptop van phong');
+
+    expect(repo.findMany).toHaveBeenNthCalledWith(1, { q: 'tu van laptop van phong', limit: 6 });
+    expect(repo.findMany).toHaveBeenNthCalledWith(2, { q: 'laptop', limit: 6 });
+    expect(repo.findFeatured).not.toHaveBeenCalled();
+    expect(result.items.map((item) => item.slug)).toEqual(['dell-xps-15-9530']);
+
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(JSON.stringify(body)).toContain('Dell XPS 15 9530');
+    expect(JSON.stringify(body)).not.toContain('La Roche Posay');
+  });
+
   describe('recommendations', () => {
     const productA = { ...mockProduct, id: 'pA', slug: 'product-a', name: 'Product A' };
     const productB = { ...mockProduct, id: 'pB', slug: 'product-b', name: 'Product B' };
@@ -329,6 +367,7 @@ describe('ProductsService', () => {
       const result = await service.discoverWithAi('tu van nhanh');
 
       expect(global.fetch).not.toHaveBeenCalled();
+      expect(redisService.get).toHaveBeenCalledWith('cache:ai:product-discovery:v2:advice:tu-van-nhanh');
       expect(result.reply).toBe('cached reply');
       expect(result.items).toHaveLength(1);
     });
