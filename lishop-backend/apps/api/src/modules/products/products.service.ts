@@ -21,6 +21,7 @@ export interface AiDiscoveryProduct {
   averageRating: number;
   reviewCount: number;
   brand?: string;
+  tags: string[];
   category: { id: string; name: string; slug: string };
   images: { id: string; url: string; alt: string | null; isPrimary: boolean }[];
 }
@@ -103,6 +104,8 @@ export class ProductsService {
           JSON.stringify(items.map((item) => this.toDiscoveryPromptProduct(item)), null, 2),
         ].join('\n'),
         maxOutputTokens: 650,
+        requestLabel: 'products.discovery',
+        logger: console,
       });
 
       const payload = { reply, mode, fallback: false as const };
@@ -232,6 +235,8 @@ export class ProductsService {
         JSON.stringify(params.candidates.map((item) => this.toRecommendationCandidate(item)), null, 2),
       ].join('\n'),
       maxOutputTokens: 250,
+      requestLabel: 'products.recommendations.rerank',
+      logger: console,
     });
 
     let parsed: any;
@@ -327,6 +332,7 @@ export class ProductsService {
       averageRating: product.averageRating,
       reviewCount: product.reviewCount,
       brand: product.brand,
+      tags: product.tags.map((tagLink) => tagLink.tag.name),
       category: product.category,
       images: product.images,
     };
@@ -356,6 +362,7 @@ export class ProductsService {
       stock: item.stock,
       averageRating: item.averageRating,
       reviewCount: item.reviewCount,
+      tags: item.tags,
     };
   }
 
