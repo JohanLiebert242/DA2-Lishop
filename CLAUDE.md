@@ -18,7 +18,7 @@ DA2/
       database/       # Prisma client singleton + migrations
   lishop-frontend/    # Next.js MFE monorepo
     apps/
-      shell/          # App shell + header (port 3000)
+      shell/          # App shell + header (port 3010)
       mfe-auth/       # Login, register (port 3001)
       mfe-catalog/    # Products, search (port 3002)
       mfe-cart/       # Cart (port 3003)
@@ -40,31 +40,157 @@ Each monorepo has its **own** `pnpm-workspace.yaml` and `turbo.json`. Commands m
 
 ---
 
-## Commands
+## Running The Source Code
 
-### Backend (`cd lishop-backend`)
+Run backend and frontend from their own monorepo roots. Do not run `pnpm`
+commands from `DA2/` because `lishop-backend/` and `lishop-frontend/` each have
+their own `pnpm-workspace.yaml`, `turbo.json`, dependencies, and scripts.
 
-```bash
-pnpm dev                                           # Start API in watch mode
-pnpm test                                          # Run all tests
-pnpm --filter @lishop/api test -- --no-coverage    # Run all tests (faster, no coverage)
-pnpm --filter @lishop/api test -- --testPathPattern=orders.service.spec --no-coverage  # Run a single spec file
-pnpm --filter @lishop/api tsc --noEmit             # Type-check the API
-pnpm --filter @lishop/database db:generate         # Regenerate Prisma client after schema change
-pnpm --filter @lishop/database db:migrate          # Run migrations (dev)
-pnpm --filter @lishop/database db:seed             # Seed the database
-docker-compose up -d                               # Start Postgres (port 5439) + Redis
-```
+### Prerequisites
 
-### Frontend (`cd lishop-frontend`)
+- Node.js `>=20`
+- pnpm `>=9`
+- Docker Desktop, used for backend infrastructure services
+
+Install dependencies once in each monorepo:
 
 ```bash
-pnpm dev                                           # Start all MFEs concurrently
-pnpm --filter @lishop/shell dev                    # Start only the shell
-pnpm --filter @lishop/mfe-admin dev                # Start only one MFE
-pnpm --filter @lishop/mfe-admin type-check         # Type-check one MFE
-pnpm type-check                                    # Type-check all MFEs
+cd lishop-backend
+pnpm install
+
+cd ../lishop-frontend
+pnpm install
 ```
+
+### Backend (`lishop-backend`)
+
+The backend is a NestJS API running on `http://localhost:4000`. It needs
+Postgres, Redis, and Meilisearch from `docker-compose.yml`.
+
+1. Create the backend env file if it does not exist:
+
+```bash
+cd lishop-backend
+cp .env.example .env
+```
+
+For local Docker Compose, make sure these values match the repository defaults:
+
+```env
+PORT=4000
+DATABASE_URL=postgresql://lishop:lishop@localhost:5439/lishop_dev
+REDIS_URL=redis://localhost:6380
+```
+
+2. Start infrastructure services:
+
+```bash
+docker-compose up -d
+```
+
+This starts:
+
+- Postgres: `localhost:5439`, database `lishop_dev`
+- Redis: `localhost:6380`
+- Meilisearch: `localhost:7700`
+
+3. Generate Prisma client, run migrations, and seed demo data:
+
+```bash
+pnpm --filter @lishop/database db:generate
+pnpm --filter @lishop/database db:migrate
+pnpm --filter @lishop/database db:seed
+```
+
+4. Start the API in watch mode:
+
+```bash
+pnpm dev
+```
+
+Useful backend commands:
+
+```bash
+pnpm test
+pnpm --filter @lishop/api test -- --no-coverage
+pnpm --filter @lishop/api test -- --testPathPattern=orders.service.spec --no-coverage
+pnpm --filter @lishop/api type-check
+pnpm --filter @lishop/database db:studio
+```
+
+### Frontend (`lishop-frontend`)
+
+The frontend is a Next.js micro-frontend monorepo. The shell runs on
+`http://localhost:3010`; each MFE runs on its own port.
+
+1. Create the frontend env file if it does not exist:
+
+```bash
+cd lishop-frontend
+cp .env.example .env
+```
+
+Use these local URLs:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_SHELL_URL=http://localhost:3010
+NEXT_PUBLIC_MFE_AUTH_URL=http://localhost:3001
+NEXT_PUBLIC_MFE_CATALOG_URL=http://localhost:3002
+NEXT_PUBLIC_MFE_CART_URL=http://localhost:3003
+NEXT_PUBLIC_MFE_CHECKOUT_URL=http://localhost:3004
+NEXT_PUBLIC_MFE_ORDERS_URL=http://localhost:3005
+NEXT_PUBLIC_MFE_PROFILE_URL=http://localhost:3006
+NEXT_PUBLIC_MFE_PROMOTIONS_URL=http://localhost:3007
+NEXT_PUBLIC_MFE_NOTIFICATIONS_URL=http://localhost:3008
+NEXT_PUBLIC_MFE_ADMIN_URL=http://localhost:3009
+```
+
+2. Start all frontend apps concurrently:
+
+```bash
+pnpm dev
+```
+
+Frontend ports:
+
+| App | Package | URL |
+| --- | --- | --- |
+| Shell | `@lishop/shell` | `http://localhost:3010` |
+| Auth | `@lishop/mfe-auth` | `http://localhost:3001` |
+| Catalog | `@lishop/mfe-catalog` | `http://localhost:3002` |
+| Cart | `@lishop/mfe-cart` | `http://localhost:3003` |
+| Checkout | `@lishop/mfe-checkout` | `http://localhost:3004` |
+| Orders | `@lishop/mfe-orders` | `http://localhost:3005` |
+| Profile | `@lishop/mfe-profile` | `http://localhost:3006` |
+| Promotions | `@lishop/mfe-promotions` | `http://localhost:3007` |
+| Notifications | `@lishop/mfe-notifications` | `http://localhost:3008` |
+| Admin | `@lishop/mfe-admin` | `http://localhost:3009` |
+
+To run only one frontend app:
+
+```bash
+pnpm --filter @lishop/shell dev
+pnpm --filter @lishop/mfe-catalog dev
+pnpm --filter @lishop/mfe-admin dev
+```
+
+Useful frontend commands:
+
+```bash
+pnpm type-check
+pnpm --filter @lishop/mfe-admin type-check
+pnpm build
+pnpm e2e:checkout
+```
+
+### Recommended Local Startup Order
+
+1. In `lishop-backend/`, run `docker-compose up -d`
+2. In `lishop-backend/`, run database setup commands if this is the first run
+3. In `lishop-backend/`, run `pnpm dev`
+4. In `lishop-frontend/`, run `pnpm dev`
+5. Open `http://localhost:3010`
 
 ---
 
