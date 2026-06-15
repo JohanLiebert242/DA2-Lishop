@@ -130,6 +130,55 @@ function getVariantCombo(product: ProductSummary) {
   return null;
 }
 
+function getVariantSwitchScenario(product: ProductSummary) {
+  const inStockVariants = product.variants.filter(
+    (variant) => variant.stock > 0 && Object.keys(variant.attributes ?? {}).length >= 2,
+  );
+  const keys = Array.from(new Set(inStockVariants.flatMap((variant) => Object.keys(variant.attributes ?? {}))));
+
+  for (const changedKey of keys) {
+    for (const fromVariant of inStockVariants) {
+      for (const toVariant of inStockVariants) {
+        if (fromVariant.id === toVariant.id) continue;
+        if (fromVariant.attributes?.[changedKey] === toVariant.attributes?.[changedKey]) continue;
+
+        const desiredAttributes = { ...fromVariant.attributes, [changedKey]: toVariant.attributes[changedKey] };
+        const exactMatch = inStockVariants.find((variant) =>
+          keys.every((key) => variant.attributes?.[key] === desiredAttributes[key]),
+        );
+
+        if (!exactMatch) {
+          return { changedKey, fromVariant, toVariant };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+async function getSparseVariantProduct(request: APIRequestContext) {
+  let cursor: string | null = null;
+
+  for (let page = 0; page < 5; page += 1) {
+    const response = await request.get(`${API_URL}/products?limit=100${cursor ? `&cursor=${cursor}` : ''}`);
+    expect(response.ok()).toBeTruthy();
+    const products = await unwrap<ProductListResponse>(response);
+
+    for (const product of products.items) {
+      const scenario = getVariantSwitchScenario(product);
+      if (scenario) {
+        return { product, ...scenario };
+      }
+    }
+
+    cursor = products.nextCursor ?? null;
+    if (!cursor) break;
+  }
+
+  throw new Error('seeded catalog should include a product with sparse variant combinations');
+}
+
 async function registerCustomer(request: APIRequestContext, suffix: string) {
   const email = `e2e-${Date.now()}-${suffix}@lishop.vn`;
   const response = await request.post(`${API_URL}/auth/register`, {
@@ -329,6 +378,29 @@ test.describe('catalog product and feedback experience', () => {
     await expect(page.getByTestId('review-next-page')).toBeVisible();
     await page.getByTestId('review-next-page').click();
     await expect(page.getByTestId('review-page-indicator')).toContainText('2/');
+  });
+
+  test('product detail keeps selection on a valid variant when a new attribute breaks the current combination', async ({ page, request }) => {
+    const scenario = await getSparseVariantProduct(request);
+
+    await page.goto(`${CATALOG_URL}/products/${scenario.product.slug}`);
+
+    for (const value of Object.values(scenario.fromVariant.attributes)) {
+      await page.getByRole('button', { name: value, exact: true }).click();
+    }
+
+    await page.getByRole('button', { name: scenario.toVariant.attributes[scenario.changedKey], exact: true }).click();
+
+    await expect(page.getByText('Tùy chọn này hiện chưa có sẵn. Hãy chọn tổ hợp khác.')).toHaveCount(0);
+    await expect(
+      page.locator('span').filter({
+        hasText: new RegExp(
+          Object.values(scenario.toVariant.attributes)
+            .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+            .join('\\s*\\/\\s*'),
+        ),
+      }),
+    ).toBeVisible();
   });
 
   test('review media uploads use a public URL instead of embedding base64 content', async ({ page, request }) => {

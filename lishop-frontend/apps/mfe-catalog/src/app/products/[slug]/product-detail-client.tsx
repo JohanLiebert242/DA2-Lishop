@@ -858,24 +858,55 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
   const shopName = product?.brand ? `Cửa hàng ${product.brand}` : 'Cửa hàng chính hãng Lishop';
   const shopSlug = slugifyShopName(product?.brand ?? shopName);
 
-  function handleAttributeSelect(key: string, value: string) {
-    const nextAttributes = { ...selectedAttributes, [key]: value };
-    const nextVariant = variants.find((variant) =>
-      attributeKeys.every((attrKey) => !nextAttributes[attrKey] || variant.attributes?.[attrKey] === nextAttributes[attrKey]),
+  function rankVariantForSelection(
+    left: ProductVariant,
+    right: ProductVariant,
+    changedKey: string,
+    nextAttributes: Record<string, string>,
+  ) {
+    const stockDelta = Number(right.stock > 0) - Number(left.stock > 0);
+    if (stockDelta !== 0) return stockDelta;
+
+    const exactMatchDelta = Number(
+      attributeKeys.every((attributeKey) => !nextAttributes[attributeKey] || right.attributes?.[attributeKey] === nextAttributes[attributeKey]),
+    ) - Number(
+      attributeKeys.every((attributeKey) => !nextAttributes[attributeKey] || left.attributes?.[attributeKey] === nextAttributes[attributeKey]),
+    );
+    if (exactMatchDelta !== 0) return exactMatchDelta;
+
+    const preservedSelectionDelta = attributeKeys.reduce((score, attributeKey) => {
+      if (attributeKey === changedKey) return score;
+      const leftMatches = left.attributes?.[attributeKey] === selectedAttributes[attributeKey] ? 1 : 0;
+      const rightMatches = right.attributes?.[attributeKey] === selectedAttributes[attributeKey] ? 1 : 0;
+      return score + rightMatches - leftMatches;
+    }, 0);
+    if (preservedSelectionDelta !== 0) return preservedSelectionDelta;
+
+    return Number(right.isDefault) - Number(left.isDefault);
+  }
+
+  function findBestVariantForSelection(changedKey: string, value: string, nextAttributes: Record<string, string>) {
+    const candidates = variants.filter((variant) => variant.attributes?.[changedKey] === value);
+    if (candidates.length === 0) return null;
+
+    const rankedVariants = [...candidates].sort((left, right) =>
+      rankVariantForSelection(left, right, changedKey, nextAttributes),
     );
 
-    setSelectedAttributes(nextAttributes);
+    return rankedVariants[0] ?? null;
+  }
+
+  function handleAttributeSelect(key: string, value: string) {
+    const nextAttributes = { ...selectedAttributes, [key]: value };
+    const nextVariant = findBestVariantForSelection(key, value, nextAttributes);
+
+    setSelectedAttributes(nextVariant?.attributes ?? nextAttributes);
     setSelectedVariantId(nextVariant?.id ?? null);
     setQty(1);
   }
 
   function isAttributeValueAvailable(key: string, value: string) {
-    // Check if this attribute value, combined with currently selected attributes, exists in stock
-    const nextAttributes = { ...selectedAttributes, [key]: value };
-    return variants.some((variant) =>
-      variant.stock > 0 &&
-      attributeKeys.every((attrKey) => !nextAttributes[attrKey] || variant.attributes?.[attrKey] === nextAttributes[attrKey]),
-    );
+    return variants.some((variant) => variant.stock > 0 && variant.attributes?.[key] === value);
   }
 
   function scrollToSizeGuide() {

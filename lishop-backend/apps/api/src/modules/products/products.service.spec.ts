@@ -38,6 +38,18 @@ const laptopProduct = {
   category: { id: 'c-laptops', name: 'Máy tính xách tay', slug: 'laptops' },
 };
 
+const mensWearProduct = {
+  ...mockProduct,
+  id: 'p-mens-wear',
+  name: 'Oxford Cotton Shirt',
+  slug: 'oxford-cotton-shirt',
+  description: 'Ao so mi nam mac dep di lam va di choi',
+  priceVnd: 790000,
+  categoryId: 'c-mens-wear',
+  tags: [{ tagId: 'style-office', tag: { name: 'office' } }],
+  category: { id: 'c-mens-wear', name: 'Thời trang nam', slug: 'mens-wear' },
+};
+
 describe('ProductsService', () => {
   let service: ProductsService;
   const originalFetch = global.fetch;
@@ -176,7 +188,8 @@ describe('ProductsService', () => {
 
     expect(global.fetch).not.toHaveBeenCalled();
     expect(result.fallback).toBe(true);
-    expect(result.reply).toContain('AI');
+    expect(result.reply).toContain('Mình gợi ý bạn xem');
+    expect(result.reply).toContain('iPhone 15');
     expect(result.items[0]!.name).toBe('iPhone 15');
   });
 
@@ -231,6 +244,60 @@ describe('ProductsService', () => {
     const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
     expect(JSON.stringify(body)).toContain('Dell XPS 15 9530');
     expect(JSON.stringify(body)).not.toContain('La Roche Posay');
+  });
+
+  it('discoverWithAi retries with fashion aliases for menswear queries', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    repo.findMany
+      .mockResolvedValueOnce({ items: [], nextCursor: null })
+      .mockResolvedValueOnce({ items: [mensWearProduct], nextCursor: null });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ output_text: 'Oxford Cotton Shirt hop cho nam mac dep di lam va cuoi tuan.' }),
+    });
+
+    const result = await service.discoverWithAi('Giup toi tim kiem quan ao cho nam dep');
+
+    expect(repo.findMany).toHaveBeenNthCalledWith(1, { q: 'Giup toi tim kiem quan ao cho nam dep', limit: 6 });
+    expect(repo.findMany).toHaveBeenNthCalledWith(2, { q: 'shirt', limit: 6 });
+    expect(repo.findFeatured).not.toHaveBeenCalled();
+    expect(result.fallback).toBe(false);
+    expect(result.items.map((item) => item.slug)).toEqual(['oxford-cotton-shirt']);
+
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(JSON.stringify(body)).toContain('Oxford Cotton Shirt');
+    expect(JSON.stringify(body)).not.toContain('La Roche Posay');
+  });
+
+  it('discoverWithAi keeps menswear fallback suggestions focused on clothing when OpenAI is unavailable', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    repo.findMany
+      .mockResolvedValueOnce({ items: [], nextCursor: null })
+      .mockResolvedValueOnce({ items: [mensWearProduct], nextCursor: null });
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 429 });
+
+    const result = await service.discoverWithAi('Giup toi tim kiem quan ao cho nam dep');
+
+    expect(result.fallback).toBe(true);
+    expect(result.items.map((item) => item.slug)).toEqual(['oxford-cotton-shirt']);
+    expect(result.reply).toContain('Oxford Cotton Shirt');
+    expect(result.reply).not.toContain('La Roche Posay');
+  });
+
+  it('discoverWithAi does not treat van phong as a comparison request', async () => {
+    repo.findMany.mockResolvedValue({ items: [laptopProduct], nextCursor: null });
+
+    const result = await service.discoverWithAi('tu van laptop van phong');
+
+    expect(result.mode).toBe('advice');
   });
 
   describe('recommendations', () => {

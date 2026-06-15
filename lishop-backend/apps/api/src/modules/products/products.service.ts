@@ -41,6 +41,14 @@ export interface RecommendationsResponse {
 
 const DISCOVERY_SEARCH_ALIASES = [
   {
+    triggers: ['thoi trang nam', 'quan ao nam', 'ao nam', 'do nam', 'menswear', 'mens wear', 'male outfit'],
+    queries: ['shirt', 'polo', 'jeans', 'jacket', 'chino'],
+  },
+  {
+    triggers: ['quan ao', 'thoi trang', 'clothing', 'fashion', 'outfit'],
+    queries: ['shirt', 'polo', 'jeans', 'jacket', 'dress', 'blouse'],
+  },
+  {
     triggers: ['laptop', 'may tinh xach tay', 'notebook'],
     queries: ['laptop', 'MacBook', 'Dell', 'ThinkPad', 'HP', 'ASUS'],
   },
@@ -118,6 +126,7 @@ export class ProductsService {
           JSON.stringify(items.map((item) => this.toDiscoveryPromptProduct(item)), null, 2),
         ].join('\n'),
         maxOutputTokens: 650,
+        timeoutMs: 30000,
         requestLabel: 'products.discovery',
         logger: console,
       });
@@ -249,6 +258,7 @@ export class ProductsService {
         JSON.stringify(params.candidates.map((item) => this.toRecommendationCandidate(item)), null, 2),
       ].join('\n'),
       maxOutputTokens: 250,
+      timeoutMs: 30000,
       requestLabel: 'products.recommendations.rerank',
       logger: console,
     });
@@ -382,7 +392,8 @@ export class ProductsService {
 
   private detectDiscoveryMode(message: string): 'advice' | 'compare' {
     const text = this.normalizeText(message);
-    return ['so sanh', 'compare', 'khac nhau', 'hon'].some((keyword) => text.includes(keyword))
+    const tokens = text.split(/[^a-z0-9]+/).filter(Boolean);
+    return text.includes('so sanh') || text.includes('khac nhau') || tokens.includes('compare') || tokens.includes('hon')
       ? 'compare'
       : 'advice';
   }
@@ -425,11 +436,13 @@ export class ProductsService {
     items: AiDiscoveryProduct[],
     fallback: boolean,
   ): AiDiscoveryResponse {
-    const subject = mode === 'compare' ? 'so sanh' : 'tu van';
-    const topNames = items.slice(0, 3).map((item) => item.name).join(', ');
+    const topItems = items.slice(0, 3);
+    const topNames = topItems.map((item) => item.name).join(', ');
     const reply = items.length > 0
-      ? `AI chua san sang, nhung Lishop da tim thay ${items.length} san pham phu hop de ${subject} cho yeu cau "${message}": ${topNames}.`
-      : 'AI chua san sang va chua tim thay san pham phu hop. Ban co the thu mo ta ro hon ve ngan sach, thuong hieu hoac nhu cau su dung.';
+      ? mode === 'compare'
+        ? `Mình đang gợi ý nhanh từ catalog hiện có: ${topNames}. Bạn có thể xem và so sánh thêm theo giá, thương hiệu hoặc kiểu dáng; nếu muốn mình lọc sát hơn, hãy cho biết thêm ngân sách hoặc nhu cầu chính.`
+        : `Mình gợi ý bạn xem ${topNames}. Đây là các sản phẩm đang khớp nhất trong catalog cho nhu cầu "${message}"; nếu muốn lọc sát hơn, bạn chỉ cần nói thêm ngân sách, kiểu dáng hoặc thương hiệu bạn thích.`
+      : 'Hiện mình chưa tìm thấy sản phẩm thật sự phù hợp trong catalog. Bạn có thể mô tả rõ hơn về ngân sách, thương hiệu hoặc nhu cầu sử dụng để mình lọc lại chính xác hơn.';
     return { reply, mode, items, fallback };
   }
 
