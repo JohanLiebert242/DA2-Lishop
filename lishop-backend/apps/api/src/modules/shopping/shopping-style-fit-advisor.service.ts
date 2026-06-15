@@ -85,6 +85,8 @@ export class ShoppingStyleFitAdvisorService {
           }, null, 2),
         ].join('\n'),
         maxOutputTokens: 500,
+        requestLabel: 'shopping.style-fit',
+        logger: console,
       });
 
       const parsed = this.parseAdvisorOutput(text);

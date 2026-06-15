@@ -86,6 +86,8 @@ export class ShoppingConciergeService {
           })), null, 2),
         ].join('\n'),
         maxOutputTokens: 750,
+        requestLabel: 'shopping.concierge',
+        logger: console,
       });
 
       const parsed = JSON.parse(text) as Partial<{

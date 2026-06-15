@@ -103,6 +103,8 @@ export class ChatbotService {
         JSON.stringify(this.toPromptContext(aiContext), null, 2),
       ].join('\n'),
       maxOutputTokens: 700,
+      requestLabel: 'support.chatbot',
+      logger: console,
     });
 
     if (!cached) {
