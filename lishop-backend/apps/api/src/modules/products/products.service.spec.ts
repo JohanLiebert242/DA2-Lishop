@@ -50,6 +50,18 @@ const mensWearProduct = {
   category: { id: 'c-mens-wear', name: 'Thời trang nam', slug: 'mens-wear' },
 };
 
+const womensWearProduct = {
+  ...mockProduct,
+  id: 'p-womens-wear',
+  name: 'Zara Floral Midi Dress',
+  slug: 'zara-floral-midi-dress',
+  description: 'Dam hoa nu tinh phu hop di lam va di choi',
+  priceVnd: 1290000,
+  categoryId: 'c-womens-wear',
+  tags: [{ tagId: 'style-feminine', tag: { name: 'feminine' } }],
+  category: { id: 'c-womens-wear', name: 'Thoi trang nu', slug: 'womens-wear' },
+};
+
 describe('ProductsService', () => {
   let service: ProductsService;
   const originalFetch = global.fetch;
@@ -290,6 +302,30 @@ describe('ProductsService', () => {
     expect(result.items.map((item) => item.slug)).toEqual(['oxford-cotton-shirt']);
     expect(result.reply).toContain('Oxford Cotton Shirt');
     expect(result.reply).not.toContain('La Roche Posay');
+  });
+
+  it('discoverWithAi prioritizes womenswear catalog when user explicitly asks for female clothing', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'OPENAI_API_KEY') return 'sk-test';
+      if (key === 'OPENAI_MODEL') return 'gpt-5.2';
+      return '';
+    });
+    categoriesService.findBySlug.mockResolvedValue({ id: 'c-womens-wear', slug: 'womens-wear', name: 'Thoi trang nu' });
+    repo.findMany
+      .mockResolvedValueOnce({ items: [], nextCursor: null })
+      .mockResolvedValueOnce({ items: [womensWearProduct], nextCursor: null });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ output_text: 'Zara Floral Midi Dress phu hop voi nhu cau quan ao nu cua ban.' }),
+    });
+
+    const result = await service.discoverWithAi('Toi can quan ao nu di lam');
+
+    expect(categoriesService.findBySlug).toHaveBeenCalledWith('womens-wear');
+    expect(repo.findMany).toHaveBeenNthCalledWith(1, { categoryId: 'c-womens-wear', q: 'Toi can quan ao nu di lam', limit: 6 });
+    expect(repo.findMany).toHaveBeenNthCalledWith(2, { categoryId: 'c-womens-wear', q: 'dress', limit: 6 });
+    expect(result.items.map((item) => item.slug)).toEqual(['zara-floral-midi-dress']);
+    expect(result.fallback).toBe(false);
   });
 
   it('discoverWithAi does not treat van phong as a comparison request', async () => {

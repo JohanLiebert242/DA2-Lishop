@@ -70,8 +70,7 @@ function loadGoogleMaps(apiKey: string): Promise<void> {
     script.dataset.googleMapsLoader = '1';
     script.async = true;
     script.defer = true;
-    // Load Places library as well to support Autocomplete
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('Google Maps failed to load'));
     document.head.appendChild(script);
@@ -396,7 +395,6 @@ function AddressForm({
   const [query, setQuery] = useState(getAddressLabel(initial));
   const [selectedPlace, setSelectedPlace] = useState<GeocodeResult | null>(null);
   const [mapPoint, setMapPoint] = useState<MapPoint>(initialPoint);
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isResolvingMap, setIsResolvingMap] = useState(false);
@@ -446,33 +444,7 @@ function AddressForm({
 
     setIsSearching(true);
     try {
-      // If Google Places is available prefer it for suggestions
-      const googleKey = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'] ?? '';
-      let data: GeocodeResult[] = [];
-      if (googleKey && window.google?.maps?.places) {
-        // Use Places Text Search via PlacesService if available
-        const service = new window.google.maps.places.PlacesService(document.createElement('div'));
-        const req = { query: trimmed, region: 'vn' };
-        data = await new Promise<GeocodeResult[]>((resolve) => {
-          service.textSearch(req, (places: any[], status: any) => {
-            if (status === window.google.maps.places.PlacesServiceStatus.OK && places?.length) {
-              const mapped = places.slice(0, 5).map((p) => ({
-                place_id: p.place_id ?? p.id ?? Math.random(),
-                display_name: p.formatted_address ?? p.name,
-                lat: String(p.geometry.location.lat()),
-                lon: String(p.geometry.location.lng()),
-                address: {},
-              }));
-              resolve(mapped);
-            } else {
-              resolve([]);
-            }
-          });
-        });
-      }
-      if (data.length === 0) {
-        data = await searchAddresses(trimmed);
-      }
+      const data = await searchAddresses(trimmed);
       if (data.length === 0) {
         setGeoError('Không tìm thấy địa chỉ phù hợp. Vui lòng thử từ khóa khác.');
       }
@@ -482,57 +454,6 @@ function AddressForm({
     } finally {
       setIsSearching(false);
     }
-  }
-
-  // Attach Google Places Autocomplete to the search input for richer suggestions
-  useEffect(() => {
-    const googleKey = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'] ?? '';
-    const el = searchInputRef.current;
-    if (!googleKey || typeof window === 'undefined' || !el) return undefined;
-
-    let ac: any = null;
-    loadGoogleMaps(googleKey)
-      .then(() => {
-        try {
-          ac = new window.google.maps.places.Autocomplete(el, { types: ['address'], componentRestrictions: { country: 'vn' } });
-          ac.addListener('place_changed', () => {
-            const place = ac.getPlace();
-            if (!place || !place.geometry) return;
-            const result: GeocodeResult = placeToGeocodeResult(place);
-            applyGeocodeResult(result);
-          });
-        } catch (err) {
-          // ignore
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      if (ac && ac.unbindAll) ac.unbindAll();
-      ac = null;
-    };
-  }, [searchInputRef.current]);
-
-  function placeToGeocodeResult(place: any): GeocodeResult {
-    const components: any = {};
-    (place.address_components || []).forEach((c: any) => {
-      const types: string[] = c.types || [];
-      if (types.includes('street_number')) components.house_number = c.long_name;
-      if (types.includes('route')) components.road = c.long_name;
-      if (types.includes('sublocality') || types.includes('sublocality_level_1')) components.suburb = c.long_name;
-      if (types.includes('administrative_area_level_2')) components.city_district = c.long_name;
-      if (types.includes('locality')) components.city = c.long_name;
-      if (types.includes('administrative_area_level_1')) components.state = c.long_name;
-      if (types.includes('country')) components.country = c.long_name;
-    });
-
-    return {
-      place_id: place.place_id ?? Math.random(),
-      display_name: place.formatted_address ?? place.name ?? '',
-      lat: String(place.geometry.location.lat()),
-      lon: String(place.geometry.location.lng()),
-      address: components,
-    } as GeocodeResult;
   }
 
   async function handleMapPick(point: MapPoint) {
@@ -620,7 +541,6 @@ function AddressForm({
         </div>
         <div className="flex gap-2">
           <input
-            ref={searchInputRef}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);

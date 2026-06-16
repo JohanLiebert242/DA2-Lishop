@@ -319,6 +319,7 @@ function ReviewsSection({ productId }: { productId: string }) {
   const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all');
   const [reviewPage, setReviewPage] = useState(1);
   const [reviewUploads, setReviewUploads] = useState<ReviewUploadDraft[]>([]);
+  const [isUploadingReviewMedia, setIsUploadingReviewMedia] = useState(false);
   const [isLoggedInNow, setIsLoggedInNow] = useState(false);
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
 
@@ -424,25 +425,32 @@ function ReviewsSection({ productId }: { productId: string }) {
 
   async function handleMediaFilesChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
-    const nextUploads = await Promise.all(
-      files.map(async (file) => {
-        const dataUrl = await fileToDataUrl(file);
-        const upload = await catalogApi.uploadReviewMedia(dataUrl, file.name);
-        const persistedUrl = upload.url.startsWith('http') ? upload.url : `${API_URL}${upload.url}`;
+    if (files.length === 0) return;
 
-        return {
-          id: `${file.name}-${file.size}-${file.lastModified}`,
-          name: file.name,
-          type: file.type,
-          previewUrl: URL.createObjectURL(file),
-          persistedUrl,
-          revokeOnCleanup: true,
-        };
-      }),
-    );
+    setIsUploadingReviewMedia(true);
+    try {
+      const nextUploads = await Promise.all(
+        files.map(async (file) => {
+          const dataUrl = await fileToDataUrl(file);
+          const upload = await catalogApi.uploadReviewMedia(dataUrl, file.name);
+          const persistedUrl = upload.url.startsWith('http') ? upload.url : `${API_URL}${upload.url}`;
 
-    setReviewUploads((previous) => [...previous, ...nextUploads]);
-    event.target.value = '';
+          return {
+            id: `${file.name}-${file.size}-${file.lastModified}`,
+            name: file.name,
+            type: file.type,
+            previewUrl: URL.createObjectURL(file),
+            persistedUrl,
+            revokeOnCleanup: true,
+          };
+        }),
+      );
+
+      setReviewUploads((previous) => [...previous, ...nextUploads]);
+    } finally {
+      setIsUploadingReviewMedia(false);
+      event.target.value = '';
+    }
   }
 
   function startEditingReview(review: ReviewInfo) {

@@ -34,6 +34,21 @@ const productB: any = {
   images: [{ id: 'img2', url: 'https://example.com/b.jpg', alt: 'Quan tay', isPrimary: true }],
 };
 
+const womensWearProduct: any = {
+  id: 'p4',
+  name: 'Zara Floral Midi Dress',
+  slug: 'zara-floral-midi-dress',
+  description: 'Dam hoa nu tinh phu hop di lam.',
+  priceVnd: 1290000,
+  priceUsd: 5160,
+  stock: 6,
+  averageRating: 4.8,
+  reviewCount: 24,
+  brand: 'Zara',
+  category: { id: 'c2', name: 'Thoi trang nu', slug: 'womens-wear' },
+  images: [{ id: 'img4', url: 'https://example.com/dress.jpg', alt: 'Dam midi', isPrimary: true }],
+};
+
 const outOfStockProduct: any = {
   ...productB,
   id: 'p3',
@@ -46,7 +61,7 @@ describe('ShoppingConciergeService', () => {
   let service: ShoppingConciergeService;
   let originalFetch: typeof global.fetch;
   const productsService = {
-    findMany: jest.fn(),
+    searchCatalogByIntent: jest.fn(),
     findFeatured: jest.fn(),
   };
   const config = {
@@ -63,7 +78,7 @@ describe('ShoppingConciergeService', () => {
     });
     redisService.get.mockResolvedValue(null);
     redisService.setex.mockResolvedValue(undefined);
-    productsService.findMany.mockResolvedValue({ items: [productA, productB], nextCursor: null });
+    productsService.searchCatalogByIntent.mockResolvedValue([productA, productB]);
     productsService.findFeatured.mockResolvedValue([productA, productB]);
 
     const module = await Test.createTestingModule({
@@ -108,7 +123,7 @@ describe('ShoppingConciergeService', () => {
 
     const result = await service.ask('Toi can combo di lam duoi 1 trieu');
 
-    expect(productsService.findMany).toHaveBeenCalledWith({ q: 'Toi can combo di lam duoi 1 trieu', limit: 8 });
+    expect(productsService.searchCatalogByIntent).toHaveBeenCalledWith('Toi can combo di lam duoi 1 trieu', 8);
     expect(global.fetch).toHaveBeenCalledWith(
       'https://api.openai.com/v1/responses',
       expect.objectContaining({
@@ -152,7 +167,7 @@ describe('ShoppingConciergeService', () => {
   });
 
   it('excludes out-of-stock products from the cart plan', async () => {
-    productsService.findMany.mockResolvedValue({ items: [productA, outOfStockProduct], nextCursor: null });
+    productsService.searchCatalogByIntent.mockResolvedValue([productA, outOfStockProduct]);
 
     const result = await service.ask('Can mua outfit');
 
@@ -162,7 +177,7 @@ describe('ShoppingConciergeService', () => {
   });
 
   it('falls back to featured products when keyword search returns no matches', async () => {
-    productsService.findMany.mockResolvedValue({ items: [], nextCursor: null });
+    productsService.searchCatalogByIntent.mockResolvedValue([]);
 
     const result = await service.ask('Toi can mot bo qua tang cho sep');
 
@@ -170,6 +185,18 @@ describe('ShoppingConciergeService', () => {
     expect(result.items).toHaveLength(2);
     expect(result.cartPlan).toHaveLength(2);
     expect(result.reply).toContain('goi y');
+  });
+
+  it('prioritizes womenswear search results for explicit female clothing intent', async () => {
+    productsService.searchCatalogByIntent
+      .mockResolvedValueOnce([womensWearProduct]);
+
+    const result = await service.ask('Toi can quan ao nu di lam');
+
+    expect(productsService.searchCatalogByIntent).toHaveBeenCalledWith('Toi can quan ao nu di lam', 8);
+    expect(productsService.findFeatured).not.toHaveBeenCalled();
+    expect(result.items.map((item) => item.slug)).toEqual(['zara-floral-midi-dress']);
+    expect(result.cartPlan.map((item) => item.slug)).toEqual(['zara-floral-midi-dress']);
   });
 
   it('drops invalid productId from AI actions', async () => {

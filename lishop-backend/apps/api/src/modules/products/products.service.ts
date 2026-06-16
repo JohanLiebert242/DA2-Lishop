@@ -41,6 +41,22 @@ export interface RecommendationsResponse {
 
 const DISCOVERY_SEARCH_ALIASES = [
   {
+    triggers: [
+      'thoi trang nu',
+      'quan ao nu',
+      'do nu',
+      'ao nu',
+      'vay nu',
+      'dam nu',
+      'nu gioi',
+      'women fashion',
+      'womenswear',
+      'womens wear',
+      'female outfit',
+    ],
+    queries: ['dress', 'blouse', 'skirt', 'linen', 'tote'],
+  },
+  {
     triggers: ['thoi trang nam', 'quan ao nam', 'ao nam', 'do nam', 'menswear', 'mens wear', 'male outfit'],
     queries: ['shirt', 'polo', 'jeans', 'jacket', 'chino'],
   },
@@ -61,6 +77,11 @@ const DISCOVERY_SEARCH_ALIASES = [
     queries: ['skincare', 'La Roche Posay', 'kem chong nang'],
   },
 ] as const;
+
+interface CatalogIntent {
+  categorySlug?: 'womens-wear' | 'mens-wear';
+  boostedQueries: string[];
+}
 
 @Injectable()
 export class ProductsService {
@@ -98,6 +119,29 @@ export class ProductsService {
     if (!product) throw new NotFoundException(`Khong tim thay san pham: ${slug}`);
     const tagIds = product.tags.map((pt) => pt.tagId);
     return this.repo.findRelated(product.id, product.categoryId, tagIds, limit);
+  }
+
+  async searchCatalogByIntent(message: string, limit = 8): Promise<ProductWithDetails[]> {
+    const found = new Map<string, ProductWithDetails>();
+    const intent = this.detectCatalogIntent(message);
+    const categoryId = await this.resolveCategoryId(intent.categorySlug);
+
+    for (const plan of this.buildCatalogSearchPlans(message, intent, categoryId, limit)) {
+      const result = await this.repo.findMany(plan);
+      for (const product of result.items) {
+        found.set(product.id, product);
+        if (found.size >= limit) return Array.from(found.values()).slice(0, limit);
+      }
+
+      if (found.size > 0) return Array.from(found.values()).slice(0, limit);
+    }
+
+    if (categoryId) {
+      const categoryOnly = await this.repo.findMany({ categoryId, limit });
+      if (categoryOnly.items.length > 0) return categoryOnly.items.slice(0, limit);
+    }
+
+    return [];
   }
 
   async discoverWithAi(message: string): Promise<AiDiscoveryResponse> {
@@ -399,18 +443,8 @@ export class ProductsService {
   }
 
   private async findDiscoveryCandidates(message: string): Promise<ProductWithDetails[]> {
-    const found = new Map<string, ProductWithDetails>();
-
-    for (const query of this.buildDiscoverySearchQueries(message)) {
-      const result = await this.repo.findMany({ q: query, limit: 6 });
-      for (const product of result.items) {
-        found.set(product.id, product);
-        if (found.size >= 6) return Array.from(found.values());
-      }
-
-      if (found.size > 0) return Array.from(found.values());
-    }
-
+    const intentAware = await this.searchCatalogByIntent(message, 6);
+    if (intentAware.length > 0) return intentAware;
     return this.repo.findFeatured(6);
   }
 
@@ -428,6 +462,53 @@ export class ProductsService {
       const trimmed = query.trim();
       return trimmed && all.findIndex((item) => item.trim().toLowerCase() === trimmed.toLowerCase()) === index;
     });
+  }
+
+  private detectCatalogIntent(message: string): CatalogIntent {
+    const normalized = this.normalizeText(message);
+    const hasFemaleIntent = ['quan ao nu', 'thoi trang nu', 'do nu', 'ao nu', 'vay nu', 'dam nu', 'nu gioi', 'female', 'women']
+      .some((token) => normalized.includes(token));
+    const hasMaleIntent = ['quan ao nam', 'thoi trang nam', 'do nam', 'ao nam', 'male', 'men', 'menswear', 'mens wear']
+      .some((token) => normalized.includes(token));
+
+    if (hasFemaleIntent && !hasMaleIntent) {
+      return { categorySlug: 'womens-wear', boostedQueries: ['dress', 'blouse', 'skirt', 'linen', 'tote'] };
+    }
+
+    if (hasMaleIntent && !hasFemaleIntent) {
+      return { categorySlug: 'mens-wear', boostedQueries: ['shirt', 'polo', 'jeans', 'jacket', 'chino'] };
+    }
+
+    return { boostedQueries: [] };
+  }
+
+  private buildCatalogSearchPlans(
+    message: string,
+    intent: CatalogIntent,
+    categoryId: string | undefined,
+    limit: number,
+  ): ProductListQueryDto[] {
+    const baseQueries = this.buildDiscoverySearchQueries(message);
+    const prioritizedQueries = categoryId
+      ? [...baseQueries, ...intent.boostedQueries]
+      : baseQueries;
+
+    return prioritizedQueries.map((q) => ({
+      ...(categoryId ? { categoryId } : {}),
+      q,
+      limit,
+    }));
+  }
+
+  private async resolveCategoryId(categorySlug?: 'womens-wear' | 'mens-wear'): Promise<string | undefined> {
+    if (!categorySlug) return undefined;
+
+    try {
+      const category = await this.categoriesService.findBySlug(categorySlug);
+      return category.id;
+    } catch {
+      return undefined;
+    }
   }
 
   private discoveryFallback(

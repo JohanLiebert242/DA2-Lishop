@@ -53,8 +53,8 @@ export class ShoppingConciergeService {
 
   async ask(message: string): Promise<ShoppingConciergeResponse> {
     const normalizedMessage = message.trim();
-    const result = await this.productsService.findMany({ q: normalizedMessage, limit: 8 });
-    const seededProducts = result.items.length > 0 ? result.items : await this.productsService.findFeatured(8);
+    const intentAwareProducts = await this.productsService.searchCatalogByIntent(normalizedMessage, 8);
+    const seededProducts = intentAwareProducts.length > 0 ? intentAwareProducts : await this.productsService.findFeatured(8);
     const items = seededProducts.map((product) => this.toConciergeProduct(product));
     const cacheKey = `cache:ai:shopping-concierge:${this.normalizeCacheText(normalizedMessage)}`;
     const cached = await this.readCachedJson<Omit<ShoppingConciergeResponse, 'items'>>(cacheKey);

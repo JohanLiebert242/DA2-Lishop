@@ -16,6 +16,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductListQueryDto } from './dto/product-list-query.dto';
+import { RecommendationsQueryDto } from './dto/recommendations-query.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
@@ -28,11 +29,6 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 class AiProductDiscoveryDto {
   @IsString()
   message!: string;
-}
-
-class RecommendationsQueryDto {
-  @IsString()
-  context?: string;
 }
 
 @ApiTags('products')
@@ -82,13 +78,12 @@ export class ProductsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Personalized product recommendations' })
   async recommendations(
-    @Query('limit') limit?: string,
-    @Query() query?: RecommendationsQueryDto,
+    @Query() query: RecommendationsQueryDto,
     @CurrentUser('id') userId?: string,
   ) {
     return this.productsService.recommendations({
       userId,
-      limit: limit ? parseInt(limit, 10) : undefined,
+      limit: query.limit,
       context: query?.context,
     });
   }
