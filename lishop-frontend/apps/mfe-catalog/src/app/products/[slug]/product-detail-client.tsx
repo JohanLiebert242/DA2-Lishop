@@ -17,6 +17,7 @@ import {
 } from '../../../lib/catalog-api';
 import { RelatedProducts } from '../../../components/related-products';
 import { addToCart, flyToCart } from '../../../lib/cart-helper';
+import { getShopIdentityFromBrand, type ShopStats } from '../../../lib/shop-info';
 import { getWishlist, addToWishlist, removeFromWishlist, isLoggedIn } from '../../../lib/wishlist-api';
 import { ChatWidget } from '../../../components/chat-widget';
 
@@ -109,10 +110,6 @@ function buildSupplementalReviews(productId: string, count: number): ReviewInfo[
     verifiedPurchase: true,
     createdAt: new Date(Date.now() - (index + 2) * 86_400_000).toISOString(),
   }));
-}
-
-function slugifyShopName(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'lishop-official-store';
 }
 
 function isVideoUrl(url: string) {
@@ -700,9 +697,10 @@ function ReviewsSection({ productId }: { productId: string }) {
 interface Props {
   slug: string;
   initialProduct: ProductDetail;
+  initialShopStats: ShopStats;
 }
 
-export function ProductDetailClient({ slug, initialProduct }: Props) {
+export function ProductDetailClient({ slug, initialProduct, initialShopStats }: Props) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
@@ -863,8 +861,9 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
   const effectiveStock = selectedVariant?.stock ?? product?.stock ?? 0;
   const effectiveSku = selectedVariant?.sku ?? product?.sku;
   const likeCount = product ? Math.max(24, product.reviewCount * 7 + Math.round(product.averageRating * 9)) + savedLikeDelta : 0;
-  const shopName = product?.brand ? `Cửa hàng ${product.brand}` : 'Cửa hàng chính hãng Lishop';
-  const shopSlug = slugifyShopName(product?.brand ?? shopName);
+  const shop = getShopIdentityFromBrand(product?.brand);
+  const shopName = shop.name;
+  const shopSlug = shop.slug;
 
   function rankVariantForSelection(
     left: ProductVariant,
@@ -1018,7 +1017,9 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
     .map((part) => part[0]?.toUpperCase())
     .join('');
   const shopReviewCount = Math.max(product.reviewCount, 1);
-  const shopProductCount = Math.max(product.stock + variants.length, 1);
+  const shopProductCount = initialShopStats.productCount;
+  const shopCategoryCount = initialShopStats.categoryCount;
+  const shopVariantCount = initialShopStats.variantCount;
   const shopFollowerCount = Math.max(likeCount * 4, 84300);
   const currentVariantSummary = selectedVariant ? getVariantLabel(selectedVariant) : 'Đang cập nhật';
   const materialLabel = product.tags[0]?.tag.name ?? 'Đang cập nhật';
@@ -1529,8 +1530,8 @@ export function ProductDetailClient({ slug, initialProduct }: Props) {
               ['Đánh giá', formatCompactCount(shopReviewCount)],
               ['Sản phẩm', shopProductCount.toLocaleString('vi-VN')],
               ['Thương hiệu', product.brand ?? 'Lishop'],
-              ['Danh mục', product.category.name],
-              ['Biến thể', variants.length.toLocaleString('vi-VN')],
+              ['Danh mục', shopCategoryCount.toLocaleString('vi-VN')],
+              ['Biến thể', shopVariantCount.toLocaleString('vi-VN')],
               ['Người theo dõi', formatCompactCount(shopFollowerCount)],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between gap-4 text-sm">

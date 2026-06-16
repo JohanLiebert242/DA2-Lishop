@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { catalogApi } from '../../../lib/catalog-api';
+import { buildShopStats } from '../../../lib/shop-info';
 import { ProductDetailClient } from './product-detail-client';
 
 interface Props {
@@ -27,5 +28,17 @@ export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
   const product = await catalogApi.getProduct(slug).catch(() => null);
   if (!product) notFound();
-  return <ProductDetailClient slug={slug} initialProduct={product} />;
+  const shopProducts = await catalogApi.getProducts({
+    ...(product.brand && { brand: product.brand }),
+    limit: 100,
+    sort: 'newest',
+  }).catch(() => ({ items: [], nextCursor: null }));
+
+  return (
+    <ProductDetailClient
+      slug={slug}
+      initialProduct={product}
+      initialShopStats={buildShopStats(shopProducts.items)}
+    />
+  );
 }

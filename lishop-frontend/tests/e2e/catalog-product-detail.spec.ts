@@ -36,6 +36,26 @@ type ProductListResponse = {
   nextCursor: string | null;
 };
 
+async function getShopStats(request: APIRequestContext, brand?: string) {
+  const qs = new URLSearchParams({ limit: '100', sort: 'newest' });
+  if (brand) qs.set('brand', brand);
+  const response = await request.get(`${API_URL}/products?${qs.toString()}`);
+  expect(response.ok()).toBeTruthy();
+  const products = await unwrap<ProductListResponse>(response);
+
+  return {
+    productCount: products.items.length,
+    categoryCount: new Set(products.items.map((product) => product.category.name)).size,
+    variantCount: products.items.reduce((sum, product) => sum + product.variants.length, 0),
+  };
+}
+
+function statPattern(label: string, value: number) {
+  const formatted = value.toLocaleString('vi-VN').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(${escapedLabel}\\s*${formatted}|${formatted}\\s*${escapedLabel})`);
+}
+
 async function unwrap<T>(response: { json(): Promise<unknown> }): Promise<T> {
   const json = await response.json();
   return (json.data ?? json) as T;
@@ -401,6 +421,29 @@ test.describe('catalog product and feedback experience', () => {
         ),
       }),
     ).toBeVisible();
+  });
+
+  test('product detail shop summary matches the linked shop page', async ({ page, request }) => {
+    const product = await getVariantProduct(request);
+    const expectedShopName = product.brand ? `Cửa hàng ${product.brand}` : 'Cửa hàng chính hãng Lishop';
+    const expectedStats = await getShopStats(request, product.brand);
+
+    await page.goto(`${CATALOG_URL}/products/${product.slug}`);
+
+    const shopSection = page.getByTestId('product-shop-section');
+    await expect(shopSection.getByRole('heading', { name: expectedShopName })).toBeVisible();
+    await expect(shopSection).toContainText(statPattern('Sản phẩm', expectedStats.productCount));
+    await expect(shopSection).toContainText(statPattern('Danh mục', expectedStats.categoryCount));
+    await expect(shopSection).toContainText(statPattern('Biến thể', expectedStats.variantCount));
+
+    await shopSection.getByTestId('shop-profile-link').click();
+
+    await expect(page).toHaveURL(/\/shops\//);
+    const shopHeader = page.locator('section').first();
+    await expect(page.getByRole('heading', { name: expectedShopName })).toBeVisible();
+    await expect(shopHeader).toContainText(statPattern('Sản phẩm', expectedStats.productCount));
+    await expect(shopHeader).toContainText(statPattern('Danh mục', expectedStats.categoryCount));
+    await expect(shopHeader).toContainText(statPattern('Biến thể', expectedStats.variantCount));
   });
 
   test('review media uploads use a public URL instead of embedding base64 content', async ({ page, request }) => {

@@ -1,55 +1,28 @@
 import Link from 'next/link';
-import { catalogApi } from '../../../lib/catalog-api';
 import { ProductCard } from '../../../components/product-card';
+import { catalogApi } from '../../../lib/catalog-api';
+import { buildShopStats, getShopIdentityFromSlug } from '../../../lib/shop-info';
 
 interface Props {
   params: Promise<{ slug: string }>;
   searchParams?: Promise<{ fromProduct?: string }>;
 }
 
-const BRAND_BY_SLUG: Record<string, string> = {
-  apple: 'Apple',
-  samsung: 'Samsung',
-  xiaomi: 'Xiaomi',
-  oppo: 'OPPO',
-  google: 'Google',
-  asus: 'ASUS',
-  dell: 'Dell',
-  nike: 'Nike',
-  'levi-s': "Levi's",
-  zara: 'Zara',
-  philips: 'Philips',
-  kiehl: 'Kiehl',
-  'the-ordinary': 'The Ordinary',
-  'la-roche-posay': 'La Roche Posay',
-};
-
-function getShopInfo(slug: string) {
-  if (slug === 'lishop-official-store') {
-    return { name: 'Cửa hàng chính hãng Lishop', brand: undefined };
-  }
-
-  const brand = BRAND_BY_SLUG[slug] ?? slug.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
-  return { name: `Cửa hàng ${brand}`, brand };
-}
-
 export default async function ShopPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const shop = getShopInfo(slug);
+  const shop = getShopIdentityFromSlug(slug);
   const products = await catalogApi.getProducts({
     ...(shop.brand && { brand: shop.brand }),
     limit: 100,
     sort: 'newest',
   }).catch(() => ({ items: [], nextCursor: null }));
-
-  const primaryProduct = products.items[0];
-  const resolvedShopName = primaryProduct?.brand ? `Cửa hàng ${primaryProduct.brand}` : shop.name;
+  const stats = buildShopStats(products.items);
   const backHref = resolvedSearchParams?.fromProduct ? `/products/${resolvedSearchParams.fromProduct}` : '/products';
   const statItems = [
-    { label: 'Sản phẩm', value: products.items.length.toLocaleString('vi-VN') },
-    { label: 'Danh mục', value: new Set(products.items.map((product) => product.category.name)).size.toLocaleString('vi-VN') },
-    { label: 'Biến thể', value: products.items.reduce((sum, product) => sum + product.variants.length, 0).toLocaleString('vi-VN') },
+    { label: 'Sản phẩm', value: stats.productCount.toLocaleString('vi-VN') },
+    { label: 'Danh mục', value: stats.categoryCount.toLocaleString('vi-VN') },
+    { label: 'Biến thể', value: stats.variantCount.toLocaleString('vi-VN') },
   ];
 
   return (
@@ -66,7 +39,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
           <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-wide text-muted">Cửa hàng</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight text-stone-900">{resolvedShopName}</h1>
+              <h1 className="mt-1 text-3xl font-black tracking-tight text-stone-900">{shop.name}</h1>
               <p className="mt-2 max-w-2xl text-sm text-muted">
                 Các sản phẩm bên dưới đang được lấy trực tiếp từ danh mục hiện có của shop này.
               </p>
