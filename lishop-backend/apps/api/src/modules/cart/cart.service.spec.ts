@@ -88,6 +88,20 @@ describe('CartService', () => {
     expect(redis.del).toHaveBeenCalledWith('cart:coupon:u1');
   });
 
+  it('getCart removes stored coupon when subtotal drops below the coupon minimum order', async () => {
+    repo.findByUserId.mockResolvedValue([makeRow({ quantity: 1 })]);
+    redis.get.mockResolvedValue('SAVE10');
+    couponsService.tryValidate.mockResolvedValue(null);
+
+    const cart = await service.getCart('u1');
+
+    expect(couponsService.tryValidate).toHaveBeenCalledWith('SAVE10', 'u1', 20000000);
+    expect(cart.couponCode).toBeNull();
+    expect(cart.discountVnd).toBe(0);
+    expect(cart.totalVnd).toBe(20000000);
+    expect(redis.del).toHaveBeenCalledWith('cart:coupon:u1');
+  });
+
   it('addItem throws NotFoundException when product not found', async () => {
     repo.findProduct.mockResolvedValue(null);
     await expect(service.addItem('u1', { productId: 'p99', quantity: 1 })).rejects.toThrow(NotFoundException);
