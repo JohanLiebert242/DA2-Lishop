@@ -2,8 +2,10 @@
 
 import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@lishop/ui';
+import { Toaster, toast } from '@lishop/ui';
 import { eventBus, LishopEvent } from '@lishop/event-bus';
+import { useNotificationStream } from '@lishop/shared';
+import type { StreamNotification } from '@lishop/shared';
 import { queryClient } from '../lib/query-client';
 import { useAuthStore } from '../stores/auth.store';
 
@@ -62,10 +64,41 @@ function AuthInitializer() {
   return null;
 }
 
+function updateUnreadCount() {
+  const current = parseInt(window.localStorage.getItem('lishop_notification_count') ?? '0', 10);
+  const next = current + 1;
+  window.localStorage.setItem('lishop_notification_count', next.toString());
+  eventBus.emit(LishopEvent.NOTIFICATION_COUNT_UPDATED, { count: next });
+  window.dispatchEvent(new StorageEvent('storage', {
+    key: 'lishop_notification_count',
+    newValue: next.toString(),
+  }));
+}
+
+function NotificationStream() {
+  const isAuthenticated = useAuthStore((s) => s.user != null);
+
+  const handleNotification = (notification: StreamNotification) => {
+    toast(notification.title, {
+      description: notification.body,
+      duration: 5000,
+    });
+    updateUnreadCount();
+  };
+
+  useNotificationStream({
+    enabled: isAuthenticated,
+    onNotification: handleNotification,
+  });
+
+  return null;
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthInitializer />
+      <NotificationStream />
       {children}
       <Toaster position="top-right" richColors />
     </QueryClientProvider>

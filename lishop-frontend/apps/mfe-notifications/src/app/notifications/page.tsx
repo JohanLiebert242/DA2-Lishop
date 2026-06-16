@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from '@lishop/ui';
 import { hasSessionCookie } from '@lishop/shared';
 import { eventBus, LishopEvent } from '@lishop/event-bus';
 import {
@@ -132,6 +133,10 @@ function FeedTab() {
     stream.addEventListener('notification', (event) => {
       try {
         const notification = JSON.parse((event as MessageEvent).data) as NotificationItem;
+        toast(notification.title, {
+          description: notification.body,
+          duration: 5000,
+        });
         queryClient.setQueryData<NotificationItem[]>(['notification-feed'], (current = []) => {
           if (current.some((item) => item.id === notification.id)) return current;
           const next = [notification, ...current];
