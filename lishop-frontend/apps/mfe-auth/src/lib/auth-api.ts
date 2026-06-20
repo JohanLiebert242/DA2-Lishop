@@ -19,6 +19,16 @@ export interface AuthTokens {
   accessToken: string;
 }
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  avatarUrl?: string | null;
+  emailVerified: boolean;
+}
+
 export interface RegisterResponse {
   message: string;
 }
@@ -29,6 +39,8 @@ export const authApi = {
 
   login: (body: { email: string; password: string }) =>
     apiFetch<AuthTokens>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+
+  me: () => apiFetch<AuthUser>('/auth/me'),
 
   verifyEmail: (token: string) =>
     apiFetch<void>('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
