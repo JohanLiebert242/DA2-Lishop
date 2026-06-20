@@ -72,6 +72,8 @@ function AdjustStockForm({ product, onClose }: { product: ProductStock; onClose:
     mutationFn: () => adminApi.adjustStock(product.id, delta, note || undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-analytics'] });
       onClose();
     },
     onError: (err: Error) => setError(err.message),

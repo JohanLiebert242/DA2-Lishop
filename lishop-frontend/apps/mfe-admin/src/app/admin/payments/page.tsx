@@ -15,7 +15,12 @@ export default function PaymentsPage() {
 
   const confirmPaymentMutation = useMutation({
     mutationFn: (orderId: string) => adminApi.confirmPaymentAdmin(orderId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-payments'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-analytics'] });
+    },
   });
 
   return (

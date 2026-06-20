@@ -257,7 +257,7 @@ export const adminApi = {
 
   // Products
   listProducts: () =>
-    apiFetch<{ items: AdminProduct[]; nextCursor: string | null }>('/products?limit=100'),
+    apiFetch<{ items: AdminProduct[]; nextCursor: string | null }>('/products?limit=1000'),
   importProducts: (products: CreateProductInput[]) =>
     apiFetch<ImportProductsResult>('/admin/products/import', {
       method: 'POST',
@@ -281,6 +281,11 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify({ rawText }),
     }),
+  generateProductImage: (id: string) =>
+    apiFetch<{ image: { id: string; url: string; alt: string; isPrimary: boolean }; source: 'unsplash' | 'placeholder' }>(
+      `/admin/products/${id}/ai-generate-image`,
+      { method: 'POST' },
+    ),
 
   // Wallets
   getWallets: () => apiFetch<AdminWallet[]>('/admin/wallets'),

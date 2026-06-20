@@ -2,8 +2,18 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { formatVND } from '@lishop/shared';
 import { adminApi, AdminProduct, AdminCategory, CreateProductInput } from '../../../lib/admin-api';
+
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+
+function imageUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/uploads/')) return `${API_URL}${url}`;
+  return url;
+}
 
 interface ImageEntry { url: string; alt: string; isPrimary: boolean }
 
@@ -131,8 +141,15 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
       };
       return existing ? adminApi.updateProduct(existing.id, data) : adminApi.createProduct(data);
     },
-    onSuccess: () => { onSaved(); onClose(); },
-    onError: (err: Error) => setError(err.message),
+    onSuccess: () => {
+      toast.success(existing ? 'Đã cập nhật sản phẩm' : 'Đã tạo sản phẩm mới');
+      onSaved();
+      onClose();
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+      toast.error(err.message);
+    },
   });
 
   const copyMutation = useMutation({
@@ -148,13 +165,36 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
       });
     },
     onSuccess: (result) => {
-      setDescription(result.description);
-      setAiNotice(
-        result.fallback
-          ? 'AI ở chế độ dự phòng đã tạo mô tả. Bạn có thể chỉnh sửa trước khi lưu.'
-          : 'AI đã tạo mô tả. Bạn có thể chỉnh sửa trước khi lưu.',
-      );
-      setError('');
+      setTimeout(() => {
+        setDescription(result.description);
+        setAiNotice(
+          result.fallback
+            ? 'AI ở chế độ dự phòng đã tạo mô tả. Bạn có thể chỉnh sửa trước khi lưu.'
+            : 'AI đã tạo mô tả. Bạn có thể chỉnh sửa trước khi lưu.',
+        );
+        setError('');
+      }, 0);
+    },
+    onError: (err: Error) => {
+      setAiNotice('');
+      setError(err.message);
+    },
+  });
+
+  const generateImageMutation = useMutation({
+    mutationFn: () => {
+      if (!existing?.id) throw new Error('Vui lòng lưu sản phẩm trước khi tạo ảnh AI');
+      return adminApi.generateProductImage(existing.id);
+    },
+    onSuccess: (result) => {
+      const msg = result.source === 'unsplash'
+        ? 'AI đã tìm thấy ảnh sản phẩm từ Unsplash.'
+        : 'AI đã tạo ảnh nền (vui lòng cấu hình Unsplash API key để tìm ảnh thật).';
+      setTimeout(() => {
+        setImages((prev) => [{ url: result.image.url, alt: result.image.alt, isPrimary: result.image.isPrimary }, ...prev]);
+        setAiNotice(msg);
+        setError('');
+      }, 0);
     },
     onError: (err: Error) => {
       setAiNotice('');
@@ -234,7 +274,7 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
                   <li key={idx} className="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5 text-xs">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={img.url}
+                      src={imageUrl(img.url)}
                       alt={img.alt || ''}
                       className="h-8 w-8 shrink-0 rounded bg-gray-100 object-cover"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
@@ -252,6 +292,23 @@ function ProductModal({ existing, categories, onClose, onSaved }: ProductModalPr
                   </li>
                 ))}
               </ul>
+            )}
+            {existing && (
+              <button
+                type="button"
+                onClick={() => generateImageMutation.mutate()}
+                disabled={generateImageMutation.isPending}
+                className="mb-2 w-full rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50"
+              >
+                {generateImageMutation.isPending ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Đang tạo ảnh AI...
+                  </span>
+                ) : (
+                  '🤖 Tạo ảnh AI'
+                )}
+              </button>
             )}
             <div className="flex gap-2">
               <input
@@ -514,7 +571,11 @@ export default function ProductsPage() {
 
   const deleteProductMutation = useMutation({
     mutationFn: (id: string) => adminApi.deleteProduct(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-products'] }),
+    onSuccess: () => {
+      toast.success('Đã xoá sản phẩm');
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const allProducts = productsData?.items ?? [];
@@ -577,7 +638,7 @@ export default function ProductsPage() {
                   <td className="px-4 py-3">
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={img.url} alt={img.alt ?? product.name} className="h-10 w-10 rounded-md object-cover" />
+                      <img src={imageUrl(img.url)} alt={img.alt ?? product.name} className="h-10 w-10 rounded-md object-cover" />
                     ) : (
                       <div className="h-10 w-10 rounded-md bg-gray-100" />
                     )}

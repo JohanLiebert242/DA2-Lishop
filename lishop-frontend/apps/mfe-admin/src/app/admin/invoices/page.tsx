@@ -53,7 +53,11 @@ export default function InvoicesPage() {
                 <td className="px-4 py-3">
                   <button
                     type="button"
-                    onClick={() => generateInvoiceMutation.mutate(invoice.orderId)}
+                    onClick={() => {
+                      if (window.confirm(`Xác nhận tạo lại hóa đơn "${invoice.invoiceNo}"?`)) {
+                        generateInvoiceMutation.mutate(invoice.orderId);
+                      }
+                    }}
                     disabled={generateInvoiceMutation.isPending}
                     className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                   >

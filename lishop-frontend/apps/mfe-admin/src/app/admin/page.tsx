@@ -92,8 +92,8 @@ export default function AdminDashboardPage() {
         badge="Báo cáo tổng quan"
         tone="indigo"
         stats={[
-          { label: 'Đơn hàng', value: stats ? `${stats.orderCount}` : '...' },
-          { label: 'Doanh thu', value: stats ? formatVND(stats.revenueVnd) : '...' },
+          { label: 'Tổng đơn hàng', value: stats ? `${stats.orderCount}` : '...' },
+          { label: 'Tổng doanh thu', value: stats ? formatVND(stats.revenueVnd) : '...' },
           { label: 'Khách hàng', value: stats ? `${stats.userCount}` : '...' },
           { label: 'Sản phẩm', value: stats ? `${stats.productCount}` : '...' },
         ]}
