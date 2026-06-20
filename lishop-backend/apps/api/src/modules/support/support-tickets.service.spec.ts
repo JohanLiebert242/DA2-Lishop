@@ -179,6 +179,13 @@ describe('SupportTicketsService', () => {
       const result = await service.updateTicketStatus('ticket1', { status: TicketStatus.RESOLVED });
       expect(repo.updateStatus).toHaveBeenCalledWith('ticket1', TicketStatus.RESOLVED);
       expect(result.status).toBe('RESOLVED');
+      expect(notifRepo.createNotification).toHaveBeenCalledWith(
+        'u1',
+        'Trang thai ticket da duoc cap nhat',
+        expect.stringContaining('RESOLVED'),
+        'SUPPORT',
+        'ticket1',
+      );
     });
   });
 

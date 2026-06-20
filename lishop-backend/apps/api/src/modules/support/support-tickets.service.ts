@@ -88,7 +88,19 @@ export class SupportTicketsService {
   async updateTicketStatus(id: string, dto: UpdateTicketStatusDto): Promise<TicketDetail> {
     const ticket = await this.repo.findById(id);
     if (!ticket) throw new NotFoundException('Ticket không tồn tại');
-    return this.repo.updateStatus(id, dto.status);
+    const updated = await this.repo.updateStatus(id, dto.status);
+    this.notifRepo
+      .createNotification(
+        ticket.userId,
+        'Trang thai ticket da duoc cap nhat',
+        `Ticket "${ticket.subject}" da chuyen sang trang thai ${dto.status}.`,
+        'SUPPORT',
+        ticket.id,
+      )
+      .catch((err: unknown) =>
+        console.error('[SupportTicketsService] customer status notification failed', err),
+      );
+    return updated;
   }
 
   async addAdminMessage(
