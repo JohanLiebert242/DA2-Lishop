@@ -154,6 +154,13 @@ export class AdminController {
     return this.adminService.aiImportEnrichProducts(dto);
   }
 
+  @Post('products/:id/ai-generate-image')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Generate an AI product image using DALL-E 3 based on product name/description' })
+  generateProductImage(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adminService.generateProductImage(id);
+  }
+
   @Get('returns')
   @ApiOperation({ summary: 'List all return requests' })
   getAllReturns() {

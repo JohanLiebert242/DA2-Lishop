@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
+import * as path from 'path';
 import { AdminRepository, AdminStats, AdminOrderItem, AdminUserItem, AdminCoupon, AdminAnalytics } from './admin.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { InvoicesService } from '../invoices/invoices.service';
@@ -11,12 +13,14 @@ import { ProductsService } from '../products/products.service';
 import { ImportProductDto, ImportProductsDto } from './dto/import-products.dto';
 import { GenerateProductCopyDto } from './dto/generate-product-copy.dto';
 import { AiImportEnrichProductsDto } from './dto/ai-import-enrich-products.dto';
+import { generateProductImage as aiGenerateProductImage, downloadAndSaveImage } from '../../common/ai/openai-images';
 
 const STATS_CACHE_KEY = 'cache:admin:stats';
 const STATS_TTL = 300; // 5 minutes
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
 const MAX_AI_IMPORT_PRODUCTS = 200;
+const IMAGE_GENERATION_TIMEOUT_MS = 60_000;
 
 export interface AiAnalyticsAction {
   title: string;
@@ -396,6 +400,76 @@ export class AdminService {
     }
   }
 
+  async generateProductImage(productId: string): Promise<{
+    image: { id: string; url: string; alt: string; isPrimary: boolean };
+    source: 'unsplash' | 'placeholder';
+  }> {
+    const product = await this.productsService.findById(productId);
+
+    const openAiApiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
+    if (!openAiApiKey) {
+      throw new BadRequestException('Vui lòng cấu hình OpenAI API key để sử dụng tính năng này');
+    }
+
+    const unsplashAccessKey = this.config.get<string>('UNSPLASH_ACCESS_KEY')?.trim() ?? '';
+
+    const result = await aiGenerateProductImage({
+      productName: product.name,
+      productDescription: product.description,
+      categoryName: product.category?.name,
+      openAiApiKey,
+      unsplashAccessKey,
+      requestLabel: 'admin.generateProductImage',
+      logger: console,
+    });
+
+    let localUrl: string;
+    if (result.source === 'unsplash' && result.url) {
+      const saveDir = path.resolve(process.cwd(), 'uploads', 'products', productId);
+      const filename = await downloadAndSaveImage(result.url, saveDir, randomUUID());
+      localUrl = `/uploads/products/${productId}/${filename}`;
+    } else {
+      // Generate a simple gradient placeholder with product name
+      localUrl = await this.generatePlaceholderImage(product.name, productId);
+    }
+
+    const hasPrimary = product.images.some((img) => img.isPrimary);
+    const image = await prisma.productImage.create({
+      data: {
+        productId: product.id,
+        url: localUrl,
+        alt: product.name,
+        isPrimary: !hasPrimary,
+      },
+    });
+
+    return { image: { id: image.id, url: image.url, alt: image.alt ?? product.name, isPrimary: image.isPrimary }, source: result.source };
+  }
+
+  private async generatePlaceholderImage(productName: string, productId: string): Promise<string> {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <rect width="400" height="400" fill="url(#bg)" rx="8"/>
+      <text x="200" y="200" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="18" font-family="Arial, sans-serif" font-weight="bold">${this.escapeXml(productName)}</text>
+    </svg>`;
+
+    const saveDir = path.resolve(process.cwd(), 'uploads', 'products', productId);
+    const fs = await import('fs/promises');
+    await fs.mkdir(saveDir, { recursive: true });
+    const filename = `${randomUUID()}.svg`;
+    await fs.writeFile(`${saveDir}/${filename}`, svg);
+    return `/uploads/products/${productId}/${filename}`;
+  }
+
+  private escapeXml(str: string): string {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  }
+
   private async resolveImportCategory(product: ImportProductDto): Promise<string> {
     if (product.categoryId) return product.categoryId;
     if (!product.categorySlug) {
@@ -461,6 +535,24 @@ export class AdminService {
       'Highlights 3-6 muc, risks 0-3 muc, actions 2-5 muc, questions 0-2 muc.',
       'Chi dua ra nhan dinh dua tren du lieu duoc cung cap. Khong bia doanh thu, ty le, san pham, khuyen mai, kenh marketing.',
       'Actions phai cu the, thuc dung cho admin thuong mai dien tu.',
+    ].join('\n');
+  }
+
+  private buildImagePrompt(product: { name: string; description?: string; category?: { name: string } }): string {
+    const details = [
+      `Product name: ${product.name}`,
+      product.description ? `Description: ${product.description.slice(0, 300)}` : '',
+      product.category?.name ? `Category: ${product.category.name}` : '',
+    ].filter(Boolean).join('\n');
+
+    return [
+      'You are a professional e-commerce product photographer.',
+      'Generate a clean, well-lit product photo suitable for an online store.',
+      'The background should be white or neutral, with soft studio lighting.',
+      'The product should be centered, clearly visible, and professionally presented.',
+      'Product details:',
+      details,
+      'Style: photorealistic, high quality, centered composition, 4k.',
     ].join('\n');
   }
 
