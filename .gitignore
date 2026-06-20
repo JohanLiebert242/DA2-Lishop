@@ -35,3 +35,11 @@ Thumbs.db
 
 # Uploads
 lishop-backend/apps/api/uploads/
+
+# Dev tool config & artifacts
+.commandcode/
+.playwright-mcp/
+.superpowers/
+
+# Project templates / reports
+templates/
