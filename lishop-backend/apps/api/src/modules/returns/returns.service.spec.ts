@@ -12,6 +12,7 @@ jest.mock('@lishop/database', () => ({
     order: { findFirst: jest.fn(), findUnique: jest.fn() },
     returnRequest: { findFirst: jest.fn() },
     orderItem: { findFirst: jest.fn(), findMany: jest.fn() },
+    user: { findMany: jest.fn() },
   },
   OrderStatus: {
     PENDING: 'PENDING',
@@ -44,7 +45,7 @@ jest.mock('@lishop/database', () => ({
 import { prisma } from '@lishop/database';
 
 const now = new Date();
-const recentDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000); // 1 day ago
+const recentDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
 
 const mockOrder: any = {
   id: 'order1',
@@ -74,7 +75,7 @@ const mockReturn: any = {
 const createDto = {
   orderId: 'order1',
   reason: 'DAMAGED' as any,
-  description: 'Hàng bị hỏng',
+  description: 'HÃ ng bá»‹ há»ng',
   items: [{ orderItemId: 'item1', quantity: 1 }],
 };
 
@@ -95,6 +96,7 @@ describe('ReturnsService', () => {
   beforeEach(async () => {
     notifRepo.createNotification.mockResolvedValue({});
     refundsService.createRefund.mockResolvedValue({});
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: 'admin1' }]);
     config.get.mockImplementation((key: string) => {
       if (key === 'OPENAI_MODEL') return 'gpt-5.2';
       return '';
@@ -167,8 +169,25 @@ describe('ReturnsService', () => {
 
       const result = await service.createReturn('u1', createDto);
 
-      expect(repo.create).toHaveBeenCalledWith('u1', 'order1', 'DAMAGED', 'Hàng bị hỏng', createDto.items);
+      expect(repo.create).toHaveBeenCalledWith('u1', 'order1', 'DAMAGED', 'HÃ ng bá»‹ há»ng', createDto.items);
       expect(result.id).toBe('ret1');
+    });
+
+    it('notifies admins when a return request is created', async () => {
+      (prisma.order.findFirst as jest.Mock).mockResolvedValue(mockOrder);
+      (prisma.returnRequest.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.orderItem.findFirst as jest.Mock).mockResolvedValue(mockOrderItem);
+      repo.create.mockResolvedValue(mockReturn);
+
+      await service.createReturn('u1', createDto);
+
+      expect(notifRepo.createNotification).toHaveBeenCalledWith(
+        'admin1',
+        'Yeu cau doi tra moi',
+        expect.stringContaining('order1'),
+        'RETURN',
+        'ret1',
+      );
     });
   });
 

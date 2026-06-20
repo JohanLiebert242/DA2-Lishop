@@ -79,7 +79,13 @@ export class ReturnsService {
     }
 
     // 5. Create return request
-    return this.repo.create(userId, dto.orderId, dto.reason, dto.description, dto.items);
+    const created = await this.repo.create(userId, dto.orderId, dto.reason, dto.description, dto.items);
+    void this.notifyAdmins(
+      'Yeu cau doi tra moi',
+      `Don hang ${order.id} vua co yeu cau doi tra moi.`,
+      created.id,
+    );
+    return created;
   }
 
   async getMyReturns(userId: string): Promise<ReturnRequestDetail[]> {
@@ -332,5 +338,17 @@ export class ReturnsService {
       default:
         return null;
     }
+  }
+
+  private async notifyAdmins(title: string, body: string, relatedId: string): Promise<void> {
+    const admins = await prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true },
+    });
+    await Promise.all(
+      admins.map((admin) =>
+        this.notifRepo.createNotification(admin.id, title, body, 'RETURN', relatedId),
+      ),
+    );
   }
 }
