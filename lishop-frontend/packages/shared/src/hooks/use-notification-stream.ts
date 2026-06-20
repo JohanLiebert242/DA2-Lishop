@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
@@ -47,28 +48,51 @@ export function useNotificationStream(options: UseNotificationStreamOptions = {}
     setState('connecting');
     onStateChangeRef.current?.('connecting');
 
-    const stream = new EventSource(`${API_URL}/notifications/stream`, { withCredentials: true });
-
-    stream.onopen = () => {
-      setState('live');
-      onStateChangeRef.current?.('live');
-    };
-
-    stream.addEventListener('notification', (event) => {
-      try {
-        const notification = JSON.parse((event as MessageEvent).data) as StreamNotification;
-        onNotificationRef.current?.(notification);
-      } catch {
-        // ignore parse errors
-      }
+    const socket: Socket = io(API_URL, {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+      forceNew: true,
     });
 
-    stream.onerror = () => {
-      setState('fallback');
-      onStateChangeRef.current?.('fallback');
-    };
+    let sseFallback: EventSource | null = null;
 
-    return () => stream.close();
+    socket.on('connect', () => {
+      setState('live');
+      onStateChangeRef.current?.('live');
+    });
+
+    socket.on('notification', (notification: StreamNotification) => {
+      onNotificationRef.current?.(notification);
+    });
+
+    socket.on('connect_error', () => {
+      if (sseFallback) return;
+      sseFallback = new EventSource(`${API_URL}/notifications/stream`, { withCredentials: true });
+
+      sseFallback.onopen = () => {
+        setState('live');
+        onStateChangeRef.current?.('live');
+      };
+
+      sseFallback.addEventListener('notification', (event) => {
+        try {
+          const notification = JSON.parse((event as MessageEvent).data) as StreamNotification;
+          onNotificationRef.current?.(notification);
+        } catch {
+
+        }
+      });
+
+      sseFallback.onerror = () => {
+        setState('fallback');
+        onStateChangeRef.current?.('fallback');
+      };
+    });
+
+    return () => {
+      socket.close();
+      sseFallback?.close();
+    };
   }, [enabled]);
 
   return { state };

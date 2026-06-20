@@ -7,6 +7,6 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": { "test": "vitest run", "type-check": "tsc --noEmit" },
   "peerDependencies": { "react": "^18 || ^19" },
-  "dependencies": { "clsx": "^2.1.0", "tailwind-merge": "^2.3.0" },
+  "dependencies": { "clsx": "^2.1.0", "socket.io-client": "^4.7.0", "tailwind-merge": "^2.3.0" },
   "devDependencies": { "@lishop/config": "workspace:*", "@types/react": "^19.0.0", "vitest": "^1.0.0" }
 }
