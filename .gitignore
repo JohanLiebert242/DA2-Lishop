@@ -1,13 +1,37 @@
-node_modules
-dist
-.next
-.turbo
-coverage
-*.env
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+
+# Build & dev outputs
+.next/
+dist/
+build/
+.turbo/
 .env
 .env.local
 .env.*.local
-pnpm-lock.yaml
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+
+# Test results & reports (Playwright, Vitest, etc.)
+test-results/
+test-results-*/
+coverage/
 *.log
+playwright-report/
+blob-report/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
 Thumbs.db
+
+# Uploads
+lishop-backend/apps/api/uploads/
