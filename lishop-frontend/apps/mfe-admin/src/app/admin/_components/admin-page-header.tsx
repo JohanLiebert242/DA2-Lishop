@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { AdminShellIllustration } from './admin-shell-illustration';
 
 type HeaderStat = {
   label: string;
@@ -37,7 +36,7 @@ export function AdminPageHeader({
 }) {
   return (
     <section className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 shadow-[0_20px_80px_-48px_rgba(15,23,42,0.45)]">
-      <div className="grid gap-8 p-6 xl:grid-cols-[minmax(0,1.3fr)_340px] xl:p-7">
+      <div className="p-6 xl:p-7">
         <div className="space-y-6">
           <div className="flex flex-wrap items-start gap-4">
             <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${TONE_STYLES[tone]}`}>
@@ -65,10 +64,6 @@ export function AdminPageHeader({
               ))}
             </div>
           ) : null}
-        </div>
-
-        <div className="hidden xl:block">
-          <AdminShellIllustration tone={tone} />
         </div>
       </div>
     </section>

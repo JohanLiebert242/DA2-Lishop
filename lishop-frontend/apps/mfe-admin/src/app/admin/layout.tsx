@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
 import {
   ArrowLeft,
   BadgeDollarSign,
   BellRing,
   Boxes,
+  ChevronLeft,
   ClipboardList,
   CreditCard,
   HelpCircle,
@@ -16,9 +17,9 @@ import {
   type LucideIcon,
   Megaphone,
   PackageSearch,
+  PanelLeft,
   Receipt,
   RefreshCcw,
-  ShieldCheck,
   ShoppingBag,
   Star,
   Ticket,
@@ -26,8 +27,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
-import { formatVND, hasSessionCookie } from '@lishop/shared';
-import { adminApi } from '../../lib/admin-api';
+import { hasSessionCookie } from '@lishop/shared';
 
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
 const SHELL_URL = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
@@ -97,18 +97,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   const pathname = usePathname();
-
-  const { data: stats } = useQuery({
-    queryKey: ['admin-stats'],
-    queryFn: () => adminApi.getStats(),
-  });
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_18%,#f8fafc_100%)] text-slate-900">
       <div className="pointer-events-none fixed inset-x-0 top-0 z-0 h-72 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.14),transparent_32%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.14),transparent_28%)]" />
 
       <header className="sticky top-0 z-30 border-b border-white/70 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-4">
+        <div className="mx-auto flex max-w-full items-center justify-between gap-4 px-6 py-4">
           <div className="flex min-w-0 items-center gap-4">
             <Link href="/admin" className="flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -120,29 +116,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Trung tâm điều hành tổng quan</p>
               </div>
             </Link>
-
-            {stats ? (
-              <div className="hidden items-center gap-2 lg:flex">
-                {[
-                  { label: 'Đơn', value: `${stats.orderCount}`, tone: 'bg-indigo-50 text-indigo-700' },
-                  { label: 'Doanh thu', value: formatVND(stats.revenueVnd), tone: 'bg-emerald-50 text-emerald-700' },
-                  { label: 'KH', value: `${stats.userCount}`, tone: 'bg-sky-50 text-sky-700' },
-                  { label: 'SP', value: `${stats.productCount}`, tone: 'bg-amber-50 text-amber-700' },
-                ].map((item) => (
-                  <div key={item.label} className={`rounded-full px-3 py-2 text-xs font-semibold ${item.tone}`}>
-                    <span className="mr-2 uppercase tracking-[0.22em] opacity-70">{item.label}</span>
-                    <span>{item.value}</span>
-                  </div>
-                ))}
-              </div>
-            ) : null}
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 md:flex">
-              <ShieldCheck className="h-4 w-4" />
-              Hệ thống ổn định
-            </div>
             <a
               href={SHELL_URL}
               className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
@@ -154,54 +130,107 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto flex max-w-[1600px] gap-6 px-4 py-6">
-        <aside className="sticky top-[97px] hidden h-[calc(100vh-121px)] w-72 shrink-0 overflow-y-auto rounded-[28px] border border-white/70 bg-white/85 p-4 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.45)] backdrop-blur xl:block">
-          <div className="mb-4 rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Không gian làm việc</p>
-            <p className="mt-2 text-lg font-semibold text-slate-950">Bảng điều khiển vận hành</p>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Theo dõi doanh thu, đơn hàng, tồn kho và các tác vụ chăm sóc khách hàng trong một khung quản trị thống nhất.
-            </p>
-          </div>
-
-          <nav className="space-y-5">
-            {NAV_SECTIONS.map((section) => (
-              <div key={section.label}>
-                <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  {section.label}
+      <div className="relative z-10 mx-auto flex max-w-full gap-6 px-6 py-6">
+        <aside className={`sticky top-[97px] hidden h-[calc(100vh-121px)] shrink-0 overflow-y-auto rounded-[28px] border border-white/70 bg-white/85 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.45)] backdrop-blur transition-all duration-300 xl:block ${sidebarOpen ? 'w-72 p-4' : 'w-[68px] p-3'}`}>
+          {sidebarOpen ? (
+            <>
+              <div className="mb-4 rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Không gian làm việc</p>
+                <p className="mt-2 text-lg font-semibold text-slate-950">Bảng điều khiển vận hành</p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Theo dõi doanh thu, đơn hàng, tồn kho và các tác vụ chăm sóc khách hàng trong một khung quản trị thống nhất.
                 </p>
-                <div className="mt-2 space-y-1.5">
-                  {section.items.map((item) => {
-                    const active = item.href === '/admin'
-                      ? pathname === '/admin'
-                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
-                    const Icon = item.icon;
-
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition ${
-                          active
-                            ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/10'
-                            : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-950'
-                        }`}
-                      >
-                        <span
-                          className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${
-                            active ? 'from-white/20 to-white/10 text-white' : item.tone
-                          }`}
-                        >
-                          <Icon className="h-4.5 w-4.5" />
-                        </span>
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
               </div>
-            ))}
-          </nav>
+
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Thu gọn
+              </button>
+
+              <nav className="space-y-5">
+                {NAV_SECTIONS.map((section) => (
+                  <div key={section.label}>
+                    <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                      {section.label}
+                    </p>
+                    <div className="mt-2 space-y-1.5">
+                      {section.items.map((item) => {
+                        const active = item.href === '/admin'
+                          ? pathname === '/admin'
+                          : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                        const Icon = item.icon;
+
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition ${
+                              active
+                                ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/10'
+                                : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-950'
+                            }`}
+                          >
+                            <span
+                              className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${
+                                active ? 'from-white/20 to-white/10 text-white' : item.tone
+                              }`}
+                            >
+                              <Icon className="h-4.5 w-4.5" />
+                            </span>
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </nav>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="mb-3 flex w-full items-center justify-center rounded-2xl border border-slate-200 px-3 py-2.5 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+              >
+                <PanelLeft className="h-5 w-5" />
+              </button>
+
+              <nav className="space-y-4">
+                {NAV_SECTIONS.map((section) => (
+                  <div key={section.label}>
+                    <div className="space-y-1">
+                      {section.items.map((item) => {
+                        const active = item.href === '/admin'
+                          ? pathname === '/admin'
+                          : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                        const Icon = item.icon;
+
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`group flex items-center justify-center rounded-2xl p-2.5 transition ${
+                              active
+                                ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/10'
+                                : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-950'
+                            }`}
+                            title={item.label}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </nav>
+            </>
+          )}
         </aside>
 
         <main className="min-w-0 flex-1">
@@ -229,6 +258,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </main>
       </div>
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 }
