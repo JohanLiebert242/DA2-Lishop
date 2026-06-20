@@ -380,6 +380,18 @@ export class ProductsService {
     if (dto.name) updateData.slug = slugify(dto.name, { lower: true, strict: true });
     if (dto.categoryId) updateData.category = { connect: { id: dto.categoryId } };
 
+    // Handle image updates: replace all existing images with new list
+    if (dto.images !== undefined) {
+      updateData.images = {
+        deleteMany: {},
+        create: dto.images.map((img) => ({
+          url: img.url,
+          alt: img.alt ?? null,
+          isPrimary: img.isPrimary ?? false,
+        })),
+      };
+    }
+
     return this.repo.update(id, updateData);
   }
 

@@ -6,7 +6,6 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  IsUrl,
   MaxLength,
   Min,
   MinLength,
@@ -16,7 +15,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class ProductImageInputDto {
-  @ApiProperty() @IsUrl() url!: string;
+  @ApiProperty() @IsString() url!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() alt?: string;
   @ApiPropertyOptional() @IsOptional() isPrimary?: boolean;
 }
@@ -29,7 +28,7 @@ export class ProductVariantInputDto {
   @ApiProperty() @IsInt() @Min(0) @Type(() => Number) stock!: number;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Type(() => Number) weightGrams?: number;
   @ApiProperty() @IsObject() attributes!: Record<string, string>;
-  @ApiPropertyOptional() @IsOptional() @IsUrl() imageUrl?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() imageUrl?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isDefault?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
 }
