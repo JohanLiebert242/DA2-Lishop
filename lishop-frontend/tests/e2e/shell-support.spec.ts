@@ -3,6 +3,40 @@ import { expect, test } from '@playwright/test';
 const SHELL_URL = process.env['E2E_SHELL_URL'] ?? 'http://localhost:3010';
 
 test.describe('shell support center', () => {
+  test('shows only admin navigation inside the account menu for admin users', async ({ page }) => {
+    await page.context().addCookies([
+      { name: 'lishop_session', value: '1', domain: 'localhost', path: '/', sameSite: 'Lax' },
+    ]);
+
+    await page.route('**/auth/me', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            id: 'admin-shell',
+            email: 'admin@lishop.vn',
+            firstName: 'Admin',
+            lastName: 'Lishop',
+            role: 'ADMIN',
+            emailVerified: true,
+          },
+        }),
+      });
+    });
+
+    await page.goto(`${SHELL_URL}/support`, { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: 'Tài khoản' }).click();
+    const accountMenu = page.getByTestId('shell-account-menu');
+
+    await expect(accountMenu.getByRole('link', { name: 'Quản trị', exact: true })).toBeVisible();
+    await expect(accountMenu.getByRole('link', { name: 'Trang cá nhân' })).toHaveCount(0);
+    await expect(accountMenu.getByRole('link', { name: 'Đơn hàng của tôi' })).toHaveCount(0);
+    await expect(accountMenu.getByRole('link', { name: 'Yêu thích' })).toHaveCount(0);
+    await expect(accountMenu.getByRole('link', { name: 'Thông báo' })).toHaveCount(0);
+    await expect(accountMenu.getByRole('link', { name: 'Ưu đãi & coupon' })).toHaveCount(0);
+  });
+
   test('renders a Shopee-like help center with search, categories and FAQ', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1100 });
     await page.goto(`${SHELL_URL}/support`, { waitUntil: 'domcontentloaded' });
