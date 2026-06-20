@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { prisma, WalletTxType } from '@lishop/database';
+import { NotificationsRepository } from '../notifications/notifications.repository';
 import { BankTransferInfo, WalletRepository, WalletInfo, WalletTopupRequestItem, WalletTxItem } from './wallet.repository';
 
 const POINTS_TO_VND = 100; // 1 point = 100 VND
@@ -11,7 +12,10 @@ const TOPUP_BANK = {
 
 @Injectable()
 export class WalletService {
-  constructor(private readonly repo: WalletRepository) {}
+  constructor(
+    private readonly repo: WalletRepository,
+    private readonly notifRepo: NotificationsRepository,
+  ) {}
 
   getWallet(userId: string): Promise<WalletInfo> {
     return this.repo.findOrCreate(userId);
@@ -31,6 +35,11 @@ export class WalletService {
       ...TOPUP_BANK,
       transferCode: finalTransferCode,
     });
+    void this.notifyAdmins(
+      'Yeu cau nap vi moi',
+      `Khach hang vua tao yeu cau nap ${amountVnd.toLocaleString('vi-VN')} VND.`,
+      request.id,
+    );
 
     return {
       request,
@@ -75,12 +84,30 @@ export class WalletService {
     return this.repo.adminFindTopupRequests();
   }
 
-  approveTopupRequest(id: string, adminId: string, adminNote?: string): Promise<WalletTopupRequestItem> {
-    return this.repo.approveTopupRequest(id, adminId, adminNote);
+  async approveTopupRequest(id: string, adminId: string, adminNote?: string): Promise<WalletTopupRequestItem> {
+    const request = await this.repo.approveTopupRequest(id, adminId, adminNote);
+    void this.notifRepo.createNotification(
+      request.userId,
+      'Yeu cau nap vi da duoc chap nhan',
+      `Yeu cau nap ${request.amountVnd.toLocaleString('vi-VN')} VND da duoc xac nhan.`,
+      'WALLET_TOPUP',
+      request.id,
+    );
+    return request;
   }
 
-  rejectTopupRequest(id: string, adminId: string, adminNote?: string): Promise<WalletTopupRequestItem> {
-    return this.repo.rejectTopupRequest(id, adminId, adminNote);
+  async rejectTopupRequest(id: string, adminId: string, adminNote?: string): Promise<WalletTopupRequestItem> {
+    const request = await this.repo.rejectTopupRequest(id, adminId, adminNote);
+    void this.notifRepo.createNotification(
+      request.userId,
+      'Yeu cau nap vi bi tu choi',
+      adminNote?.trim()
+        ? `Yeu cau nap vi cua ban bi tu choi: ${adminNote.trim()}`
+        : 'Yeu cau nap vi cua ban bi tu choi.',
+      'WALLET_TOPUP',
+      request.id,
+    );
+    return request;
   }
 
   async convertPoints(
@@ -143,5 +170,17 @@ export class WalletService {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
     return `LSW-${date}-${suffix}`;
+  }
+
+  private async notifyAdmins(title: string, body: string, relatedId: string): Promise<void> {
+    const admins = await prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true },
+    });
+    await Promise.all(
+      admins.map((admin) =>
+        this.notifRepo.createNotification(admin.id, title, body, 'WALLET_TOPUP', relatedId),
+      ),
+    );
   }
 }

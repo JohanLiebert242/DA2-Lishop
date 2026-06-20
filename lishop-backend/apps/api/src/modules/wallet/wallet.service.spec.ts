@@ -2,12 +2,13 @@ import { Test } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 import { WalletRepository } from './wallet.repository';
+import { NotificationsRepository } from '../notifications/notifications.repository';
 import { WalletTxType } from '@lishop/database';
 
 jest.mock('@lishop/database', () => ({
   prisma: {
     $transaction: jest.fn(),
-    user: { findUniqueOrThrow: jest.fn(), update: jest.fn() },
+    user: { findUniqueOrThrow: jest.fn(), update: jest.fn(), findMany: jest.fn() },
     wallet: { upsert: jest.fn() },
     walletTransaction: { create: jest.fn() },
   },
@@ -43,12 +44,21 @@ describe('WalletService', () => {
     approveTopupRequest: jest.fn(),
     rejectTopupRequest: jest.fn(),
   };
+  const notifRepo = {
+    createNotification: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [WalletService, { provide: WalletRepository, useValue: repo }],
+      providers: [
+        WalletService,
+        { provide: WalletRepository, useValue: repo },
+        { provide: NotificationsRepository, useValue: notifRepo },
+      ],
     }).compile();
     service = module.get(WalletService);
+    notifRepo.createNotification.mockResolvedValue({});
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: 'admin1' }]);
   });
 
   afterEach(() => jest.resetAllMocks());
@@ -89,6 +99,26 @@ describe('WalletService', () => {
     expect(result.paymentUrl).toBeNull();
   });
 
+  it('topUp notifies admins when a request is created', async () => {
+    repo.createTopupRequest.mockResolvedValue({
+      id: 'topup1',
+      userId: 'u1',
+      amountVnd: 50000,
+      transferCode: 'LSW-20260602-ABC123',
+      status: 'PENDING',
+    });
+
+    await service.topUp('u1', 50000);
+
+    expect(notifRepo.createNotification).toHaveBeenCalledWith(
+      'admin1',
+      'Yeu cau nap vi moi',
+      expect.stringContaining('50.000'),
+      'WALLET_TOPUP',
+      'topup1',
+    );
+  });
+
   it('getTopupRequests delegates to repo', async () => {
     repo.findTopupRequestsByUser.mockResolvedValue([]);
     await service.getTopupRequests('u1');
@@ -120,15 +150,29 @@ describe('WalletService', () => {
   });
 
   it('approveTopupRequest delegates to repo with admin id', async () => {
-    repo.approveTopupRequest.mockResolvedValue({ id: 'topup1', status: 'APPROVED' });
+    repo.approveTopupRequest.mockResolvedValue({ id: 'topup1', userId: 'u1', amountVnd: 50000, status: 'APPROVED' });
     await service.approveTopupRequest('topup1', 'admin1', 'confirmed');
     expect(repo.approveTopupRequest).toHaveBeenCalledWith('topup1', 'admin1', 'confirmed');
+    expect(notifRepo.createNotification).toHaveBeenCalledWith(
+      'u1',
+      'Yeu cau nap vi da duoc chap nhan',
+      expect.stringContaining('50.000'),
+      'WALLET_TOPUP',
+      'topup1',
+    );
   });
 
   it('rejectTopupRequest delegates to repo with admin id', async () => {
-    repo.rejectTopupRequest.mockResolvedValue({ id: 'topup1', status: 'REJECTED' });
+    repo.rejectTopupRequest.mockResolvedValue({ id: 'topup1', userId: 'u1', amountVnd: 50000, status: 'REJECTED' });
     await service.rejectTopupRequest('topup1', 'admin1', 'invalid transfer');
     expect(repo.rejectTopupRequest).toHaveBeenCalledWith('topup1', 'admin1', 'invalid transfer');
+    expect(notifRepo.createNotification).toHaveBeenCalledWith(
+      'u1',
+      'Yeu cau nap vi bi tu choi',
+      expect.stringContaining('invalid transfer'),
+      'WALLET_TOPUP',
+      'topup1',
+    );
   });
 
   describe('convertPoints', () => {
