@@ -1,12 +1,14 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '../auth/jwt.service';
 import { RedisService } from '../redis/redis.service';
-import { NotificationItem } from './notifications.repository';
 
 @WebSocketGateway({
   cors: {
@@ -16,8 +18,8 @@ import { NotificationItem } from './notifications.repository';
   namespace: '/',
 })
 @Injectable()
-export class NotificationsGateway {
-  private readonly logger = new Logger(NotificationsGateway.name);
+export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  private readonly logger = new Logger(RealtimeGateway.name);
 
   @WebSocketServer()
   server!: Server;
@@ -31,14 +33,14 @@ export class NotificationsGateway {
     try {
       const token = this.extractToken(client);
       if (!token) {
-        this.logger.warn(`WebSocket connection rejected: no token`);
+        this.logger.warn('WebSocket connection rejected: no token');
         client.disconnect();
         return;
       }
 
       const payload = await this.jwtService.verifyAccessToken(token);
       if (!payload) {
-        this.logger.warn(`WebSocket connection rejected: invalid token`);
+        this.logger.warn('WebSocket connection rejected: invalid token');
         client.disconnect();
         return;
       }
@@ -46,16 +48,26 @@ export class NotificationsGateway {
       if (payload.jti) {
         const blacklisted = await this.redisService.exists(`blacklist:token:${payload.jti}`);
         if (blacklisted) {
-          this.logger.warn(`WebSocket connection rejected: token revoked`);
+          this.logger.warn('WebSocket connection rejected: token revoked');
           client.disconnect();
           return;
         }
       }
 
       const userId = payload.sub;
+      const userRole = payload.role;
+
       client.data.userId = userId;
+      client.data.role = userRole;
+
       client.join(`user:${userId}`);
-      this.logger.log(`WebSocket connected: user=${userId}`);
+      this.logger.log(`WebSocket connected: user=${userId} role=${userRole}`);
+
+      // Admin auto-joins the admin broadcast room
+      if (userRole === 'ADMIN') {
+        client.join('admin');
+        this.logger.log(`Admin auto-joined 'admin' room: user=${userId}`);
+      }
     } catch {
       client.disconnect();
     }
@@ -68,9 +80,36 @@ export class NotificationsGateway {
     }
   }
 
-  sendToUser(userId: string, notification: NotificationItem): void {
+  // ─── Client requests ───
+
+  @SubscribeMessage('room:join')
+  handleRoomJoin(client: Socket, payload: { room: string }): void {
+    if (!payload?.room) return;
+    client.join(payload.room);
+    this.logger.log(`Client ${client.data.userId} joined room: ${payload.room}`);
+  }
+
+  @SubscribeMessage('room:leave')
+  handleRoomLeave(client: Socket, payload: { room: string }): void {
+    if (!payload?.room) return;
+    client.leave(payload.room);
+  }
+
+  // ─── Server emit helpers ───
+
+  sendToUser(userId: string, event: string, data: unknown): void {
     if (!this.server) return;
-    this.server.to(`user:${userId}`).emit('notification', notification);
+    this.server.to(`user:${userId}`).emit(event, data);
+  }
+
+  sendToAdmins(event: string, data: unknown): void {
+    if (!this.server) return;
+    this.server.to('admin').emit(event, data);
+  }
+
+  sendToRoom(room: string, event: string, data: unknown): void {
+    if (!this.server) return;
+    this.server.to(room).emit(event, data);
   }
 
   private extractToken(client: Socket): string | null {

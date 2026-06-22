@@ -18,6 +18,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
@@ -44,6 +45,7 @@ import { ShoppingModule } from './modules/shopping/shopping.module';
     ReviewsModule,
     AdminModule,
     NotificationsModule,
+    RealtimeModule,
     WishlistModule,
     ShippingModule,
     InventoryModule,

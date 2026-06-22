@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { prisma } from '@lishop/database';
-import { NotificationsGateway } from './notifications.gateway';
+import { RealtimeService } from '../realtime/realtime.service';
 import { NotificationsStream } from './notifications.stream';
 
 export const EVENT_TYPES = ['ORDER_STATUS', 'PROMOTIONS', 'NEW_PRODUCTS', 'REVIEWS'] as const;
@@ -29,7 +29,7 @@ export interface NotificationItem {
 export class NotificationsRepository {
   constructor(
     private readonly stream: NotificationsStream,
-    private readonly gateway: NotificationsGateway,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async getPreferences(userId: string): Promise<NotificationPreferenceItem[]> {
@@ -171,7 +171,7 @@ export class NotificationsRepository {
       },
     }    ) as NotificationItem;
     this.stream.publish(userId, notification);
-    this.gateway.sendToUser(userId, notification);
+    this.realtime.sendNotification(userId, notification);
     return notification;
   }
 }

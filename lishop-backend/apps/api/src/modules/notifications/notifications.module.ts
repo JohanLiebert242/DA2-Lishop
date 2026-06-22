@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
-import { NotificationsGateway } from './notifications.gateway';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { NotificationsRepository } from './notifications.repository';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsStream } from './notifications.stream';
 
 @Module({
-  providers: [NotificationsStream, NotificationsRepository, NotificationsService, NotificationsGateway],
+  imports: [RealtimeModule],
+  providers: [NotificationsStream, NotificationsRepository, NotificationsService],
   controllers: [NotificationsController],
   exports: [NotificationsRepository],
 })
