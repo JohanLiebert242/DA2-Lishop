@@ -264,6 +264,7 @@ export const adminApi = {
     apiFetch<ImportProductsResult>('/admin/products/import', {
       method: 'POST',
       body: JSON.stringify({ products }),
+      timeoutMs: 60000,
     }),
   createProduct: (data: CreateProductInput) =>
     apiFetch<AdminProduct>('/products', { method: 'POST', body: JSON.stringify(data) }),

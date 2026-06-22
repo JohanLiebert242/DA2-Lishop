@@ -17,7 +17,7 @@ export function createApiFetch(apiUrl: string, authUrl = DEFAULT_AUTH_URL) {
     const timeoutMs = init.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const controller = init.signal ? null : new AbortController();
     const timeoutId = controller
-      ? setTimeout(() => controller.abort(), timeoutMs)
+      ? setTimeout(() => controller.abort(new Error('Yêu cầu đã hết thời gian chờ, vui lòng thử lại')), timeoutMs)
       : null;
 
     try {
