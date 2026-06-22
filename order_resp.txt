@@ -1,1 +1,0 @@
-{"data":{"orders":[{"id":"8c30806f-bdd4-4742-a7f1-e3a2f3a7931d","orderNumber":"LS-1781973191994-1WPW","status":"PROCESSING","totalVnd":1713000,"createdAt":"2026-06-20T16:33:12.005Z","itemCount":1,"user":{"email":"e2e-checkout-1781973184925-qa5qgg@lishop.vn","firstName":"Checkout","lastName":"Tester"}}],"total":87}}
