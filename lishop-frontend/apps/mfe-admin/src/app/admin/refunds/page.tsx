@@ -13,6 +13,7 @@ import { AdminPageHeader } from '../_components/admin-page-header';
 export default function RefundsPage() {
   const queryClient = useQueryClient();
   const [aiNotes, setAiNotes] = useState<Record<string, string>>({});
+  const [pendingAiId, setPendingAiId] = useState<string | null>(null);
 
   const { data: adminRefunds = [], isLoading } = useQuery({
     queryKey: ['admin-refunds'],
@@ -25,12 +26,20 @@ export default function RefundsPage() {
   });
 
   const aiAssistMutation = useMutation({
-    mutationFn: (id: string) => adminApi.generateRefundAiAssist(id),
+    mutationFn: (id: string) => {
+      setPendingAiId(id);
+      return adminApi.generateRefundAiAssist(id);
+    },
     onSuccess: (result, id) => {
+      setPendingAiId(null);
       const text = result.fallback ? `AI chế độ dự phòng: ${result.summary}` : result.summary;
       setAiNotes((prev) => ({ ...prev, [id]: result.adminNote ? `${text} - ${result.adminNote}` : text }));
     },
-    onError: (err: Error, id) => setAiNotes((prev) => ({ ...prev, [id]: err.message })),
+    onError: (err: Error, id) => {
+      setPendingAiId(null);
+      setAiNotes((prev) => ({ ...prev, [id]: err.message }));
+    },
+    onSettled: () => setPendingAiId(null),
   });
 
   const pendingRefunds = adminRefunds.filter((refund) => refund.status === 'PENDING').length;
@@ -99,11 +108,11 @@ export default function RefundsPage() {
                         <button
                           type="button"
                           onClick={() => aiAssistMutation.mutate(refund.id)}
-                          disabled={aiAssistMutation.isPending}
+                          disabled={pendingAiId === refund.id}
                           data-testid={`refund-ai-${refund.id}`}
                           className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                         >
-                          {aiAssistMutation.isPending ? 'AI đang gợi ý...' : 'AI gợi ý'}
+                          {pendingAiId === refund.id ? 'AI đang gợi ý...' : 'AI gợi ý'}
                         </button>
                         <button
                           type="button"
