@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { prisma, WalletTxType } from '@lishop/database';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import { BankTransferInfo, WalletRepository, WalletInfo, WalletTopupRequestItem, WalletTxItem } from './wallet.repository';
 
 const POINTS_TO_VND = 100; // 1 point = 100 VND
@@ -15,6 +16,7 @@ export class WalletService {
   constructor(
     private readonly repo: WalletRepository,
     private readonly notifRepo: NotificationsRepository,
+    private readonly realtime: RealtimeService,
   ) {}
 
   getWallet(userId: string): Promise<WalletInfo> {
@@ -40,6 +42,14 @@ export class WalletService {
       `Khach hang vua tao yeu cau nap ${amountVnd.toLocaleString('vi-VN')} VND.`,
       request.id,
     );
+
+    this.realtime.emitAdminFeed({
+      type: 'wallet_topup',
+      topupId: request.id,
+      userId,
+      amountVnd,
+      timestamp: new Date().toISOString(),
+    });
 
     return {
       request,

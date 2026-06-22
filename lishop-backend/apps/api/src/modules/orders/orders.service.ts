@@ -9,6 +9,7 @@ import { AddressesRepository } from '../addresses/addresses.repository';
 import { CartService } from '../cart/cart.service';
 import { CouponsService } from '../promotions/coupons.service';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { WalletService } from '../wallet/wallet.service';
 import { PlaceOrderDto } from './dto/place-order.dto';
@@ -25,6 +26,7 @@ export class OrdersService {
     private readonly cartService: CartService,
     private readonly couponsService: CouponsService,
     private readonly notifRepo: NotificationsRepository,
+    private readonly realtime: RealtimeService,
     private readonly shippingService: ShippingService,
     private readonly walletService: WalletService,
   ) {}
@@ -134,6 +136,21 @@ export class OrdersService {
         console.error('[OrdersService] Failed to create place-order notification', err),
       );
 
+    this.realtime.emitOrderStatusUpdate(order.id, userId, {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      timestamp: order.createdAt.toISOString(),
+    });
+
+    this.realtime.emitAdminFeed({
+      type: 'new_order',
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      totalVnd: order.totalVnd,
+      timestamp: new Date().toISOString(),
+    });
+
     return order;
   }
 
@@ -180,6 +197,15 @@ export class OrdersService {
       .catch((err: unknown) =>
         console.error('[OrdersService] Failed to create cancel-order notification', err),
       );
+
+    this.realtime.emitOrderStatusUpdate(orderId, userId, {
+      orderId,
+      orderNumber: order.orderNumber,
+      status: OrderStatus.CANCELLED,
+      previousStatus: order.status,
+      timestamp: new Date().toISOString(),
+    });
+
     return cancelled;
   }
 
@@ -202,6 +228,15 @@ export class OrdersService {
       .catch((err: unknown) =>
         console.error('[OrdersService] Failed to create confirm-delivery notification', err),
       );
+
+    this.realtime.emitOrderStatusUpdate(orderId, userId, {
+      orderId,
+      orderNumber: order.orderNumber,
+      status: OrderStatus.DELIVERED,
+      previousStatus: order.status,
+      timestamp: new Date().toISOString(),
+    });
+
     return delivered;
   }
 }

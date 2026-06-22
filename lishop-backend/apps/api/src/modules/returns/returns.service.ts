@@ -8,6 +8,7 @@ import {
 import { prisma, OrderStatus, ReturnStatus, PaymentMethod, RefundMethod } from '@lishop/database';
 import { ConfigService } from '@nestjs/config';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import { ReturnsRepository, ReturnRequestDetail } from './returns.repository';
 import { RefundsService } from '../refunds/refunds.service';
 import { CreateReturnDto } from './dto/create-return.dto';
@@ -22,6 +23,7 @@ export class ReturnsService {
   constructor(
     private readonly repo: ReturnsRepository,
     private readonly notifRepo: NotificationsRepository,
+    private readonly realtime: RealtimeService,
     private readonly refundsService: RefundsService,
     private readonly config: ConfigService,
   ) {}
@@ -85,6 +87,14 @@ export class ReturnsService {
       `Don hang ${order.id} vua co yeu cau doi tra moi.`,
       created.id,
     );
+
+    this.realtime.emitAdminFeed({
+      type: 'return_request',
+      returnId: created.id,
+      orderNumber: order.orderNumber ?? order.id,
+      timestamp: new Date().toISOString(),
+    });
+
     return created;
   }
 
@@ -212,7 +222,7 @@ export class ReturnsService {
               ],
             },
           ],
-          max_output_tokens: 700,
+          max_output_tokens: 1500,
         }),
       });
 
@@ -265,7 +275,7 @@ export class ReturnsService {
       'Chi duoc chon suggestedStatus trong danh sach nextStatuses duoc cung cap.',
       'Tra ve DUY NHAT JSON object theo schema:',
       '{"suggestedStatus":"APPROVED|REJECTED|RECEIVED|COMPLETED","adminNote":"...","summary":"...","reasons":["..."]}',
-      'adminNote viet tieng Viet, 1-2 cau, khong markdown, khong emoji.',
+      'adminNote, summary viet tieng Viet co dau, 1-2 cau, khong markdown, khong emoji.',
     ].join('\n');
   }
 

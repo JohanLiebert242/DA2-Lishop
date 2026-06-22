@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import * as path from 'path';
 import { AdminRepository, AdminStats, AdminOrderItem, AdminUserItem, AdminCoupon, AdminAnalytics } from './admin.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { RedisService } from '../redis/redis.service';
 import { AddTrackingEventDto } from '../orders/dto/add-tracking-event.dto';
@@ -33,6 +34,8 @@ export interface AiAnalyticsInsights {
   actions: AiAnalyticsAction[];
   questions: string[];
   fallback: boolean;
+  /** Present when fallback is true — explains why the AI call did not succeed. */
+  fallbackReason?: string;
 }
 
 const VALID_ORDER_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
@@ -49,6 +52,7 @@ export class AdminService {
   constructor(
     private readonly repo: AdminRepository,
     private readonly notifRepo: NotificationsRepository,
+    private readonly realtime: RealtimeService,
     private readonly invoicesService: InvoicesService,
     private readonly redis: RedisService,
     private readonly productsService: ProductsService,
@@ -94,6 +98,15 @@ export class AdminService {
         orderId,
       )
       .catch((err: unknown) => console.error('[AdminService] notification failed', err));
+
+    this.realtime.emitOrderStatusUpdate(orderId, order.userId, {
+      orderId,
+      orderNumber: order.orderNumber,
+      status: status,
+      previousStatus: order.status,
+      timestamp: new Date().toISOString(),
+    });
+
     return updated;
   }
 
@@ -168,6 +181,13 @@ export class AdminService {
           orderId,
         )
         .catch((err: unknown) => console.error('[AdminService] notification failed', err));
+
+      this.realtime.emitOrderStatusUpdate(orderId, order.userId, {
+        orderId,
+        orderNumber: order.orderNumber,
+        status: OrderStatus.DELIVERED,
+        timestamp: new Date().toISOString(),
+      });
     } else if (dto.status === 'PICKED_UP') {
       await prisma.shipment.update({ where: { id: shipmentId }, data: { shippedAt: new Date() } });
       await prisma.order.update({ where: { id: orderId }, data: { status: OrderStatus.SHIPPED } });
@@ -180,6 +200,13 @@ export class AdminService {
           orderId,
         )
         .catch((err: unknown) => console.error('[AdminService] notification failed', err));
+
+      this.realtime.emitOrderStatusUpdate(orderId, order.userId, {
+        orderId,
+        orderNumber: order.orderNumber,
+        status: OrderStatus.SHIPPED,
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
@@ -214,10 +241,13 @@ export class AdminService {
 
     const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
     if (!apiKey) {
-      return this.buildAnalyticsInsightsFallback(analytics, features);
+      return { ...this.buildAnalyticsInsightsFallback(analytics, features), fallbackReason: 'OPENAI_API_KEY chưa được cấu hình' };
     }
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch(OPENAI_RESPONSES_URL, {
         method: 'POST',
         headers: {
@@ -241,9 +271,11 @@ export class AdminService {
               ],
             },
           ],
-          max_output_tokens: 700,
+          max_output_tokens: 2000,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`OpenAI request failed with status ${response.status}`);
@@ -255,8 +287,9 @@ export class AdminService {
 
       return { ...this.parseAnalyticsInsightsJson(text), fallback: false };
     } catch (err) {
-      console.error('[AdminService] AI analytics insights failed; returning fallback', err);
-      return this.buildAnalyticsInsightsFallback(analytics, features);
+      const message = err instanceof Error ? err.message : 'Lỗi không xác định';
+      console.error('[AdminService] AI analytics insights failed; returning fallback:', message);
+      return { ...this.buildAnalyticsInsightsFallback(analytics, features), fallbackReason: message };
     }
   }
 
@@ -506,7 +539,7 @@ export class AdminService {
   private buildProductCopyPrompt(): string {
     return [
       'Ban la tro ly AI viet noi dung san pham cho admin Lishop.',
-      'Hay viet mo ta san pham bang tieng Viet, 2-4 cau, phu hop san thuong mai dien tu.',
+      'Hay viet mo ta san pham bang tieng Viet co dau, 2-4 cau, phu hop san thuong mai dien tu.',
       'Neu co mo ta tho, hay bien no thanh noi dung gon, ro loi ich va de doc.',
       'Khong bia thong so ky thuat, khuyen mai, bao hanh, giao hang, chat lieu, xuat xu hoac cam ket neu du lieu khong co.',
       'Khong dung markdown, khong chen emoji, chi tra ve phan mo ta cuoi cung.',
@@ -531,7 +564,7 @@ export class AdminService {
       'Ban la tro ly AI phan tich kinh doanh cho admin Lishop.',
       'Hay doc du lieu analytics va tra ve DUY NHAT mot JSON object hop le.',
       'Schema: {"highlights":["string"],"risks":["string"],"actions":[{"title":"string","rationale":"string"}],"questions":["string"]}.',
-      'Viet tieng Viet khong dau hoac ASCII de tranh loi hien thi.',
+      'Tat ca noi dung (highlights, risks, actions, questions) phai viet bang tieng Viet CO DAU, day du dau tieng Viet.',
       'Highlights 3-6 muc, risks 0-3 muc, actions 2-5 muc, questions 0-2 muc.',
       'Chi dua ra nhan dinh dua tren du lieu duoc cung cap. Khong bia doanh thu, ty le, san pham, khuyen mai, kenh marketing.',
       'Actions phai cu the, thuc dung cho admin thuong mai dien tu.',

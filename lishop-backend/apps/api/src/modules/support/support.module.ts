@@ -8,9 +8,10 @@ import { SupportController } from './support.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ProductsModule } from '../products/products.module';
 import { OrdersModule } from '../orders/orders.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
-  imports: [NotificationsModule, ProductsModule, OrdersModule],
+  imports: [NotificationsModule, ProductsModule, OrdersModule, RealtimeModule],
   providers: [
     SupportTicketsRepository,
     SupportTicketsService,

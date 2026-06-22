@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { prisma, TicketStatus } from '@lishop/database';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import {
   AdminTicketItem,
   SupportTicketsRepository,
@@ -29,6 +30,7 @@ export class SupportTicketsService {
   constructor(
     private readonly repo: SupportTicketsRepository,
     private readonly notifRepo: NotificationsRepository,
+    private readonly realtime: RealtimeService,
     private readonly config: ConfigService,
   ) {}
 
@@ -47,6 +49,15 @@ export class SupportTicketsService {
     ).catch((err: unknown) =>
       console.error('[SupportTicketsService] admin notify failed', err),
     );
+
+    this.realtime.emitAdminFeed({
+      type: 'new_ticket',
+      ticketId: ticket.id,
+      subject: ticket.subject,
+      customerName: `${ticket.user.firstName} ${ticket.user.lastName}`,
+      timestamp: new Date().toISOString(),
+    });
+
     return ticket;
   }
 
@@ -78,6 +89,9 @@ export class SupportTicketsService {
     ).catch((err: unknown) =>
       console.error('[SupportTicketsService] admin notify failed', err),
     );
+
+    this.realtime.emitTicketMessage(ticketId, message);
+
     return message;
   }
 
@@ -100,6 +114,9 @@ export class SupportTicketsService {
       .catch((err: unknown) =>
         console.error('[SupportTicketsService] customer status notification failed', err),
       );
+
+    this.realtime.emitTicketStatusChange(ticket.id, ticket.userId, dto.status);
+
     return updated;
   }
 
@@ -112,8 +129,10 @@ export class SupportTicketsService {
     if (!ticket) throw new NotFoundException('Ticket không tồn tại');
 
     const alreadyReplied = await this.repo.hasAdminMessages(ticketId);
+    let statusChanged = false;
     if (!alreadyReplied && ticket.status === TicketStatus.OPEN) {
       await this.repo.updateStatus(ticketId, TicketStatus.IN_PROGRESS);
+      statusChanged = true;
     }
 
     const message = await this.repo.addMessage(ticketId, adminId, dto.content, true);
@@ -129,6 +148,12 @@ export class SupportTicketsService {
       .catch((err: unknown) =>
         console.error('[SupportTicketsService] customer notify failed', err),
       );
+
+    this.realtime.emitTicketMessage(ticketId, message);
+
+    if (statusChanged) {
+      this.realtime.emitTicketStatusChange(ticketId, ticket.userId, TicketStatus.IN_PROGRESS);
+    }
 
     return message;
   }
@@ -229,10 +254,10 @@ export class SupportTicketsService {
     return [
       'Ban la tro ly AI ho tro admin Lishop xu ly ticket khach hang.',
       'Hay chi tra ve JSON hop le voi cac field: summary, suggestedCategory, suggestedStatus, replyDraft.',
-      'summary: mot cau ngan tom tat van de.',
+      'summary: mot cau ngan tom tat van de, viet tieng Viet co dau.',
       'suggestedCategory: ORDER, PRODUCT, SHIPPING, PAYMENT, RETURN hoac OTHER.',
       'suggestedStatus: OPEN, IN_PROGRESS, RESOLVED hoac CLOSED.',
-      'replyDraft: ban nhap phan hoi lich su, ngan gon, de admin chinh sua va gui khach.',
+      'replyDraft: ban nhap phan hoi lich su, ngan gon, viet tieng Viet co dau, de admin chinh sua va gui khach.',
       'Khong hua hoan tien, doi moi, ngay giao hang, uu dai, hay ngoai le chinh sach neu ticket khong co du lieu.',
       'Khong dung markdown va khong them giai thich ngoai JSON.',
     ].join('\n');

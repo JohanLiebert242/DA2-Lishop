@@ -3,6 +3,7 @@ import { AdminRepository } from './admin.repository';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 import { ReturnsModule } from '../returns/returns.module';
 import { SupportModule } from '../support/support.module';
 import { ReviewsModule } from '../reviews/reviews.module';
@@ -14,7 +15,7 @@ import { WalletModule } from '../wallet/wallet.module';
 import { ProductsModule } from '../products/products.module';
 
 @Module({
-  imports: [NotificationsModule, ReturnsModule, SupportModule, ReviewsModule, PromotionsModule, PaymentsModule, InvoicesModule, RefundsModule, WalletModule, ProductsModule],
+  imports: [NotificationsModule, RealtimeModule, ReturnsModule, SupportModule, ReviewsModule, PromotionsModule, PaymentsModule, InvoicesModule, RefundsModule, WalletModule, ProductsModule],
   providers: [AdminRepository, AdminService],
   controllers: [AdminController],
 })

@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InventoryRepository, ProductStockItem, ProductStockResult, StockMovementRecord } from './inventory.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import { prisma } from '@lishop/database';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly inventoryRepo: InventoryRepository) {}
+  constructor(
+    private readonly inventoryRepo: InventoryRepository,
+    private readonly realtime: RealtimeService,
+  ) {}
 
   async getAll(): Promise<ProductStockItem[]> {
     return this.inventoryRepo.findAll();
@@ -30,7 +34,17 @@ export class InventoryService {
       );
     }
 
-    return this.inventoryRepo.adjustStock(productId, delta, note);
+    const result = await this.inventoryRepo.adjustStock(productId, delta, note);
+
+    this.realtime.emitStockUpdate(productId, {
+      productId,
+      stock: result.stock,
+      previousStock: product.stock,
+      delta,
+      timestamp: new Date().toISOString(),
+    });
+
+    return result;
   }
 
   async getMovements(productId: string): Promise<StockMovementRecord[]> {
