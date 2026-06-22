@@ -95,6 +95,7 @@ export interface AiAnalyticsInsightsResponse {
   actions: AiAnalyticsAction[];
   questions: string[];
   fallback: boolean;
+  fallbackReason?: string;
 }
 
 // Inventory types
@@ -163,6 +164,7 @@ export const adminApi = {
     apiFetch<AiAnalyticsInsightsResponse>('/admin/analytics/ai-insights', {
       method: 'POST',
       body: JSON.stringify({ rangeDays }),
+      timeoutMs: 60000,
     }),
   getInventory: () => apiFetch<ProductStock[]>('/admin/inventory'),
   adjustStock: (productId: string, delta: number, note?: string) =>
@@ -179,7 +181,7 @@ export const adminApi = {
       body: JSON.stringify({ status, adminNote }),
     }),
   generateReturnAiAssist: (id: string) =>
-    apiFetch<ReturnAiAssistResponse>(`/admin/returns/${id}/ai-assist`, { method: 'POST' }),
+    apiFetch<ReturnAiAssistResponse>(`/admin/returns/${id}/ai-assist`, { method: 'POST', timeoutMs: 60000 }),
 
   // Support tickets
   getTickets: (status?: string) =>
@@ -257,7 +259,7 @@ export const adminApi = {
 
   // Products
   listProducts: () =>
-    apiFetch<{ items: AdminProduct[]; nextCursor: string | null }>('/products?limit=1000'),
+    apiFetch<{ items: AdminProduct[]; nextCursor: string | null }>('/products?limit=100'),
   importProducts: (products: CreateProductInput[]) =>
     apiFetch<ImportProductsResult>('/admin/products/import', {
       method: 'POST',

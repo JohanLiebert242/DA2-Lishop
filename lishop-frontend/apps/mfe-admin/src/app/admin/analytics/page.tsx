@@ -78,6 +78,11 @@ export default function AnalyticsPage() {
               Chế độ dự phòng
             </span>
           )}
+          {insightsMutation.data?.fallbackReason && !insightsMutation.isPending && (
+            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
+              {insightsMutation.data.fallbackReason}
+            </span>
+          )}
           <button
             type="button"
             data-testid="admin-analytics-ai-run"
@@ -91,6 +96,12 @@ export default function AnalyticsPage() {
 
         {insightsMutation.isPending && (
           <p className="mt-4 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-800">Đang phân tích...</p>
+        )}
+
+        {insightsMutation.isError && (
+          <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            Không thể tạo gợi ý AI: {insightsMutation.error?.message ?? 'Lỗi không xác định'}
+          </p>
         )}
 
         {insightsMutation.data && (

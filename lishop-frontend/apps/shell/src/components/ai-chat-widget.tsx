@@ -70,12 +70,17 @@ export function AiChatWidget() {
     ]);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch(`${API_URL}/support/chat`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       const json = await response.json();
       if (!response.ok) throw new Error(json.message ?? 'Không thể gửi tin nhắn');
       const data = (json.data ?? json) as ChatResponse;

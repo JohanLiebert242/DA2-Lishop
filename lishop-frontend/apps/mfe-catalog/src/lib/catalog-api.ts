@@ -214,12 +214,14 @@ export const catalogApi = {
     apiFetch<AiDiscoveryResponse>('/products/ai-discovery', {
       method: 'POST',
       body: JSON.stringify({ message }),
+      timeoutMs: 60000,
     }),
 
   shoppingConcierge: (message: string) =>
     apiFetch<ShoppingConciergeResponse>('/shopping/concierge', {
       method: 'POST',
       body: JSON.stringify({ message }),
+      timeoutMs: 60000,
     }),
 
   styleFitAdvisor: (payload: StyleFitAdvisorRequest) =>
