@@ -120,6 +120,7 @@ export class ShoppingConciergeService {
       'Hay tu van mua sam ngan gon, thuc te, dua tren san pham ung vien duoc cung cap.',
       'Chi tra ve JSON hop le, khong markdown, khong giai thich ngoai JSON.',
       'Schema: {"reply":"string","cartPlan":[{"productId":"string","quantity":number,"reason":"string"}],"actions":[{"type":"ADD_TO_CART|VIEW_PRODUCT|ASK_CLARIFYING_QUESTION","label":"string","productId":"string optional"}]}.',
+      'reply, reason, label phai viet tieng Viet co dau.',
       'cartPlan chi duoc dung productId co trong danh sach ung vien va stock > 0.',
       'Neu action co productId thi productId do phai co trong danh sach ung vien.',
       'Khong tu checkout, khong hua khuyen mai, khong bua gia, stock, giao hang hay uu dai.',

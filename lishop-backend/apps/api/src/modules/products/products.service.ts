@@ -542,7 +542,7 @@ export class ProductsService {
   private buildDiscoveryPrompt(mode: 'advice' | 'compare'): string {
     return [
       'Ban la tro ly AI tu van mua sam cua Lishop.',
-      'Luon tra loi bang tieng Viet tu nhien, ngan gon, thuc te.',
+      'Luon tra loi bang tieng Viet co dau, tu nhien, ngan gon, thuc te.',
       mode === 'compare'
         ? 'Khach hang muon so sanh san pham. Hay neu diem khac nhau theo gia, danh gia, ton kho, thuong hieu hoac danh muc va goi y san pham nao hop cho nhu cau nao.'
         : 'Khach hang muon duoc tu van san pham. Hay chon san pham phu hop nhat tu du lieu va giai thich ly do.',

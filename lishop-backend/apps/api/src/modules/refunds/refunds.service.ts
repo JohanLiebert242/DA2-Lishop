@@ -175,7 +175,7 @@ export class RefundsService {
       'Hay dua ra goi y co nen xu ly ngay hay can cho/kiem tra them, kem ghi chu admin ngan gon.',
       'Tra ve DUY NHAT JSON object theo schema:',
       '{"shouldProcess":true,"adminNote":"...","summary":"...","reasons":["..."]}',
-      'adminNote viet tieng Viet, 1-2 cau, khong markdown, khong emoji.',
+      'adminNote, summary viet tieng Viet co dau, 1-2 cau, khong markdown, khong emoji.',
     ].join('\n');
   }
 
