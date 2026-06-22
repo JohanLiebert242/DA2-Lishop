@@ -197,7 +197,7 @@ export const adminApi = {
       { method: 'POST', body: JSON.stringify({ content }) },
     ),
   generateTicketAssist: (id: string) =>
-    apiFetch<TicketAiAssistResponse>(`/admin/tickets/${id}/ai-assist`, { method: 'POST' }),
+    apiFetch<TicketAiAssistResponse>(`/admin/tickets/${id}/ai-assist`, { method: 'POST', timeoutMs: 60000 }),
 
   // FAQ
   getAllFaq: () => apiFetch<FAQ[]>('/admin/faq'),
@@ -239,7 +239,7 @@ export const adminApi = {
       body: JSON.stringify({ status }),
     }),
   generateReviewModeration: (id: string) =>
-    apiFetch<ReviewAiModerationResponse>(`/admin/reviews/${id}/ai-moderation`, { method: 'POST' }),
+    apiFetch<ReviewAiModerationResponse>(`/admin/reviews/${id}/ai-moderation`, { method: 'POST', timeoutMs: 60000 }),
 
   // Flash sales
   getFlashSales: () => apiFetch<AdminFlashSale[]>('/admin/flash-sales'),
@@ -278,16 +278,18 @@ export const adminApi = {
     apiFetch<GenerateProductCopyResponse>('/admin/products/ai-copy', {
       method: 'POST',
       body: JSON.stringify(data),
+      timeoutMs: 60000,
     }),
   aiImportEnrichProducts: (rawText: string) =>
     apiFetch<AiImportEnrichProductsResult>('/admin/products/ai-import-enrich', {
       method: 'POST',
       body: JSON.stringify({ rawText }),
+      timeoutMs: 60000,
     }),
   generateProductImage: (id: string) =>
     apiFetch<{ image: { id: string; url: string; alt: string; isPrimary: boolean }; source: 'unsplash' | 'placeholder' }>(
       `/admin/products/${id}/ai-generate-image`,
-      { method: 'POST' },
+      { method: 'POST', timeoutMs: 60000 },
     ),
 
   // Wallets
@@ -317,7 +319,7 @@ export const adminApi = {
       body: JSON.stringify({ adminNote }),
     }),
   generateRefundAiAssist: (id: string) =>
-    apiFetch<RefundAiAssistResponse>(`/admin/refunds/${id}/ai-assist`, { method: 'POST' }),
+    apiFetch<RefundAiAssistResponse>(`/admin/refunds/${id}/ai-assist`, { method: 'POST', timeoutMs: 60000 }),
 };
 
 // ─── Support / FAQ types ──────────────────────────────────────────────────────
