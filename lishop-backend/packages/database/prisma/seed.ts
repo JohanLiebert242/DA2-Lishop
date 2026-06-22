@@ -967,16 +967,57 @@ async function createReturnsAndRefunds(orders: Array<{ order: CreatedOrder; item
 }
 
 async function createReviews(customers: CreatedUser[], products: CreatedProduct[]) {
-  const comments = [
-    'Chất lượng sản phẩm tốt hơn mong đợi và giao hàng nhanh.',
-    'Giá hợp lý, đóng gói sạch sẽ và cẩn thận.',
-    'Mình thích thiết kế và sản phẩm đúng như mô tả.',
-    'Hữu ích cho nhu cầu hằng ngày, sẽ giới thiệu cho bạn bè.',
-    'Chăm sóc khách hàng phản hồi nhanh khi mình hỏi về giao hàng.',
+async function createReviews(customers: CreatedUser[], products: CreatedProduct[]) {
+  const reviews: {
+    rating: number;
+    content: string;
+    status: ReviewStatus;
+    verifiedPurchase: boolean;
+  }[] = [
+    // ─── Positive reviews ───
+    { rating: 5, content: 'Sản phẩm rất tốt, chất lượng đúng như mô tả. Giao hàng nhanh, đóng gói cẩn thận. Sẽ ủng hộ lần sau.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 5, content: 'Mình rất hài lòng với sản phẩm này. Chất lượng vượt ngoài mong đợi, giá cả hợp lý. Team tư vấn nhiệt tình.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 4, content: 'Chất lượng ổn, giá tốt so với thị trường. Giao hàng hơi chậm nhưng được cái đóng gói rất kỹ.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 4, content: 'Hàng đúng hình, chất lượng tốt. Màu sắc đẹp như trong ảnh. Sẽ mua thêm cho người nhà.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 5, content: 'Lần đầu mua bên Lishop, khá ưng ý. Sản phẩm chất lượng, giá tốt, ship nhanh. Được tặng kèm voucher nữa.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 4, content: 'Mua tặng vợ, vợ mình rất thích. Thiết kế đẹp, sang trọng, phù hợp làm quà.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 5, content: 'Sản phẩm tuyệt vời! Chất lượng cao hơn giá tiền. Cảm ơn shop đã tư vấn tận tình.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 4, content: 'Dùng tốt, chất lượng ok. Sẽ order tiếp khi cần. Shop nên bổ sung thêm màu sắc để có nhiều lựa chọn hơn.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+
+    // ─── Negative reviews ───
+    { rating: 2, content: 'Sản phẩm nhận được không giống hình. Chất lượng khá tệ so với giá tiền. Rất thất vọng.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 1, content: 'Hàng bị lỗi, màu sắc không như hình. Đã liên hệ hỗ trợ nhưng chưa thấy phản hồi. Không hài lòng chút nào.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 1, content: 'Giao hàng quá chậm, đợi gần 2 tuần mới nhận được. Sản phẩm thì không được như quảng cáo. Phí ship cao.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 2, content: 'Đặt 2 cái nhưng chỉ nhận được 1. Nhắn shop bảo kiểm tra lại kho rồi im luôn. Không chuyên nghiệp.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 1, content: 'Sản phẩm kém chất lượng, dùng được 2 hôm đã hỏng. Gửi yêu cầu bảo hành thì bảo không đủ điều kiện. Phí tiền.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 2, content: 'Kích thước không đúng như bảng size shop đưa ra. Đổi trả thì mất công chờ đợi. Nên cập nhật lại bảng size.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 1, content: 'Mùi nhựa khó chịu khi mới mở hộp. Để 2 ngày vẫn còn mùi. Không dám dùng cho con nhỏ.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 2, content: 'Giá cao hơn so với các shop khác, mà chất lượng không khác gì. Ship cũng lâu. Mua lần đầu và cũng là lần cuối.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+
+    // ─── Reviews with risky/spam content (for AI moderation) ───
+    { rating: 5, content: 'Sản phẩm tốt, giá rẻ. Ai cần mua liên hệ Telegram: @fake_seller_channel để được giá tốt hơn.', status: ReviewStatus.PENDING, verifiedPurchase: false },
+    { rating: 5, content: 'Bán hàng chất lượng cao giá rẻ xem thêm tại https://fake-competitor-shop.com ưu đãi 50% hôm nay', status: ReviewStatus.PENDING, verifiedPurchase: false },
+    { rating: 1, content: 'LỪA ĐẢO! TOÀN HÀNG KÉM CHẤT LƯỢNG! ĐỪNG MUA! AI MUA LÀ NGU!', status: ReviewStatus.PENDING, verifiedPurchase: false },
+    { rating: 5, content: 'Mua ngay kẻo hết! Flash sale 99% tất cả sản phẩm! Click ngay: https://bit.ly/fake-promo-xyz', status: ReviewStatus.PENDING, verifiedPurchase: false },
+    { rating: 3, content: 'Tuyệt vời! facebook.com/fakepage lên hệ mua giá gốc không qua shop.', status: ReviewStatus.PENDING, verifiedPurchase: false },
+    { rating: 4, content: 'Chất lượng ok. Bạn nào muốn mua sỉ ib zalo 090xxxxxxx để được giá tốt.', status: ReviewStatus.PENDING, verifiedPurchase: false },
+
+    // ─── Mixed/neutral reviews ───
+    { rating: 3, content: 'Sản phẩm tạm được, không quá tệ nhưng cũng không xuất sắc. Giá hơi cao so với chất lượng.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 3, content: 'Chất lượng ở mức trung bình. Giao hàng đúng hẹn, đóng gói ổn. Hy vọng shop cải thiện chất lượng hơn.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 3, content: 'Cũng được, không có gì nổi bật. Đúng giá tiền. Tạm chấp nhận được.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+    { rating: 3, content: 'Bình thường, không quá tệ. Shop nên đầu tư hơn vào bao bì sản phẩm.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
+
+    // ─── Pending reviews for moderation (normal) ───
+    { rating: 4, content: 'Sản phẩm tạm ổn. Đợi dùng thêm thời gian nữa mới đánh giá chính xác được. Shop nên cải thiện chất lượng.', status: ReviewStatus.PENDING, verifiedPurchase: true },
+    { rating: 5, content: 'Rất tốt! Shop phục vụ chu đáo, sản phẩm chất lượng. Sẽ tiếp tục ủng hộ dài dài.', status: ReviewStatus.PENDING, verifiedPurchase: true },
+    { rating: 2, content: 'Shop giao thiếu phụ kiện kèm theo. Đã liên hệ nhưng chưa được giải quyết. Mong shop xem lại.', status: ReviewStatus.PENDING, verifiedPurchase: true },
+    { rating: 1, content: 'Hàng nhận được bị trầy xước, đã gửi ảnh cho shop nhưng chưa thấy phản hồi. Thất vọng.', status: ReviewStatus.PENDING, verifiedPurchase: true },
   ];
 
   const reviewPairs = new Set<string>();
-  for (let index = 0; index < 70; index++) {
+  for (let index = 0; index < reviews.length; index++) {
+    const review = reviews[index];
     const product = products[index % products.length];
     const user = customers[(index * 3) % customers.length];
     const key = `${product.id}:${user.id}`;
@@ -987,10 +1028,10 @@ async function createReviews(customers: CreatedUser[], products: CreatedProduct[
       data: {
         productId: product.id,
         userId: user.id,
-        rating: 3 + (index % 3),
-        content: pick(comments, index),
-        status: index % 12 === 0 ? ReviewStatus.PENDING : ReviewStatus.APPROVED,
-        verifiedPurchase: index % 5 !== 0,
+        rating: review.rating,
+        content: review.content,
+        status: review.status,
+        verifiedPurchase: review.verifiedPurchase,
         createdAt: daysAgo(index % 40),
       },
     });
