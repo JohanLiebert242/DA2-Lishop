@@ -967,7 +967,6 @@ async function createReturnsAndRefunds(orders: Array<{ order: CreatedOrder; item
 }
 
 async function createReviews(customers: CreatedUser[], products: CreatedProduct[]) {
-async function createReviews(customers: CreatedUser[], products: CreatedProduct[]) {
   const reviews: {
     rating: number;
     content: string;
