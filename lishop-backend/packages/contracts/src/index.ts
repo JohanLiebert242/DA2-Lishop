@@ -10,3 +10,4 @@ export * from './shipping';
 export * from './review';
 export * from './promotion';
 export * from './notification';
+export * from './realtime';
