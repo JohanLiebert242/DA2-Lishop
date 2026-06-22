@@ -201,13 +201,13 @@ export default function ReturnsPage() {
           <table className="w-full table-fixed">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="w-28 px-4 py-2 text-left">Mã yêu cầu</th>
-                <th className="w-32 px-4 py-2 text-left">Khách hàng</th>
-                <th className="w-24 px-4 py-2 text-left">Đơn hàng</th>
-                <th className="w-24 px-4 py-2 text-left">Lý do</th>
-                <th className="w-24 px-4 py-2 text-left">Trạng thái</th>
-                <th className="w-24 px-4 py-2 text-left">Ngày tạo</th>
-                <th className="px-4 py-2 text-left">Thao tác</th>
+                <th className="w-[14%] px-4 py-2 text-left">Mã yêu cầu</th>
+                <th className="w-[18%] px-4 py-2 text-left">Khách hàng</th>
+                <th className="w-[12%] px-4 py-2 text-left">Đơn hàng</th>
+                <th className="w-[12%] px-4 py-2 text-left">Lý do</th>
+                <th className="w-[10%] px-4 py-2 text-left">Trạng thái</th>
+                <th className="w-[12%] px-4 py-2 text-left">Ngày tạo</th>
+                <th className="w-[22%] px-4 py-2 text-left">Thao tác</th>
               </tr>
             </thead>
             <tbody>

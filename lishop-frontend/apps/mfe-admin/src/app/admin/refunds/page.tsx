@@ -78,12 +78,12 @@ export default function RefundsPage() {
           <table className="w-full table-fixed">
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
-                <th className="w-24 px-4 py-2 text-left">Đơn hàng</th>
-                <th className="w-36 px-4 py-2 text-left">Khách hàng</th>
-                <th className="w-28 px-4 py-2 text-left">Số tiền</th>
-                <th className="w-24 px-4 py-2 text-left">Phương thức</th>
-                <th className="w-24 px-4 py-2 text-left">Trạng thái</th>
-                <th className="px-4 py-2 text-left">Thao tác</th>
+                <th className="w-[12%] px-4 py-2 text-left">Đơn hàng</th>
+                <th className="w-[18%] px-4 py-2 text-left">Khách hàng</th>
+                <th className="w-[12%] px-4 py-2 text-left">Số tiền</th>
+                <th className="w-[10%] px-4 py-2 text-left">Phương thức</th>
+                <th className="w-[10%] px-4 py-2 text-left">Trạng thái</th>
+                <th className="w-[38%] px-4 py-2 text-left">Thao tác</th>
               </tr>
             </thead>
             <tbody>
