@@ -1002,6 +1002,19 @@ async function createReviews(customers: CreatedUser[], products: CreatedProduct[
     { rating: 3, content: 'Tuyệt vời! facebook.com/fakepage lên hệ mua giá gốc không qua shop.', status: ReviewStatus.PENDING, verifiedPurchase: false },
     { rating: 4, content: 'Chất lượng ok. Bạn nào muốn mua sỉ ib zalo 090xxxxxxx để được giá tốt.', status: ReviewStatus.PENDING, verifiedPurchase: false },
 
+    // ─── Reviews with offensive/profane language (for AI moderation) ───
+    { rating: 1, content: 'Cái shop chó chết này bán hàng như c*t. Giao hàng như l*n. Đừng có ai mua vào đây!', status: ReviewStatus.PENDING, verifiedPurchase: true },
+    { rating: 1, content: 'Đ**! Mua thằng lolz này đúng phí tiền. Hàng như c*t. Không đáng một xu!', status: ReviewStatus.PENDING, verifiedPurchase: true },
+    { rating: 1, content: 'Shop lừa đảo! Đm chúng mày bán hàng dởm còn chối. Tao đã tốn công đi kiểm tra hàng thì biết ngay. Lũ khốn nạn!', status: ReviewStatus.PENDING, verifiedPurchase: true },
+    { rating: 2, content: 'Sản phẩm tệ vãi cả đái. Tưởng mua được đồ tốt ai ngờ toàn đồ dỏm. Shop bán hàng như vậy thì đóng cửa đi!', status: ReviewStatus.PENDING, verifiedPurchase: true },
+    { rating: 1, content: 'Nhận hàng xong muốn ném thẳng vào thùng rác. Cái đống phế liệu này mà gọi là sản phẩm? Khinh!', status: ReviewStatus.PENDING, verifiedPurchase: true },
+    { rating: 1, content: 'Ngu xuẩn mới mua hàng ở đây. Vừa mắc vừa dởm. Bọn bán hàng chỉ biết hốt bạc chứ không biết gì!', status: ReviewStatus.PENDING, verifiedPurchase: true },
+    { rating: 1, content: 'Thất vọng vl. Mua cho con mà nhận được cục cứt. Shop bán hàng như thế này thì ác thật sự.', status: ReviewStatus.PENDING, verifiedPurchase: true },
+
+    // ─── Reviews with discriminatory/hateful content (for AI moderation) ───
+    { rating: 1, content: 'Shop toàn bán đồ Tàu khằn giá cao. Toàn hàng đểu của mấy thằng Tàu, nhìn đã biết không dám dùng.', status: ReviewStatus.PENDING, verifiedPurchase: false },
+    { rating: 1, content: 'Nhân viên tư vấn như cái đồ ngu, hỏi gì cũng không biết. Chắc toàn tuyển người vô học, mất dạy về làm.', status: ReviewStatus.PENDING, verifiedPurchase: false },
+
     // ─── Mixed/neutral reviews ───
     { rating: 3, content: 'Sản phẩm tạm được, không quá tệ nhưng cũng không xuất sắc. Giá hơi cao so với chất lượng.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
     { rating: 3, content: 'Chất lượng ở mức trung bình. Giao hàng đúng hẹn, đóng gói ổn. Hy vọng shop cải thiện chất lượng hơn.', status: ReviewStatus.APPROVED, verifiedPurchase: true },
