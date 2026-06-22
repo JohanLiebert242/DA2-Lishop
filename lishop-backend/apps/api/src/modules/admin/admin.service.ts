@@ -513,14 +513,64 @@ export class AdminService {
     if (!product.categorySlug) {
       throw new BadRequestException('categoryId or categorySlug is required');
     }
-    const category = await prisma.category.findUnique({
-      where: { slug: product.categorySlug },
+
+    const slug = this.normalizeCategorySlug(product.categorySlug);
+
+    // Try exact slug match first
+    let category = await prisma.category.findUnique({
+      where: { slug },
       select: { id: true },
     });
-    if (!category) {
-      throw new BadRequestException(`Category not found: ${product.categorySlug}`);
-    }
-    return category.id;
+    if (category) return category.id;
+
+    // Fallback: lookup by name (case-insensitive)
+    category = await prisma.category.findFirst({
+      where: {
+        name: { equals: slug, mode: 'insensitive' },
+      },
+      select: { id: true },
+    });
+    if (category) return category.id;
+
+    throw new BadRequestException(`Category not found: ${product.categorySlug}`);
+  }
+
+  /** Map common Vietnamese category names/aliases to actual DB slugs */
+  private normalizeCategorySlug(slug: string): string {
+    const aliasMap: Record<string, string> = {
+      'thoi-trang': 'fashion',
+      'thời-trang': 'fashion',
+      'thời trang': 'fashion',
+      'thoi trang': 'fashion',
+      'dien-tu': 'electronics',
+      'điện-tử': 'electronics',
+      'điện tử': 'electronics',
+      'dien tu': 'electronics',
+      'gia-dung': 'home-living',
+      'gia dụng': 'home-living',
+      'gia dung': 'home-living',
+      'nhà-cửa': 'home-living',
+      'nha-cua': 'home-living',
+      'nha cua': 'home-living',
+      'nội-thất': 'home-living',
+      'noi-that': 'home-living',
+      'noi that': 'home-living',
+      'phu-kien': 'fashion',
+      'phụ-kiện': 'fashion',
+      'phụ kiện': 'fashion',
+      'phu kien': 'fashion',
+      'lam-dep': 'beauty',
+      'làm-đẹp': 'beauty',
+      'làm đẹp': 'beauty',
+      'lam dep': 'beauty',
+      'the-thao': 'sports',
+      'thể-thao': 'sports',
+      'thể thao': 'sports',
+      'the thao': 'sports',
+      'sach': 'books',
+      'sách': 'books',
+    };
+    return aliasMap[slug.toLowerCase()] ?? slug;
   }
 
   async updateUserRole(userId: string, role: UserRole): Promise<AdminUserItem> {
@@ -559,7 +609,8 @@ export class AdminService {
       'Moi san pham bat buoc co: name, description, priceVnd, priceUsd, stock.',
       'Co the co them: sku, weightGrams, categorySlug, imageUrl, imageAlt, tags (mang string).',
       'Neu thieu gia, stock, weight thi suy doan hop ly (gia >= 0, stock >= 0, weightGrams >= 1).',
-      'Mo ta (description) viet tieng Viet, 1-3 cau, khong markdown, khong emoji.',
+      'categorySlug CHI duoc dung mot trong cac gia tri sau: fashion, electronics, home-living, beauty, sports, books. KHONG duoc tu tao slug khac.',
+      'Mo ta (description) viet tieng Viet co dau, 1-3 cau, khong markdown, khong emoji.',
       `Toi da ${MAX_AI_IMPORT_PRODUCTS} san pham.`,
     ].join('\n');
   }
