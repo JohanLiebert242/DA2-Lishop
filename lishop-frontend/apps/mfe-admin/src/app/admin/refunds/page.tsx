@@ -127,7 +127,12 @@ export default function RefundsPage() {
                     {aiNotes[refund.id] ? (
                       <p className="mt-1 inline-flex items-start gap-2 text-xs font-medium text-emerald-700">
                         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        <span>{aiNotes[refund.id]}</span>
+                        <span
+                          className="max-w-[280px] truncate"
+                          title={aiNotes[refund.id]}
+                        >
+                          {aiNotes[refund.id]}
+                        </span>
                       </p>
                     ) : null}
                   </td>

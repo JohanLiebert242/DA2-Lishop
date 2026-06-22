@@ -147,7 +147,7 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
             {aiSummary ? (
               <p className="mt-2 inline-flex items-start gap-2 text-xs font-medium text-emerald-700">
                 <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span>{aiSummary}</span>
+                <span className="max-w-[280px] truncate" title={aiSummary}>{aiSummary}</span>
               </p>
             ) : null}
           </td>
