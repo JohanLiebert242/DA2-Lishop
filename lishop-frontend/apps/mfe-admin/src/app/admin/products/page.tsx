@@ -638,7 +638,21 @@ export default function ProductsPage() {
                   <td className="px-4 py-3">
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={imageUrl(img.url)} alt={img.alt ?? product.name} className="h-10 w-10 rounded-md object-cover" />
+                      <img
+                        src={imageUrl(img.url)}
+                        alt={img.alt ?? product.name}
+                        className="h-10 w-10 rounded-md object-cover"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          el.style.display = 'none';
+                          const parent = el.parentElement;
+                          if (parent && !parent.querySelector('.img-fallback')) {
+                            const div = document.createElement('div');
+                            div.className = 'img-fallback h-10 w-10 rounded-md bg-gray-100';
+                            parent.appendChild(div);
+                          }
+                        }}
+                      />
                     ) : (
                       <div className="h-10 w-10 rounded-md bg-gray-100" />
                     )}
