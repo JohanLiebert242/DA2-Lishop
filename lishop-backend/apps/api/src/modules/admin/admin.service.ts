@@ -760,7 +760,7 @@ export class AdminService {
         return {
           name,
           priceVnd: Math.max(0, priceVnd),
-          priceUsd: Math.round(priceVnd / 2500 * 100) / 100 || 0,
+          priceUsd: Math.round(priceVnd / 25000) || 0,
           stock: stock ? Math.max(0, parseInt(stock, 10)) : 0,
           weightGrams: 500,
           description: name,
@@ -828,9 +828,9 @@ export class AdminService {
       .filter((p) => !!p && typeof p === 'object' && typeof (p as ImportProductDto).name === 'string')
       .map((p) => {
         const name = p.name.trim();
-        const priceVnd = Number.isFinite(Number(p.priceVnd)) ? Number(p.priceVnd) : 0;
-        const priceUsd = Number.isFinite(Number(p.priceUsd)) ? Number(p.priceUsd) : 0;
-        const stock = Number.isFinite(Number(p.stock)) ? Number(p.stock) : 0;
+        const priceVnd = Number.isFinite(Number(p.priceVnd)) ? Math.round(Number(p.priceVnd)) : 0;
+        const priceUsd = Number.isFinite(Number(p.priceUsd)) ? Math.round(Number(p.priceUsd)) : 0;
+        const stock = Number.isFinite(Number(p.stock)) ? Math.max(0, Math.round(Number(p.stock))) : 0;
         const weightGrams = Number.isFinite(Number(p.weightGrams)) ? Number(p.weightGrams) : 500;
         const description = (p.description ?? '').toString().trim();
 
