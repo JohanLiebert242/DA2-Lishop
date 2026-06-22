@@ -30,6 +30,7 @@ function TicketRow({ ticket }: { ticket: AdminTicket }) {
     mutationFn: () => adminApi.addTicketMessage(ticket.id, replyText),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
+      setStatus('RESOLVED');
       setShowReply(false);
       setReplyText('');
       setAiAssist(null);

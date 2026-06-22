@@ -81,6 +81,12 @@ export class SupportTicketsService {
     if (!ticket) throw new NotFoundException('Ticket không tồn tại');
     if (ticket.userId !== userId) throw new ForbiddenException('Bạn không có quyền trả lời ticket này');
 
+    // Customer replies → reopen ticket if it was resolved/closed
+    if (ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED) {
+      await this.repo.updateStatus(ticketId, TicketStatus.IN_PROGRESS);
+      this.realtime.emitTicketStatusChange(ticketId, userId, TicketStatus.IN_PROGRESS);
+    }
+
     const message = await this.repo.addMessage(ticketId, userId, dto.content, false);
     this.notifyAdmins(
       'Khách hàng phản hồi ticket',
@@ -137,6 +143,12 @@ export class SupportTicketsService {
 
     const message = await this.repo.addMessage(ticketId, adminId, dto.content, true);
 
+    // Admin reply → auto-resolve unless ticket is already closed
+    if (ticket.status !== TicketStatus.CLOSED) {
+      await this.repo.updateStatus(ticketId, TicketStatus.RESOLVED);
+      statusChanged = true;
+    }
+
     this.notifRepo
       .createNotification(
         ticket.userId,
@@ -152,7 +164,7 @@ export class SupportTicketsService {
     this.realtime.emitTicketMessage(ticketId, message);
 
     if (statusChanged) {
-      this.realtime.emitTicketStatusChange(ticketId, ticket.userId, TicketStatus.IN_PROGRESS);
+      this.realtime.emitTicketStatusChange(ticketId, ticket.userId, (await this.repo.findById(ticketId)).status);
     }
 
     return message;
