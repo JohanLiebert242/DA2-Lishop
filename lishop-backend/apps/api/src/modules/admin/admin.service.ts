@@ -389,6 +389,9 @@ export class AdminService {
     }
 
     try {
+      const controller = new AbortController();
+      const aiTimeoutId = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch(OPENAI_RESPONSES_URL, {
         method: 'POST',
         headers: {
@@ -412,9 +415,11 @@ export class AdminService {
               ],
             },
           ],
-          max_output_tokens: 1500,
+          max_output_tokens: 2500,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(aiTimeoutId);
 
       if (!response.ok) {
         throw new Error(`OpenAI request failed with status ${response.status}`);
@@ -731,9 +736,37 @@ export class AdminService {
 
     // JSON
     if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-      const parsed = JSON.parse(trimmed) as ImportProductDto[] | { products: ImportProductDto[] };
-      const products = Array.isArray(parsed) ? parsed : parsed.products;
-      return Array.isArray(products) ? products : [];
+      try {
+        const parsed = JSON.parse(trimmed) as ImportProductDto[] | { products: ImportProductDto[] };
+        const products = Array.isArray(parsed) ? parsed : parsed.products;
+        return Array.isArray(products) ? products : [];
+      } catch {
+        // Not valid JSON; continue to other formats
+      }
+    }
+
+    // Markdown list format: "- Tên giá 199k tồn 20, danh mục thời-trang"
+    const listLines = trimmed.split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith('- ') || line.startsWith('• '));
+    if (listLines.length > 0) {
+      return listLines.map((line) => {
+        const text = line.replace(/^[-•]\s*/, '');
+        const name = text.split(/[,\s]gi[áa]\s/)[0]?.trim() ?? text;
+        const priceK = text.match(/gi[áa]\s*(\d+)\s*k/i)?.[1];
+        const stock = text.match(/t[ôo]n\s*(\d+)/i)?.[1];
+        const catSlug = text.match(/danh m[ụu]c\s+([\w-]+)/i)?.[1];
+        const priceVnd = priceK ? parseInt(priceK, 10) * 1000 : 0;
+        return {
+          name,
+          priceVnd: Math.max(0, priceVnd),
+          priceUsd: Math.round(priceVnd / 2500 * 100) / 100 || 0,
+          stock: stock ? Math.max(0, parseInt(stock, 10)) : 0,
+          weightGrams: 500,
+          description: name,
+          ...(catSlug ? { categorySlug: catSlug } : {}),
+        } as ImportProductDto;
+      }).filter((p) => p.name && p.priceVnd > 0);
     }
 
     // CSV (minimal, matches frontend headers)
