@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ProductsService } from '../products/products.service';
+import { ProductSortOption } from '../products/dto/product-list-query.dto';
+import { ProductWithDetails } from '../products/products.repository';
 import { RedisService } from '../redis/redis.service';
 import { DEFAULT_OPENAI_MODEL, requestOpenAiText } from '../../common/ai/openai-responses';
 
@@ -53,7 +55,20 @@ export class ShoppingConciergeService {
 
   async ask(message: string): Promise<ShoppingConciergeResponse> {
     const normalizedMessage = message.trim();
-    const intentAwareProducts = await this.productsService.searchCatalogByIntent(normalizedMessage, 8);
+    const lower = normalizedMessage.toLowerCase();
+    const wantsTopRated = /\b(review|danh gia|sao|rating|chat luong|tốt|cao)\b/.test(lower)
+      && /\b(nhieu|cao|tot|tốt|chat luong)\b/.test(lower);
+    const wantsPopular = /\b(mua nhieu|ban chay|pho bien|hot|trending|thinh hanh|xu huong|nhieu nguoi)\b/.test(lower);
+
+    let intentAwareProducts: ProductWithDetails[];
+    if (wantsTopRated) {
+      intentAwareProducts = (await this.productsService.findMany({ sort: ProductSortOption.RATING_DESC, limit: 8 })).items;
+    } else if (wantsPopular) {
+      intentAwareProducts = await this.productsService.findFeatured(8);
+    } else {
+      intentAwareProducts = await this.productsService.searchCatalogByIntent(normalizedMessage, 8);
+    }
+
     const seededProducts = intentAwareProducts.length > 0 ? intentAwareProducts : await this.productsService.findFeatured(8);
     const items = seededProducts.map((product) => this.toConciergeProduct(product));
     const cacheKey = `cache:ai:shopping-concierge:${this.normalizeCacheText(normalizedMessage)}`;

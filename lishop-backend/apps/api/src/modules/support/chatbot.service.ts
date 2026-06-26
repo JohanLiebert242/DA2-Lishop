@@ -47,6 +47,7 @@ interface AiContext {
 }
 
 const PRODUCT_KEYWORDS = ['gia', 'bao nhieu', 're nhat', 'dat nhat', 'tim', 'san pham', 'tu van', 'mua', 'nen chon'];
+const HOT_KEYWORDS = ['hot', 'noi bat', 'ban chay', 'pho bien', 'goi y', 'thinh hanh', 'xu huong', 'trending'];
 const COMPARE_KEYWORDS = ['so sanh', 'khac nhau', 'hon', 'doi chieu', 'compare'];
 const ORDER_KEYWORDS = ['theo doi', 'tracking', 'don hang', 'kiem tra don'];
 const RETURN_KEYWORDS = ['doi tra', 'hoan tien', 'tra hang', 'refund'];
@@ -111,7 +112,7 @@ export class ChatbotService {
       await this.writeCachedJson(cacheKey, { reply }, 60);
     }
 
-    if (aiContext.products.length > 0 && this.matches(lower, [...PRODUCT_KEYWORDS, ...COMPARE_KEYWORDS])) {
+    if (aiContext.products.length > 0 && this.matches(lower, [...PRODUCT_KEYWORDS, ...HOT_KEYWORDS, ...COMPARE_KEYWORDS])) {
       return { reply, type: 'products', data: aiContext.products };
     }
     if (aiContext.faqs.length > 0 && this.matches(lower, RETURN_KEYWORDS)) {
@@ -126,12 +127,15 @@ export class ChatbotService {
     context: ChatbotReplyContext,
   ): Promise<AiContext> {
     const wantsProducts = this.matches(lower, [...PRODUCT_KEYWORDS, ...COMPARE_KEYWORDS]);
+    const wantsHot = this.matches(lower, HOT_KEYWORDS);
     const wantsOrders = this.matches(lower, ORDER_KEYWORDS);
     const wantsFaq = this.matches(lower, [...RETURN_KEYWORDS, ...SHIPPING_KEYWORDS, ...PAYMENT_KEYWORDS, ...CONTACT_KEYWORDS]);
 
     const [productsResult, faqs, orders] = await Promise.all([
       wantsProducts
-        ? this.productsService.findMany({ q: message, limit: 5 })
+        ? wantsHot
+          ? this.productsService.findFeatured(8).then((items) => ({ items, nextCursor: null }))
+          : this.productsService.findMany({ q: message, limit: 5 })
         : Promise.resolve({ items: [], nextCursor: null }),
       wantsFaq ? this.faqRepo.search(message) : Promise.resolve([]),
       wantsOrders && context.userId
@@ -178,6 +182,18 @@ export class ChatbotService {
       const data: ProductSummary[] = result.items.map((p) => this.toProductSummary(p));
       return {
         reply: data.length > 0 ? `Tìm thấy ${data.length} sản phẩm phù hợp:` : 'Không tìm thấy sản phẩm phù hợp.',
+        type: 'products',
+        data,
+      };
+    }
+
+    if (this.matches(lower, HOT_KEYWORDS)) {
+      const products = await this.productsService.findFeatured(8);
+      const data: ProductSummary[] = products.map((p) => this.toProductSummary(p as any));
+      return {
+        reply: data.length > 0
+          ? `Dưới đây là ${data.length} sản phẩm nổi bật tại Lishop:`
+          : 'Hiện chưa có sản phẩm nổi bật nào.',
         type: 'products',
         data,
       };
