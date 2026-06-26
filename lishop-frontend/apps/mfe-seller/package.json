@@ -1,0 +1,29 @@
+{
+  "name": "@lishop/mfe-seller",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbo -p 3011",
+    "build": "next build",
+    "start": "next start -p 3011",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lishop/contracts": "workspace:*",
+    "@lishop/event-bus": "workspace:*",
+    "@lishop/shared": "workspace:*",
+    "@tanstack/react-query": "^5.50.0",
+    "lucide-react": "^0.400.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sonner": "^1.5.0"
+  },
+  "devDependencies": {
+    "@lishop/config": "workspace:*",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.5.0"
+  }
+}
