@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { sellerApi } from '../../../../lib/seller-api';
+import { sellerApi } from '@/lib/seller-api';
 
 export default function EditProductPage() {
   const router = useRouter();

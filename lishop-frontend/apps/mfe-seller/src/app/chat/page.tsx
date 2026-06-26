@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MessageCircle, Send, Search, Loader2 } from 'lucide-react';
 import { useShopChat } from '@lishop/shared';
-import { sellerApi } from '../../../lib/seller-api';
+import { sellerApi } from '@/lib/seller-api';
 
 interface Conversation {
   userId: string;
