@@ -19,6 +19,7 @@ export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
 export enum UserRole {
   CUSTOMER = 'CUSTOMER',
   ADMIN = 'ADMIN',
+  SELLER = 'SELLER',
 }
 
 export enum OrderStatus {

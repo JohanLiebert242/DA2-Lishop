@@ -10,6 +10,13 @@ datasource db {
 enum UserRole {
   CUSTOMER
   ADMIN
+  SELLER
+}
+
+enum ShopStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum OrderStatus {
@@ -155,8 +162,37 @@ model User {
   reviewedTopups      WalletTopupRequest[] @relation("WalletTopupReviewer")
   invoices            Invoice[]
   refunds             Refund[]
+  shop                Shop?
+  approvedShops       Shop[]       @relation("ShopApprover")
 
   @@index([email])
+}
+
+model Shop {
+  id              String     @id @default(uuid())
+  name            String     @unique
+  slug            String     @unique
+  description     String?
+  logoUrl         String?
+  bannerUrl       String?
+  phone           String?
+  address         String?
+  status          ShopStatus @default(PENDING)
+  userId          String     @unique
+  approvedAt      DateTime?
+  approvedById    String?
+  rejectionReason String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy User?     @relation("ShopApprover", fields: [approvedById], references: [id])
+  products   Product[]
+  orderItems OrderItem[]
+
+  @@index([status])
+  @@index([slug])
+  @@index([userId])
 }
 
 model Address {
@@ -206,12 +242,14 @@ model Product {
   stock         Int       @default(0)
   weightGrams   Int       @default(500)
   categoryId    String
+  shopId        String?
   averageRating Float     @default(0)
   reviewCount   Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   category       Category        @relation(fields: [categoryId], references: [id])
+  shop           Shop?           @relation(fields: [shopId], references: [id])
   images         ProductImage[]
   tags           ProductTag[]
   variants       ProductVariant[]
@@ -224,6 +262,7 @@ model Product {
 
   @@index([slug])
   @@index([categoryId])
+  @@index([shopId])
   @@index([createdAt])
   @@index([priceVnd])
 }
@@ -334,6 +373,7 @@ model OrderItem {
   orderId       String
   productId     String
   variantId     String?
+  shopId        String?
   productName   String
   variantName   String?
   variantSku    String?
@@ -345,9 +385,11 @@ model OrderItem {
   order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product         @relation(fields: [productId], references: [id])
   variant ProductVariant? @relation(fields: [variantId], references: [id])
+  shop    Shop?           @relation(fields: [shopId], references: [id])
 
   @@index([orderId])
   @@index([variantId])
+  @@index([shopId])
 }
 
 model Payment {
