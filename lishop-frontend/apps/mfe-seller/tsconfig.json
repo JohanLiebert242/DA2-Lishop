@@ -12,6 +12,7 @@
   "compilerOptions": {
     "allowJs": true,
     "skipLibCheck": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "paths": { "@/*": ["./src/*"] }
   }
 }
