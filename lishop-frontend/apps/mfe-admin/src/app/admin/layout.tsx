@@ -28,8 +28,6 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
-import { hasSessionCookie } from '@lishop/shared';
-
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
 const SHELL_URL = process.env['NEXT_PUBLIC_SHELL_URL'] ?? 'http://localhost:3010';
 
@@ -81,11 +79,6 @@ const FLAT_NAV_ITEMS = NAV_SECTIONS.flatMap((section) => section.items);
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    if (!hasSessionCookie()) {
-      window.location.replace(`${AUTH_URL}/login`);
-      return;
-    }
-
     fetch(`${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000'}/auth/me`, {
       credentials: 'include',
     })
