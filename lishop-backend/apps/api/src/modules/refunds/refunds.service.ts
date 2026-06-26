@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { RefundMethod, RefundStatus } from '@lishop/database';
+import { prisma, RefundMethod, RefundStatus } from '@lishop/database';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { WalletService } from '../wallet/wallet.service';
 import { RefundData, RefundsRepository } from './refunds.repository';
@@ -59,6 +59,29 @@ export class RefundsService {
 
     if (!refund) {
       throw new NotFoundException('Không tìm thấy yêu cầu hoàn tiền');
+    }
+
+    // Deduct loyalty points that were awarded for this order
+    const orderNum = refund.order.orderNumber;
+    const loyaltyAward = await prisma.loyaltyPoint.findFirst({
+      where: { userId: refund.userId, description: `Tích điểm đơn hàng #${orderNum}` },
+    });
+    if (loyaltyAward) {
+      await prisma.$transaction([
+        prisma.loyaltyPoint.create({
+          data: {
+            userId: refund.userId,
+            points: -loyaltyAward.points,
+            description: `Trừ điểm hoàn tiền đơn hàng #${orderNum}`,
+          },
+        }),
+        prisma.user.update({
+          where: { id: refund.userId },
+          data: { loyaltyPoints: { decrement: loyaltyAward.points } },
+        }),
+      ]).catch((err) =>
+        console.error('[RefundsService] failed to deduct loyalty points', err),
+      );
     }
 
     let updated: RefundData;
