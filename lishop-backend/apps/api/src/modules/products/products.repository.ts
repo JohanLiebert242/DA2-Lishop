@@ -37,6 +37,7 @@ export class ProductsRepository {
       inStock,
       onSale,
       freeShipping,
+      shopId,
     } = query;
 
     const priceFilter: Prisma.IntFilter = {
@@ -90,6 +91,7 @@ export class ProductsRepository {
       ...(ratingFilter && { averageRating: ratingFilter }),
       ...(inStock && { stock: { gt: 0 } }),
       ...(onSale && { tags: { some: { tag: { name: { equals: 'sale', mode: Prisma.QueryMode.insensitive } } } } }),
+      ...(shopId && { shopId }),
       ...(textFilters.length > 0 && { AND: textFilters }),
     };
 

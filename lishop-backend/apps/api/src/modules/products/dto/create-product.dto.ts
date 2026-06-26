@@ -42,6 +42,7 @@ export class CreateProductDto {
   @ApiProperty() @IsInt() @Min(0) @Type(() => Number) stock!: number;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Type(() => Number) weightGrams?: number;
   @ApiProperty() @IsUUID() categoryId!: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() shopId?: string;
   @ApiPropertyOptional({ type: [ProductImageInputDto] })
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => ProductImageInputDto) images?: ProductImageInputDto[];
   @ApiPropertyOptional({ type: [String] })

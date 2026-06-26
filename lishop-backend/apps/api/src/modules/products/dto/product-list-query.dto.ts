@@ -21,5 +21,6 @@ export class ProductListQueryDto {
   @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => value === true || value === 'true') inStock?: boolean;
   @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => value === true || value === 'true') onSale?: boolean;
   @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => value === true || value === 'true') freeShipping?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsString() shopId?: string;
   @ApiPropertyOptional({ enum: ProductSortOption }) @IsOptional() @IsEnum(ProductSortOption) sort?: ProductSortOption;
 }

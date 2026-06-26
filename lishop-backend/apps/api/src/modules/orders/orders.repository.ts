@@ -21,6 +21,7 @@ export interface ShipmentWithEvents {
 export interface OrderItemInput {
   productId: string;
   variantId?: string | null;
+  shopId?: string | null;
   productName: string;
   variantName?: string | null;
   variantSku?: string | null;
@@ -60,6 +61,7 @@ export interface OrderWithDetails {
     productId: string;
     productSlug: string | null;
     variantId: string | null;
+    shopId: string | null;
     productName: string;
     variantName: string | null;
     variantSku: string | null;
@@ -179,6 +181,7 @@ export class OrdersRepository {
             create: input.items.map((item) => ({
               productId: item.productId,
               variantId: item.variantId ?? null,
+              shopId: item.shopId ?? null,
               productName: item.productName,
               variantName: item.variantName ?? null,
               variantSku: item.variantSku ?? null,
@@ -248,6 +251,39 @@ export class OrdersRepository {
       include: ORDER_INCLUDE,
     });
     return orders.map(normalizeOrder);
+  }
+
+  async findByShopId(shopId: string): Promise<OrderWithDetails[]> {
+    // Find orders that have at least one OrderItem belonging to this shop
+    const orderIds = await prisma.orderItem.findMany({
+      where: { shopId },
+      select: { orderId: true },
+      distinct: ['orderId'],
+    });
+
+    if (orderIds.length === 0) return [];
+
+    const orders = await prisma.order.findMany({
+      where: { id: { in: orderIds.map((o) => o.orderId) } },
+      orderBy: { createdAt: 'desc' },
+      include: ORDER_INCLUDE,
+    });
+    return orders.map(normalizeOrder);
+  }
+
+  async findByShopIdAndOrderId(shopId: string, orderId: string): Promise<OrderWithDetails | null> {
+    const order = await prisma.order.findFirst({
+      where: { id: orderId },
+      include: ORDER_INCLUDE,
+    });
+    if (!order) return null;
+
+    const normalized = normalizeOrder(order);
+    // Filter items to only include those belonging to this shop
+    const shopItems = normalized.items.filter((item) => item.shopId === shopId);
+    if (shopItems.length === 0) return null;
+
+    return { ...normalized, items: shopItems };
   }
 
   async findShipmentByOrderId(orderId: string, userId: string): Promise<ShipmentWithEvents | null> {

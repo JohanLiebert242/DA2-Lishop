@@ -80,6 +80,7 @@ export class OrdersService {
       items: cart.items.map((item) => ({
         productId: item.productId,
         variantId: item.variantId,
+        shopId: item.shopId,
         productName: item.productName,
         variantName: item.variantName,
         variantSku: item.variantSku,
@@ -156,6 +157,16 @@ export class OrdersService {
 
   findMyOrders(userId: string): Promise<OrderWithDetails[]> {
     return this.repo.findByUserId(userId);
+  }
+
+  findByShopId(shopId: string): Promise<OrderWithDetails[]> {
+    return this.repo.findByShopId(shopId);
+  }
+
+  async findByShopIdAndOrderId(shopId: string, orderId: string): Promise<OrderWithDetails> {
+    const order = await this.repo.findByShopIdAndOrderId(shopId, orderId);
+    if (!order) throw new NotFoundException('Đơn hàng không tồn tại');
+    return order;
   }
 
   async findMyOrder(userId: string, orderId: string): Promise<OrderWithDetails> {

@@ -24,6 +24,7 @@ import { ShippingModule } from './modules/shipping/shipping.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { ReturnsModule } from './modules/returns/returns.module';
 import { SupportModule } from './modules/support/support.module';
+import { ShopsModule } from './modules/shops/shops.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { WalletModule } from './modules/wallet/wallet.module';
@@ -51,6 +52,7 @@ import { ShoppingModule } from './modules/shopping/shopping.module';
     InventoryModule,
     ReturnsModule,
     SupportModule,
+    ShopsModule,
     PaymentsModule,
     InvoicesModule,
     WalletModule,
