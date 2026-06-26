@@ -1,27 +1,14 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { ShoppingBag } from 'lucide-react';
+import { ClipboardList, ClipboardCheck, PackageCheck, TimerReset, Truck } from 'lucide-react';
 import Link from 'next/link';
-import { sellerApi } from '../../../lib/seller-api';
-
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Chờ xác nhận',
-  PROCESSING: 'Đang xử lý',
-  SHIPPED: 'Đang giao',
-  DELIVERED: 'Đã giao',
-  CANCELLED: 'Đã hủy',
-  REFUNDED: 'Hoàn tiền',
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-800',
-  PROCESSING: 'bg-blue-100 text-blue-800',
-  SHIPPED: 'bg-indigo-100 text-indigo-800',
-  DELIVERED: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-red-100 text-red-800',
-  REFUNDED: 'bg-gray-100 text-gray-700',
-};
+import { formatVND } from '@lishop/shared';
+import { sellerApi } from '@/lib/seller-api';
+import { STATUS_LABELS, STATUS_COLORS, ORDER_STATUSES } from '../_constants';
+import { SellerPageHeader } from '../_components/seller-page-header';
+import { SellerMetricCard } from '../_components/seller-metric-card';
+import { SellerEmptyState } from '../_components/seller-empty-state';
 
 export default function OrdersPage() {
   const { data: orders = [], isLoading } = useQuery({
@@ -29,76 +16,104 @@ export default function OrdersPage() {
     queryFn: () => sellerApi.getOrders(),
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-gray-500">Đang tải...</p>
-      </div>
-    );
-  }
+  const totalRevenue = orders.reduce((s, o) => s + o.totalVnd, 0);
+  const processingOrders = orders.filter((o) => o.status === 'PROCESSING').length;
+  const shippingOrders = orders.filter((o) => o.status === 'SHIPPED').length;
+  const pendingOrders = orders.filter((o) => o.status === 'PENDING').length;
+
+  const orderStatusLabel = (status: string) =>
+    STATUS_LABELS[status as keyof typeof STATUS_LABELS] ?? status;
+
+  const orderStatusColor = (status: string) =>
+    STATUS_COLORS[status as keyof typeof STATUS_COLORS] ?? 'bg-gray-100 text-gray-700';
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Đơn hàng</h1>
-        <p className="text-sm text-gray-500">Đơn hàng có chứa sản phẩm của cửa hàng bạn</p>
+      <SellerPageHeader
+        icon={ClipboardList}
+        title="Đơn hàng"
+        description="Theo dõi và quản lý đơn hàng có chứa sản phẩm của cửa hàng bạn."
+        badge="Tổng quan"
+        tone="amber"
+        stats={[
+          { label: 'Tổng đơn', value: isLoading ? '...' : `${orders.length}` },
+          { label: 'Chờ xác nhận', value: isLoading ? '...' : `${pendingOrders}` },
+          { label: 'Đang giao', value: isLoading ? '...' : `${shippingOrders}` },
+          { label: 'Doanh thu', value: isLoading ? '...' : formatVND(totalRevenue) },
+        ]}
+      />
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <SellerMetricCard icon={ClipboardCheck} label="Tổng đơn" value={isLoading ? '...' : `${orders.length}`} hint="Tổng số đơn hàng" tone="indigo" />
+        <SellerMetricCard icon={TimerReset} label="Chờ xác nhận" value={isLoading ? '...' : `${pendingOrders}`} hint="Cần xử lý" tone="amber" />
+        <SellerMetricCard icon={PackageCheck} label="Đang xử lý" value={isLoading ? '...' : `${processingOrders}`} hint="Đơn đang xử lý" tone="sky" />
+        <SellerMetricCard icon={Truck} label="Đang giao" value={isLoading ? '...' : `${shippingOrders}`} hint="Đang vận chuyển" tone="purple" />
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-        <table className="w-full">
-          <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-            <tr>
-              <th className="px-4 py-3 text-left">Mã đơn</th>
-              <th className="px-4 py-3 text-left">Khách hàng</th>
-              <th className="px-4 py-3 text-left">Sản phẩm</th>
-              <th className="px-4 py-3 text-left">Tổng tiền</th>
-              <th className="px-4 py-3 text-left">Trạng thái</th>
-              <th className="px-4 py-3 text-left">Ngày đặt</th>
-              <th className="px-4 py-3 text-left" />
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr key={order.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                  {order.orderNumber}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-700">
-                  {order.user.firstName} {order.user.lastName}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-700">
-                  {order.items.length} sản phẩm
-                </td>
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                  {order.totalVnd.toLocaleString('vi-VN')}₫
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[order.status] ?? 'bg-gray-100 text-gray-700'}`}>
-                    {STATUS_LABELS[order.status] ?? order.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-500">
-                  {new Date(order.createdAt).toLocaleDateString('vi-VN')}
-                </td>
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/orders/${order.id}`}
-                    className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Chi tiết
-                  </Link>
-                </td>
+      <div className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_18px_48px_-36px_rgba(15,23,42,0.55)]">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            {isLoading ? 'Đang tải...' : `${orders.length} đơn hàng`}
+          </h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-5 py-3 text-left">Mã đơn</th>
+                <th className="px-5 py-3 text-left">Khách hàng</th>
+                <th className="px-5 py-3 text-left">Sản phẩm</th>
+                <th className="px-5 py-3 text-left">Tổng tiền</th>
+                <th className="px-5 py-3 text-left">Trạng thái</th>
+                <th className="px-5 py-3 text-left">Ngày đặt</th>
+                <th className="px-5 py-3 text-left" />
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {orders.length === 0 ? (
-          <div className="flex flex-col items-center py-20 text-center">
-            <ShoppingBag className="mb-3 h-10 w-10 text-gray-300" />
-            <h3 className="text-base font-semibold text-gray-900">Chưa có đơn hàng nào</h3>
-            <p className="mt-1 text-sm text-gray-500">Khi khách hàng đặt sản phẩm của bạn, đơn hàng sẽ hiện ở đây.</p>
-          </div>
-        ) : null}
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                  <td className="px-5 py-4 font-mono text-sm font-medium text-slate-900">
+                    #{order.orderNumber}
+                  </td>
+                  <td className="px-5 py-4 text-sm text-slate-700">
+                    {order.user.firstName} {order.user.lastName}
+                  </td>
+                  <td className="px-5 py-4 text-sm text-slate-700">
+                    {order.items.length} sản phẩm
+                  </td>
+                  <td className="px-5 py-4 text-sm font-medium text-slate-900">
+                    {formatVND(order.totalVnd)}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${orderStatusColor(order.status)}`}>
+                      {orderStatusLabel(order.status)}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-sm text-slate-500">
+                    {new Date(order.createdAt).toLocaleDateString('vi-VN')}
+                  </td>
+                  <td className="px-5 py-4">
+                    <Link
+                      href={`/orders/${order.id}`}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                    >
+                      Chi tiết
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!isLoading && orders.length === 0 && (
+            <div className="p-5">
+              <SellerEmptyState
+                icon={ClipboardList}
+                title="Chưa có đơn hàng nào"
+                description="Khi khách hàng đặt sản phẩm của bạn, đơn hàng sẽ hiện ở đây."
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
