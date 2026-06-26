@@ -14,6 +14,7 @@ export interface CartRow {
     priceUsd: number;
     stock: number;
     weightGrams: number;
+    shopId: string | null;
     images: { url: string }[];
   };
   variant: {
@@ -66,6 +67,7 @@ export class CartRepository {
             priceUsd: true,
             stock: true,
             weightGrams: true,
+            shopId: true,
             images: {
               where: { isPrimary: true },
               take: 1,

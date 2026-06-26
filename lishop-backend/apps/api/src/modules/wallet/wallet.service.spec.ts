@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 import { WalletRepository } from './wallet.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import { WalletTxType } from '@lishop/database';
 
 jest.mock('@lishop/database', () => ({
@@ -54,6 +55,7 @@ describe('WalletService', () => {
         WalletService,
         { provide: WalletRepository, useValue: repo },
         { provide: NotificationsRepository, useValue: notifRepo },
+        { provide: RealtimeService, useValue: { emitAdminFeed: jest.fn() } },
       ],
     }).compile();
     service = module.get(WalletService);

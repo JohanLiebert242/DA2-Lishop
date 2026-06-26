@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { FlashSalesService } from './flash-sales.service';
 import { FlashSalesRepository } from './flash-sales.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 
 const mockSale: any = {
   id: 'sale1',
@@ -26,7 +27,11 @@ describe('FlashSalesService', () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [FlashSalesService, { provide: FlashSalesRepository, useValue: repo }],
+      providers: [
+        FlashSalesService,
+        { provide: FlashSalesRepository, useValue: repo },
+        { provide: RealtimeService, useValue: { emitFlashSaleUpdate: jest.fn() } },
+      ],
     }).compile();
     service = module.get(FlashSalesService);
   });
@@ -102,7 +107,7 @@ describe('FlashSalesService', () => {
 
   it('addItem adds product to sale', async () => {
     repo.findById.mockResolvedValue(mockSale);
-    repo.addItem.mockResolvedValue({ ...mockSale, items: [{ id: 'item1', productId: 'p1', discountPercent: 20 }] });
+    repo.addItem.mockResolvedValue({ ...mockSale, items: [{ id: 'item1', product: { id: 'p1' }, discountPercent: 20 }] });
     const result = await service.addItem('sale1', 'p1', 20);
     expect(repo.addItem).toHaveBeenCalledWith('sale1', 'p1', 20);
     expect(result.items).toHaveLength(1);

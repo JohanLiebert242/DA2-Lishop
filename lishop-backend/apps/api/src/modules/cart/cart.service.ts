@@ -24,6 +24,7 @@ export interface CartItemDto {
   priceUsd: number;
   stock: number;
   weightGrams: number;
+  shopId: string | null;
 }
 
 export interface CartDto {
@@ -115,6 +116,7 @@ export class CartService {
       priceUsd: row.variant?.priceUsd ?? row.product.priceUsd,
       stock: row.variant?.stock ?? row.product.stock,
       weightGrams: row.variant?.weightGrams ?? row.product.weightGrams,
+      shopId: row.product.shopId,
     }));
 
     const subtotalVnd = items.reduce((s, i) => s + i.priceVnd * i.quantity, 0);

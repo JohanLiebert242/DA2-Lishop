@@ -6,6 +6,7 @@ import { AddressesRepository } from '../addresses/addresses.repository';
 import { CartService } from '../cart/cart.service';
 import { CouponsService } from '../promotions/coupons.service';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { WalletService } from '../wallet/wallet.service';
 import { PaymentMethod, OrderStatus, ShippingProvider } from '@lishop/database';
@@ -100,6 +101,7 @@ describe('OrdersService', () => {
         { provide: CartService, useValue: cartService },
         { provide: CouponsService, useValue: couponsService },
         { provide: NotificationsRepository, useValue: notifRepo },
+        { provide: RealtimeService, useValue: { emitOrderStatusUpdate: jest.fn(), emitAdminFeed: jest.fn() } },
         { provide: ShippingService, useValue: shippingService },
         { provide: WalletService, useValue: walletService },
       ],

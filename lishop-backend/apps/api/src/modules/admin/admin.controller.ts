@@ -18,10 +18,12 @@ import { ReturnsService } from '../returns/returns.service';
 import { UpdateReturnStatusDto } from '../returns/dto/update-return-status.dto';
 import { SupportTicketsService } from '../support/support-tickets.service';
 import { FaqService } from '../support/faq.service';
+import { ShopsService } from '../shops/shops.service';
 import { UpdateTicketStatusDto } from '../support/dto/update-ticket-status.dto';
 import { AddMessageDto } from '../support/dto/add-message.dto';
 import { CreateFaqDto } from '../support/dto/create-faq.dto';
 import { UpdateFaqDto } from '../support/dto/update-faq.dto';
+import { AiGenerateFaqAnswerDto } from '../support/dto/ai-generate-faq-answer.dto';
 import { ReviewsService } from '../reviews/reviews.service';
 import { FlashSalesService } from '../promotions/flash-sales.service';
 import { CreateFlashSaleDto } from '../promotions/dto/create-flash-sale.dto';
@@ -31,7 +33,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { RefundsService } from '../refunds/refunds.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { WalletService } from '../wallet/wallet.service';
-import { ReviewStatus, TicketStatus } from '@lishop/database';
+import { ReviewStatus, ShopStatus, TicketStatus } from '@lishop/database';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -50,6 +52,7 @@ export class AdminController {
     private readonly refundsService: RefundsService,
     private readonly invoicesService: InvoicesService,
     private readonly walletService: WalletService,
+    private readonly shopsService: ShopsService,
   ) {}
 
   @Get('stats')
@@ -63,8 +66,9 @@ export class AdminController {
   listOrders(
     @Query('page') page = 1,
     @Query('limit') limit = 50,
+    @Query('shopId') shopId?: string,
   ) {
-    return this.adminService.listOrders(Number(page), Number(limit));
+    return this.adminService.listOrders(Number(page), Number(limit), shopId);
   }
 
   @Patch('orders/:id/status')
@@ -249,6 +253,13 @@ export class AdminController {
     return this.faqService.delete(id);
   }
 
+  @Post('faq/ai-answer')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Generate an AI-powered answer for a FAQ question' })
+  generateFaqAiAnswer(@Body() dto: AiGenerateFaqAnswerDto) {
+    return this.faqService.generateAiAnswer(dto);
+  }
+
   // ---- Review moderation ----
 
   @Get('reviews')
@@ -399,5 +410,32 @@ export class AdminController {
     @Body('adminNote') adminNote?: string,
   ) {
     return this.walletService.rejectTopupRequest(id, adminId, adminNote);
+  }
+
+  // ---- Shops ----
+
+  @Get('shops')
+  @ApiOperation({ summary: 'List all shops (optional ?status filter)' })
+  listShops(@Query('status') status?: string) {
+    return this.shopsService.findAll({ status: status as ShopStatus | undefined });
+  }
+
+  @Patch('shops/:id/approve')
+  @ApiOperation({ summary: 'Approve a shop registration' })
+  approveShop(
+    @CurrentUser('id') adminId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.shopsService.approveShop(id, adminId);
+  }
+
+  @Patch('shops/:id/reject')
+  @ApiOperation({ summary: 'Reject a shop registration' })
+  rejectShop(
+    @CurrentUser('id') adminId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('reason') reason?: string,
+  ) {
+    return this.shopsService.rejectShop(id, adminId, reason);
   }
 }

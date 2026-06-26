@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, ForbiddenException, NotFoundExc
 import { ReturnsService } from './returns.service';
 import { ReturnsRepository } from './returns.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import { RefundsService } from '../refunds/refunds.service';
 import { OrderStatus, ReturnStatus } from '@lishop/database';
 import { ConfigService } from '@nestjs/config';
@@ -92,6 +93,7 @@ describe('ReturnsService', () => {
   const notifRepo = { createNotification: jest.fn() };
   const refundsService = { createRefund: jest.fn() };
   const config = { get: jest.fn() };
+  const realtimeMock = { emitAdminFeed: jest.fn() };
 
   beforeEach(async () => {
     notifRepo.createNotification.mockResolvedValue({});
@@ -108,6 +110,7 @@ describe('ReturnsService', () => {
         ReturnsService,
         { provide: ReturnsRepository, useValue: repo },
         { provide: NotificationsRepository, useValue: notifRepo },
+        { provide: RealtimeService, useValue: realtimeMock },
         { provide: RefundsService, useValue: refundsService },
         { provide: ConfigService, useValue: config },
       ],

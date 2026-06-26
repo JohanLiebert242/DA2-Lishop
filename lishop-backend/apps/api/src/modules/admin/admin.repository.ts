@@ -99,9 +99,21 @@ export class AdminRepository {
     };
   }
 
-  async findAllOrders(page = 1, limit = 50): Promise<{ orders: AdminOrderItem[]; total: number }> {
+  async findAllOrders(page = 1, limit = 50, shopId?: string): Promise<{ orders: AdminOrderItem[]; total: number }> {
+    const where: { id?: { in: string[] } } = {};
+
+    if (shopId) {
+      const orderIds = await prisma.orderItem.findMany({
+        where: { shopId },
+        select: { orderId: true },
+        distinct: ['orderId'],
+      });
+      where.id = { in: orderIds.map((o) => o.orderId) };
+    }
+
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
+        where: Object.keys(where).length > 0 ? where : undefined,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -110,7 +122,7 @@ export class AdminRepository {
           _count: { select: { items: true } },
         },
       }),
-      prisma.order.count(),
+      prisma.order.count({ where: Object.keys(where).length > 0 ? where : undefined }),
     ]);
     return {
       orders: orders.map((o) => ({

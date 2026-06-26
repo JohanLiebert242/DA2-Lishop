@@ -67,8 +67,8 @@ export class AdminService {
     return stats;
   }
 
-  listOrders(page = 1, limit = 50): Promise<{ orders: AdminOrderItem[]; total: number }> {
-    return this.repo.findAllOrders(page, limit);
+  listOrders(page = 1, limit = 50, shopId?: string): Promise<{ orders: AdminOrderItem[]; total: number }> {
+    return this.repo.findAllOrders(page, limit, shopId);
   }
 
   async updateOrderStatus(orderId: string, status: OrderStatus): Promise<AdminOrderItem> {

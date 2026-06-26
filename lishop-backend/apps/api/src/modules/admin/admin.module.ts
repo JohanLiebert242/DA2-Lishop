@@ -13,9 +13,10 @@ import { InvoicesModule } from '../invoices/invoices.module';
 import { RefundsModule } from '../refunds/refunds.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { ProductsModule } from '../products/products.module';
+import { ShopsModule } from '../shops/shops.module';
 
 @Module({
-  imports: [NotificationsModule, RealtimeModule, ReturnsModule, SupportModule, ReviewsModule, PromotionsModule, PaymentsModule, InvoicesModule, RefundsModule, WalletModule, ProductsModule],
+  imports: [NotificationsModule, RealtimeModule, ReturnsModule, SupportModule, ReviewsModule, PromotionsModule, PaymentsModule, InvoicesModule, RefundsModule, WalletModule, ProductsModule, ShopsModule],
   providers: [AdminRepository, AdminService],
   controllers: [AdminController],
 })

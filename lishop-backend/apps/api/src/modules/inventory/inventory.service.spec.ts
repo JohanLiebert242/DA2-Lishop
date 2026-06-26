@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { InventoryRepository } from './inventory.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 
 jest.mock('@lishop/database', () => ({
   prisma: {
@@ -36,6 +37,7 @@ describe('InventoryService', () => {
       providers: [
         InventoryService,
         { provide: InventoryRepository, useValue: inventoryRepo },
+        { provide: RealtimeService, useValue: { emitStockUpdate: jest.fn() } },
       ],
     }).compile();
     service = module.get(InventoryService);

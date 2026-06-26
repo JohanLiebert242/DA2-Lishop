@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { AdminService } from './admin.service';
 import { AdminRepository } from './admin.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { RedisService } from '../redis/redis.service';
 import { ProductsService } from '../products/products.service';
@@ -86,6 +87,7 @@ describe('AdminService', () => {
         AdminService,
         { provide: AdminRepository, useValue: repo },
         { provide: NotificationsRepository, useValue: notifRepo },
+        { provide: RealtimeService, useValue: { emitOrderStatusUpdate: jest.fn() } },
         { provide: InvoicesService, useValue: invoicesService },
         { provide: RedisService, useValue: redisService },
         { provide: ProductsService, useValue: productsService },
