@@ -23,8 +23,9 @@ export async function addToCart(productId: string, quantity: number, variantId?:
   // Bump the cart badge count in localStorage so the shell can read it
   const json = await res.json();
   const cart = json.data ?? json;
-  if (typeof cart.items === 'object') {
-    const count = String((cart.items as unknown[]).length);
+  if (Array.isArray(cart.items)) {
+    const totalQty = cart.items.reduce((sum: number, i: { quantity: number }) => sum + (i.quantity ?? 1), 0);
+    const count = String(totalQty);
     window.localStorage.setItem('lishop_cart_count', count);
     window.dispatchEvent(new StorageEvent('storage', { key: 'lishop_cart_count', newValue: count }));
   }

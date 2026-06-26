@@ -25,6 +25,9 @@ export default function CartDrawer({ open = true, onClose, standalone = false }:
     staleTime: 30_000,
   });
 
+  const itemCount = (data: { items: { quantity: number }[] }) =>
+    data.items.reduce((sum, i) => sum + i.quantity, 0);
+
   const updateMutation = useMutation({
     mutationFn: ({ productId, quantity }: { productId: string; quantity: number }) =>
       cartApi.updateItem(productId, quantity),
@@ -32,7 +35,7 @@ export default function CartDrawer({ open = true, onClose, standalone = false }:
       qc.setQueryData(['cart-drawer'], data);
       qc.invalidateQueries({ queryKey: ['cart'] });
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem('lishop_cart_count', String(data.items.length));
+        window.localStorage.setItem('lishop_cart_count', String(itemCount(data)));
       }
     },
   });
@@ -43,15 +46,15 @@ export default function CartDrawer({ open = true, onClose, standalone = false }:
       qc.setQueryData(['cart-drawer'], data);
       qc.invalidateQueries({ queryKey: ['cart'] });
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem('lishop_cart_count', String(data.items.length));
+        window.localStorage.setItem('lishop_cart_count', String(itemCount(data)));
       }
     },
   });
 
-  // Sync item count to localStorage whenever cart changes
+  // Sync total quantity to localStorage whenever cart changes
   useEffect(() => {
     if (cart && typeof window !== 'undefined') {
-      window.localStorage.setItem('lishop_cart_count', String(cart.items.length));
+      window.localStorage.setItem('lishop_cart_count', String(itemCount(cart)));
     }
   }, [cart]);
 
