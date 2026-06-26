@@ -1,0 +1,36 @@
+
+> lishop-backend@ test C:\Users\nguye\OneDrive\Desktop\DA2\lishop-backend
+> turbo run test
+
+• turbo 2.8.20
+
+   • Packages in scope: @lishop/api, @lishop/config, @lishop/contracts, @lishop/database
+   • Running test in 4 packages
+   • Remote caching disabled
+
+@lishop/api:test: cache bypass, force executing 1751abd41f8ab376
+@lishop/api:test: 
+@lishop/api:test: > @lishop/api@0.0.1 test C:\Users\nguye\OneDrive\Desktop\DA2\lishop-backend\apps\api
+@lishop/api:test: > jest --passWithNoTests --maxWorkers=50%
+@lishop/api:test: 
+@lishop/api:test: FAIL src/modules/support/faq.service.spec.ts (14.921 s)
+@lishop/api:test:   ● FaqService › getPublished groups FAQs by category
+@lishop/api:test: 
+@lishop/api:test:     Nest can't resolve dependencies of the FaqService (FaqRepository, ?). Please make sure that the argument ConfigService at index [1] is available in the RootTestModule context.
+@lishop/api:test: 
+@lishop/api:test:     Potential solutions:
+@lishop/api:test:     - Is RootTestModule a valid NestJS module?
+@lishop/api:test:     - If ConfigService is a provider, is it part of the current RootTestModule?
+@lishop/api:test:     - If ConfigService is exported from a separate @Module, is that module imported within RootTestModule?
+@lishop/api:test:       @Module({
+@lishop/api:test:         imports: [ /* the Module containing ConfigService */ ]
+@lishop/api:test:       })
+@lishop/api:test: 
+@lishop/api:test:     [0m [90m 26 |[39m
+@lishop/api:test:      [90m 27 |[39m   beforeEach([36masync[39m () [33m=>[39m {
+@lishop/api:test:     [31m[1m>[22m[39m[90m 28 |[39m     [36mconst[39m module [33m=[39m [36mawait[39m [33mTest[39m[33m.[39mcreateTestingModule({
+@lishop/api:test:      [90m    |[39m                    [31m[1m^[22m[39m
+@lishop/api:test:      [90m 29 |[39m       providers[33m:[39m [[33mFaqService[39m[33m,[39m { provide[33m:[39m [33mFaqRepository[39m[33m,[39m useValue[33m:[39m repo }][33m,[39m
+@lishop/api:test:      [90m 30 |[39m     })[33m.[39mcompile()[33m;[39m
+@lishop/api:test:      [90m 31 |[39m     service [33m=[39m module[33m.[39m[36mget[39m([33mFaqService[39m)[33m;[39m[0m
+@lishop/api:test: 
