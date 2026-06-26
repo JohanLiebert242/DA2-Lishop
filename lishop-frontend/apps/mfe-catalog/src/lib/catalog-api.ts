@@ -268,4 +268,16 @@ export const catalogApi = {
 
   getCurrentUser: () =>
     apiFetch<CurrentUserInfo>('/auth/me'),
+
+  // Shop
+  getShopBySlug: (slug: string) =>
+    apiFetch<{ id: string; name: string; slug: string; description: string | null; logoUrl: string | null; bannerUrl: string | null; phone: string | null; address: string | null; createdAt: string }>(`/shops/${slug}`),
+
+  getShopProducts: (slug: string, params?: { cursor?: string; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.cursor) qs.set('cursor', params.cursor);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const search = qs.toString();
+    return apiFetch<ProductListResponse>(`/shops/${slug}/products${search ? `?${search}` : ''}`);
+  },
 };

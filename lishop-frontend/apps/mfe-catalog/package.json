@@ -10,12 +10,13 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@lishop/ui": "workspace:*",
-    "@lishop/shared": "workspace:*",
-    "@lishop/event-bus": "workspace:*",
     "@lishop/contracts": "workspace:*",
+    "@lishop/event-bus": "workspace:*",
+    "@lishop/shared": "workspace:*",
+    "@lishop/ui": "workspace:*",
     "@module-federation/nextjs-mf": "^8.8.0",
     "@tanstack/react-query": "^5.50.0",
+    "lucide-react": "^0.400.0",
     "next": "^15.0.0",
     "next-intl": "^3.17.0",
     "react": "^19.0.0",

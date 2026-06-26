@@ -1,76 +1,158 @@
-import Link from 'next/link';
-import { ProductCard } from '../../../components/product-card';
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { useParams, useSearchParams } from 'next/navigation';
+import { Store, MapPin, Phone, Calendar } from 'lucide-react';
 import { catalogApi } from '../../../lib/catalog-api';
-import { buildShopStats, getShopIdentityFromSlug } from '../../../lib/shop-info';
+import { getShopIdentityFromSlug, buildShopStats } from '../../../lib/shop-info';
+import Link from 'next/link';
 
-interface Props {
-  params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ fromProduct?: string }>;
-}
+export default function ShopPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const slug = params.slug as string;
+  const fromProduct = searchParams.get('fromProduct');
+  const identity = getShopIdentityFromSlug(slug);
 
-export default async function ShopPage({ params, searchParams }: Props) {
-  const { slug } = await params;
-  const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const shop = getShopIdentityFromSlug(slug);
-  const products = await catalogApi.getProducts({
-    ...(shop.brand && { brand: shop.brand }),
-    limit: 100,
-    sort: 'newest',
-  }).catch(() => ({ items: [], nextCursor: null }));
-  const stats = buildShopStats(products.items);
-  const backHref = resolvedSearchParams?.fromProduct ? `/products/${resolvedSearchParams.fromProduct}` : '/products';
-  const statItems = [
-    { label: 'Sản phẩm', value: stats.productCount.toLocaleString('vi-VN') },
-    { label: 'Danh mục', value: stats.categoryCount.toLocaleString('vi-VN') },
-    { label: 'Biến thể', value: stats.variantCount.toLocaleString('vi-VN') },
-  ];
+  const { data: shop, isLoading: shopLoading } = useQuery({
+    queryKey: ['shop', slug],
+    queryFn: () => catalogApi.getShopBySlug(slug),
+    enabled: !!slug,
+  });
+
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['shop-products', slug],
+    queryFn: () => catalogApi.getProducts({ brand: identity.brand, limit: 200 }),
+    enabled: !!slug,
+  });
+
+  if (shopLoading || productsLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-gray-500">Đang tải...</p>
+      </div>
+    );
+  }
+
+  // Fallback to brand-derived identity when the shop doesn't exist in the backend
+  const shopName = shop?.name ?? identity.name;
+  const shopDescription = shop?.description ?? null;
+  const shopPhone = shop?.phone ?? null;
+  const shopAddress = shop?.address ?? null;
+  const shopCreatedAt = shop?.createdAt ?? new Date().toISOString();
+  const stats = productsData?.items ? buildShopStats(productsData.items) : null;
 
   return (
-    <main className="min-h-screen bg-warm">
-      <section className="border-b border-warm bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-8">
-          <Link
-            href={backHref}
-            data-testid="shop-back-to-product"
-            className="text-sm font-bold text-indigo-600 transition hover:text-indigo-700"
-          >
-            {resolvedSearchParams?.fromProduct ? 'Quay lại sản phẩm' : 'Quay lại danh sách sản phẩm'}
-          </Link>
-          <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-muted">Cửa hàng</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight text-stone-900">{shop.name}</h1>
-              <p className="mt-2 max-w-2xl text-sm text-muted">
-                Các sản phẩm bên dưới đang được lấy trực tiếp từ danh mục hiện có của shop này.
-              </p>
-            </div>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              {statItems.map((item) => (
-                <div key={item.label} className="rounded-lg bg-warm-100 px-3 py-2">
-                  <p className="text-sm font-black text-stone-900">{item.value}</p>
-                  <p className="text-xs text-muted">{item.label}</p>
-                </div>
-              ))}
+    <div className="mx-auto max-w-6xl space-y-8 px-4 py-8">
+      {/* Back to product link (shown when navigated from a product page) */}
+      {fromProduct ? (
+        <a
+          href={`/products/${fromProduct}`}
+          data-testid="shop-back-to-product"
+          className="inline-flex items-center gap-1 text-sm text-violet-600 hover:text-violet-700"
+        >
+          ← Quay lại sản phẩm
+        </a>
+      ) : null}
+
+      {/* Debug: show slug */}
+      <div data-testid="shop-slug" style={{display:'none'}}>{slug}</div>
+
+      {/* Shop Header */}
+      <section className="rounded-2xl border bg-white p-6 shadow-sm">
+        <div className="flex items-start gap-5">
+          <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-violet-100">
+            <Store className="h-10 w-10 text-violet-600" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold text-gray-900">{shopName}</h1>
+            {shopDescription ? (
+              <p className="mt-1 text-sm text-gray-600">{shopDescription}</p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-500">
+              {shopPhone ? (
+                <span className="inline-flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" />
+                  {shopPhone}
+                </span>
+              ) : null}
+              {shopAddress ? (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {shopAddress}
+                </span>
+              ) : null}
+              <span className="inline-flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5" />
+                Tham gia từ {new Date(shopCreatedAt).toLocaleDateString('vi-VN')}
+              </span>
+              {stats ? (
+                <>
+                  <span className="text-gray-400">·</span>
+                  <span>Sản phẩm {stats.productCount.toLocaleString('vi-VN')}</span>
+                  <span className="text-gray-400">·</span>
+                  <span>Danh mục {stats.categoryCount.toLocaleString('vi-VN')}</span>
+                  <span className="text-gray-400">·</span>
+                  <span>Biến thể {stats.variantCount.toLocaleString('vi-VN')}</span>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-8">
-        {products.items.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-stone-200 bg-white px-4 py-12 text-center">
-            <p className="font-semibold text-stone-700">Cửa hàng chưa có sản phẩm phù hợp.</p>
+      {/* Products */}
+      <div>
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Sản phẩm</h2>
+        {productsData?.items && productsData.items.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {productsData.items.map((product) => {
+              const image = product.images?.find((img) => img.isPrimary) ?? product.images?.[0];
+              return (
+                <Link
+                  key={product.id}
+                  href={`/products/${product.slug}`}
+                  data-testid="shop-product-card"
+                  className="group rounded-xl border bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <div className="mb-3 flex aspect-square items-center justify-center rounded-lg bg-gray-100">
+                    {image ? (
+                      <img
+                        src={image.url}
+                        alt={image.alt ?? product.name}
+                        className="h-full w-full rounded-lg object-cover"
+                      />
+                    ) : (
+                      <Store className="h-8 w-8 text-gray-300" />
+                    )}
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-900 group-hover:text-violet-700 line-clamp-2">
+                    {product.name}
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-gray-900">
+                    {product.priceVnd.toLocaleString('vi-VN')}₫
+                  </p>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                    {product.averageRating > 0 ? (
+                      <span>★ {product.averageRating.toFixed(1)}</span>
+                    ) : null}
+                    {product.stock > 0 ? (
+                      <span className="text-green-600">Còn hàng</span>
+                    ) : (
+                      <span className="text-red-500">Hết hàng</span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {products.items.map((product) => (
-              <div key={product.id} data-testid="shop-product-card">
-                <ProductCard product={product} />
-              </div>
-            ))}
+          <div className="flex flex-col items-center py-16 text-center">
+            <Store className="mb-3 h-10 w-10 text-gray-300" />
+            <p className="text-sm text-gray-500">Cửa hàng chưa có sản phẩm nào.</p>
           </div>
         )}
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }
