@@ -1,8 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { FAQ } from '@lishop/database';
 import { FaqRepository } from './faq.repository';
 import { CreateFaqDto } from './dto/create-faq.dto';
 import { UpdateFaqDto } from './dto/update-faq.dto';
+import { AiGenerateFaqAnswerDto } from './dto/ai-generate-faq-answer.dto';
+import { requestOpenAiText } from '../../common/ai/openai-responses';
 
 export interface FaqGroup {
   category: string;
@@ -115,7 +118,10 @@ const DEFAULT_FAQS: FAQ[] = [
 
 @Injectable()
 export class FaqService {
-  constructor(private readonly repo: FaqRepository) {}
+  constructor(
+    private readonly repo: FaqRepository,
+    private readonly config: ConfigService,
+  ) {}
 
   async getPublished(): Promise<FaqGroup[]> {
     const faqs = await this.repo.findPublished();
@@ -159,6 +165,43 @@ export class FaqService {
     const faq = await this.repo.findById(id);
     if (!faq) throw new NotFoundException('FAQ không tồn tại');
     return this.repo.delete(id);
+  }
+
+  async generateAiAnswer(dto: AiGenerateFaqAnswerDto): Promise<{ answer: string; fallback: boolean }> {
+    const apiKey = this.config.get<string>('OPENAI_API_KEY')?.trim();
+    if (!apiKey) {
+      return { answer: this.buildFallbackAnswer(dto), fallback: true };
+    }
+
+    try {
+      const answer = await requestOpenAiText({
+        apiKey,
+        instructions: [
+          'Bạn là trợ lý AI biên tập nội dung FAQ cho admin Lishop.',
+          'Dựa vào câu hỏi được cung cấp, hãy viết một câu trả lời bằng tiếng Việt có dấu, 2-4 câu, rõ ràng và hữu ích.',
+          'Câu trả lời phải phù hợp với ngữ cảnh thương mại điện tử.',
+          'Không dùng markdown, không emoji, chỉ trả về phần câu trả lời cuối cùng.',
+        ].join('\n'),
+        inputText: [
+          'Hãy tạo câu trả lời cho câu hỏi FAQ sau:',
+          `Câu hỏi: ${dto.question}`,
+          dto.category ? `Danh mục: ${dto.category}` : '',
+        ].filter(Boolean).join('\n'),
+        maxOutputTokens: 500,
+        requestLabel: 'faq.generateAiAnswer',
+      });
+
+      return { answer, fallback: false };
+    } catch (err) {
+      console.error('[FaqService] AI answer generation failed; returning fallback', err);
+      return { answer: this.buildFallbackAnswer(dto), fallback: true };
+    }
+  }
+
+  private buildFallbackAnswer(dto: AiGenerateFaqAnswerDto): string {
+    return `Vui lòng liên hệ bộ phận hỗ trợ của Lishop để được giải đáp thắc mắc về "${dto.question}".${
+      dto.category ? ` Vấn đề này thuộc danh mục ${dto.category}.` : ''
+    }`;
   }
 
   private groupByCategory(faqs: FAQ[]): FaqGroup[] {

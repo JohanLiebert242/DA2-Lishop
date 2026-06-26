@@ -164,7 +164,7 @@ export class SupportTicketsService {
     this.realtime.emitTicketMessage(ticketId, message);
 
     if (statusChanged) {
-      this.realtime.emitTicketStatusChange(ticketId, ticket.userId, (await this.repo.findById(ticketId)).status);
+      this.realtime.emitTicketStatusChange(ticketId, ticket.userId, (await this.repo.findById(ticketId))!.status);
     }
 
     return message;

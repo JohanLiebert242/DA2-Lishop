@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { FaqService } from './faq.service';
 import { FaqRepository } from './faq.repository';
 
@@ -26,7 +27,11 @@ describe('FaqService', () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [FaqService, { provide: FaqRepository, useValue: repo }],
+      providers: [
+        FaqService,
+        { provide: FaqRepository, useValue: repo },
+        { provide: ConfigService, useValue: { get: jest.fn() } },
+      ],
     }).compile();
     service = module.get(FaqService);
   });

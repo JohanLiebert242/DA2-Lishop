@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { SupportTicketsService } from './support-tickets.service';
 import { SupportTicketsRepository } from './support-tickets.repository';
 import { NotificationsRepository } from '../notifications/notifications.repository';
+import { RealtimeService } from '../realtime/realtime.service';
 import { TicketStatus } from '@lishop/database';
 
 jest.mock('@lishop/database', () => ({
@@ -28,6 +29,7 @@ const mockTicket: any = {
   status: 'OPEN',
   messages: [],
   createdAt: new Date(),
+  user: { id: 'u1', firstName: 'Test', lastName: 'User' },
 };
 
 const mockMessage: any = {
@@ -68,6 +70,7 @@ describe('SupportTicketsService', () => {
         SupportTicketsService,
         { provide: SupportTicketsRepository, useValue: repo },
         { provide: NotificationsRepository, useValue: notifRepo },
+        { provide: RealtimeService, useValue: { emitAdminFeed: jest.fn(), emitTicketStatusChange: jest.fn(), emitTicketMessage: jest.fn() } },
         { provide: ConfigService, useValue: config },
       ],
     }).compile();
@@ -215,7 +218,9 @@ describe('SupportTicketsService', () => {
 
       await service.addAdminMessage('admin1', 'ticket1', { content: 'follow up' });
 
-      expect(repo.updateStatus).not.toHaveBeenCalled();
+      // admin already replied → no IN_PROGRESS transition, but auto-resolve still applies
+      expect(repo.updateStatus).toHaveBeenCalledTimes(1);
+      expect(repo.updateStatus).toHaveBeenCalledWith('ticket1', TicketStatus.RESOLVED);
     });
 
     it('notifies customer on admin reply', async () => {
