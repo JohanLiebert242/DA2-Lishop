@@ -217,6 +217,12 @@ export const adminApi = {
   }>) => apiFetch<FAQ>(`/admin/faq/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteFaq: (id: string) =>
     apiFetch<void>(`/admin/faq/${id}`, { method: 'DELETE' }),
+  generateFaqAiAnswer: (data: { question: string; category?: string }) =>
+    apiFetch<AiFaqAnswerResponse>('/admin/faq/ai-answer', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      timeoutMs: 60000,
+    }),
 
   // Users
   updateUserRole: (id: string, role: 'ADMIN' | 'CUSTOMER') =>
@@ -320,6 +326,14 @@ export const adminApi = {
     }),
   generateRefundAiAssist: (id: string) =>
     apiFetch<RefundAiAssistResponse>(`/admin/refunds/${id}/ai-assist`, { method: 'POST', timeoutMs: 60000 }),
+
+  // Shops
+  listShops: (status?: string) =>
+    apiFetch<AdminShop[]>(`/admin/shops${status ? `?status=${status}` : ''}`),
+  approveShop: (id: string) =>
+    apiFetch<AdminShop>(`/admin/shops/${id}/approve`, { method: 'PATCH' }),
+  rejectShop: (id: string, reason?: string) =>
+    apiFetch<AdminShop>(`/admin/shops/${id}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
 };
 
 // ─── Support / FAQ types ──────────────────────────────────────────────────────
@@ -355,6 +369,11 @@ export interface FAQ {
   sortOrder: number;
   isPublished: boolean;
   createdAt: string;
+}
+
+export interface AiFaqAnswerResponse {
+  answer: string;
+  fallback: boolean;
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -586,4 +605,28 @@ export interface AdminRefund {
   createdAt: string;
   order: { orderNumber: string };
   user: { email: string; firstName: string; lastName: string };
+}
+
+// ─── Shop admin ──────────────────────────────────────────────────────────────
+
+export type ShopStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface AdminShop {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  phone: string | null;
+  address: string | null;
+  status: ShopStatus;
+  userId: string;
+  approvedAt: string | null;
+  approvedById: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  user: { id: string; email: string; firstName: string; lastName: string; avatarUrl: string | null };
+  approvedBy: { id: string; firstName: string; lastName: string } | null;
+  _count: { products: number };
 }

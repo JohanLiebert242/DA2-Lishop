@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpenText, CircleHelp, Eye, EyeOff, Plus } from 'lucide-react';
+import { BookOpenText, CircleHelp, Eye, EyeOff, Plus, Sparkles } from 'lucide-react';
 import { adminApi, FAQ } from '../../../lib/admin-api';
 import { TICKET_CATEGORY_LABELS, FAQ_CATEGORIES } from '../_constants';
 import { AdminEmptyState } from '../_components/admin-empty-state';
@@ -32,6 +32,12 @@ function FaqModal({ existing, onClose, onSaved }: FaqModalProps) {
     onError: (err: Error) => setError(err.message),
   });
 
+  const aiMutation = useMutation({
+    mutationFn: () => adminApi.generateFaqAiAnswer({ question, category }),
+    onSuccess: (data) => { setAnswer(data.answer); },
+    onError: (err: Error) => setError(err.message),
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
@@ -49,7 +55,18 @@ function FaqModal({ existing, onClose, onSaved }: FaqModalProps) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Câu trả lời</label>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-xs font-medium text-gray-700">Câu trả lời</label>
+              <button
+                type="button"
+                onClick={() => aiMutation.mutate()}
+                disabled={!question.trim() || aiMutation.isPending}
+                className="inline-flex items-center gap-1 rounded-md border border-indigo-200 px-2 py-0.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+              >
+                <Sparkles className="h-3 w-3" />
+                {aiMutation.isPending ? 'AI đang tạo...' : 'AI hỗ trợ trả lời'}
+              </button>
+            </div>
             <textarea
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}

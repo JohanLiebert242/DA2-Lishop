@@ -22,6 +22,7 @@ import {
   RefreshCcw,
   ShoppingBag,
   Star,
+  Store,
   Ticket,
   TrendingUp,
   Users,
@@ -48,6 +49,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Vận hành',
     items: [
       { href: '/admin/products', label: 'Sản phẩm', icon: ShoppingBag, tone: 'from-violet-500/20 to-fuchsia-500/8 text-violet-700' },
+      { href: '/admin/shops', label: 'Cửa hàng', icon: Store, tone: 'from-violet-500/20 to-purple-500/8 text-violet-700' },
       { href: '/admin/inventory', label: 'Kho hàng', icon: Boxes, tone: 'from-emerald-500/20 to-teal-500/8 text-emerald-700' },
       { href: '/admin/promotions', label: 'Khuyến mãi', icon: Megaphone, tone: 'from-pink-500/20 to-rose-500/8 text-pink-700' },
       { href: '/admin/flashsales', label: 'Bán nhanh', icon: BellRing, tone: 'from-rose-500/20 to-orange-500/8 text-rose-700' },
