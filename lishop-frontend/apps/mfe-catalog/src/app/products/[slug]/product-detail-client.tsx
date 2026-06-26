@@ -212,30 +212,20 @@ function StoreChatPanel({
   productName: string;
   variantLabel: string;
 }) {
-  const storageKey = `lishop_store_chat_${shopName}_${productName}`;
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Array<{ from: 'buyer' | 'shop'; text: string; time: string }>>([]);
 
   useEffect(() => {
-    if (!open) return;
-    const saved = window.localStorage.getItem(storageKey);
-    if (saved) {
-      setMessages(JSON.parse(saved));
-      return;
+    if (open) {
+      setMessages([
+        {
+          from: 'shop',
+          text: `Chào bạn, ${shopName} có thể tư vấn thêm về ${productName}${variantLabel ? ` - ${variantLabel}` : ''}.`,
+          time: new Date().toISOString(),
+        },
+      ]);
     }
-
-    setMessages([
-      {
-        from: 'shop',
-        text: `Chào bạn, ${shopName} có thể tư vấn thêm về ${productName}${variantLabel ? ` - ${variantLabel}` : ''}.`,
-        time: new Date().toISOString(),
-      },
-    ]);
-  }, [open, productName, shopName, storageKey, variantLabel]);
-
-  useEffect(() => {
-    if (open) window.localStorage.setItem(storageKey, JSON.stringify(messages));
-  }, [messages, open, storageKey]);
+  }, [open, productName, shopName, variantLabel]);
 
   function sendMessage() {
     const text = input.trim();
@@ -700,6 +690,29 @@ interface Props {
   initialShopStats: ShopStats;
 }
 
+const SAVED_COUPONS_KEY = 'lishop_saved_coupons';
+
+function readSavedCoupons(productId: string): string[] {
+  try {
+    const raw = localStorage.getItem(SAVED_COUPONS_KEY);
+    const map: Record<string, string[]> = raw ? JSON.parse(raw) : {};
+    return map[productId] ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSavedCoupon(productId: string, codes: string[]): void {
+  try {
+    const raw = localStorage.getItem(SAVED_COUPONS_KEY);
+    const map: Record<string, string[]> = raw ? JSON.parse(raw) : {};
+    map[productId] = codes;
+    localStorage.setItem(SAVED_COUPONS_KEY, JSON.stringify(map));
+  } catch {
+    // localStorage full or unavailable — silently ignore
+  }
+}
+
 export function ProductDetailClient({ slug, initialProduct, initialShopStats }: Props) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -730,6 +743,7 @@ export function ProductDetailClient({ slug, initialProduct, initialShopStats }: 
     staleTime: 60_000,
   });
 
+
   const { data: wishlistIds = [] } = useQuery({
     queryKey: ['wishlist'],
     queryFn: getWishlist,
@@ -738,9 +752,7 @@ export function ProductDetailClient({ slug, initialProduct, initialShopStats }: 
   const isWishlisted = new Set(wishlistIds).has(product?.id ?? '');
 
   useEffect(() => {
-    if (!product) return;
-    const saved = window.localStorage.getItem(`lishop_saved_coupons_${product.id}`);
-    setSavedCouponCodes(saved ? JSON.parse(saved) : []);
+    if (product) setSavedCouponCodes(readSavedCoupons(product.id));
   }, [product?.id]);
 
   const toggleWishlistMutation = useMutation({
@@ -1048,7 +1060,7 @@ export function ProductDetailClient({ slug, initialProduct, initialShopStats }: 
     if (!product) return;
     const next = savedCouponCodes.includes(code) ? savedCouponCodes : [...savedCouponCodes, code];
     setSavedCouponCodes(next);
-    window.localStorage.setItem(`lishop_saved_coupons_${product.id}`, JSON.stringify(next));
+    writeSavedCoupon(product.id, next);
     toast.success(savedCouponCodes.includes(code) ? 'Mã này đã có trong ví voucher' : `Đã lưu mã ${code}`);
   }
 
