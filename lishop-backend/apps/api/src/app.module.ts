@@ -30,6 +30,7 @@ import { InvoicesModule } from './modules/invoices/invoices.module';
 import { WalletModule } from './modules/wallet/wallet.module';
 import { RefundsModule } from './modules/refunds/refunds.module';
 import { ShoppingModule } from './modules/shopping/shopping.module';
+import { ShopChatModule } from './modules/shop-chat/shop-chat.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ShoppingModule } from './modules/shopping/shopping.module';
     WalletModule,
     RefundsModule,
     ShoppingModule,
+    ShopChatModule,
   ],
   controllers: [HealthController],
   providers: [

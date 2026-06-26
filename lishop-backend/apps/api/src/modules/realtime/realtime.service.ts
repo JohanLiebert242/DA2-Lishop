@@ -67,6 +67,28 @@ export class RealtimeService {
     this.gateway.sendToUser(userId, 'ticket:status', payload);
   }
 
+  // ─── Shop Chat (customer ↔ seller) ───
+
+  emitShopChatMessage(
+    shopId: string,
+    message: {
+      id: string;
+      shopId: string;
+      userId: string;
+      content: string;
+      isFromShop: boolean;
+      createdAt: Date;
+    },
+  ): void {
+    this.gateway.sendToRoom(`shop:${shopId}`, 'shop:chat', {
+      shopId,
+      message: {
+        ...message,
+        createdAt: message.createdAt.toISOString(),
+      },
+    });
+  }
+
   // ─── Flash Sale ───
 
   emitFlashSaleUpdate(

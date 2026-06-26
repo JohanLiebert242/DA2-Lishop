@@ -19,6 +19,7 @@ import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { ProductsService } from '../products/products.service';
 import { ProductListQueryDto } from '../products/dto/product-list-query.dto';
+import { RedisService } from '../redis/redis.service';
 
 @ApiTags('shops')
 @Controller('shops')
@@ -27,6 +28,7 @@ export class ShopsController {
     private readonly shopsService: ShopsService,
     @Inject(forwardRef(() => ProductsService))
     private readonly productsService: ProductsService,
+    private readonly redisService: RedisService,
   ) {}
 
   @Post('register')
@@ -58,6 +60,15 @@ export class ShopsController {
   @ApiOperation({ summary: 'Get a shop by slug (public)' })
   getShopBySlug(@Param('slug') slug: string) {
     return this.shopsService.getShopBySlug(slug);
+  }
+
+  @Get(':slug/online')
+  @Public()
+  @ApiOperation({ summary: 'Check if a shop is online (seller connected via WebSocket)' })
+  async getShopOnline(@Param('slug') slug: string) {
+    const shop = await this.shopsService.getShopBySlug(slug);
+    const online = await this.redisService.exists(`presence:shop:${shop.id}`);
+    return { online, shopId: shop.id };
   }
 
   @Get(':slug/products')
