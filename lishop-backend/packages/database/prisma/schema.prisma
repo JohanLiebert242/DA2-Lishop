@@ -157,6 +157,7 @@ model User {
   returnRequests      ReturnRequest[]
   supportTickets      SupportTicket[]
   ticketMessages      TicketMessage[]
+  shopChatMessages    ShopChatMessage[]
   wallet              Wallet?
   walletTopupRequests WalletTopupRequest[] @relation("WalletTopupUser")
   reviewedTopups      WalletTopupRequest[] @relation("WalletTopupReviewer")
@@ -189,6 +190,7 @@ model Shop {
   approvedBy User?     @relation("ShopApprover", fields: [approvedById], references: [id])
   products   Product[]
   orderItems OrderItem[]
+  shopChatMessages ShopChatMessage[]
 
   @@index([status])
   @@index([slug])
@@ -646,6 +648,22 @@ model TicketMessage {
   user   User          @relation(fields: [userId], references: [id])
 
   @@index([ticketId])
+}
+
+model ShopChatMessage {
+  id         String   @id @default(uuid())
+  shopId     String
+  userId     String
+  content    String
+  isFromShop Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([shopId, createdAt])
+  @@index([userId])
 }
 
 model FAQ {

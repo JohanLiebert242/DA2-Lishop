@@ -10,6 +10,7 @@ import {
   ReturnStatus,
   ReviewStatus,
   ShippingProvider,
+  ShopStatus,
   StockMovementType,
   TicketCategory,
   TicketStatus,
@@ -352,6 +353,8 @@ async function cleanup() {
   await safe(() => prisma.fAQ.deleteMany({}));
   await safe(() => prisma.wishlist.deleteMany({}));
   await safe(() => prisma.cartItem.deleteMany({}));
+  await safe(() => prisma.shopChatMessage.deleteMany({}));
+  await safe(() => prisma.shop.deleteMany({}));
   await safe(() => prisma.notificationPreference.deleteMany({}));
   await safe(() => prisma.deviceToken.deleteMany({}));
   await safe(() => prisma.notification.deleteMany({}));
@@ -422,6 +425,72 @@ async function createUsers() {
   }
 
   return { admin, customers };
+}
+
+function shopifyName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'shop';
+}
+
+async function createShops(customers: CreatedUser[]) {
+  const sellerHash = await bcrypt.hash('Seller@123', 10);
+  const phoneBase = 8_500_000_000;
+
+  const brandShops: Array<{ name: string; slug: string }> = [
+    { name: 'Lishop Official Store', slug: 'lishop-official-store' },
+    { name: 'Cửa hàng Apple', slug: 'apple' },
+    { name: 'Cửa hàng Samsung', slug: 'samsung' },
+    { name: 'Cửa hàng Xiaomi', slug: 'xiaomi' },
+    { name: 'Cửa hàng OPPO', slug: 'oppo' },
+    { name: 'Cửa hàng Google', slug: 'google' },
+    { name: 'Cửa hàng ASUS', slug: 'asus' },
+    { name: 'Cửa hàng Dell', slug: 'dell' },
+    { name: 'Cửa hàng Nike', slug: 'nike' },
+    { name: "Cửa hàng Levi's", slug: 'levi-s' },
+    { name: 'Cửa hàng Zara', slug: 'zara' },
+    { name: 'Cửa hàng Philips', slug: 'philips' },
+    { name: 'Cửa hàng Kiehl', slug: 'kiehl' },
+    { name: 'Cửa hàng The Ordinary', slug: 'the-ordinary' },
+    { name: 'Cửa hàng La Roche Posay', slug: 'la-roche-posay' },
+  ];
+
+  const shops: Array<{ id: string; name: string; slug: string }> = [];
+
+  for (const [index, spec] of brandShops.entries()) {
+    // Reuse customer users where possible, create sellers for the rest
+    let owner: CreatedUser;
+    if (index < customers.length) {
+      owner = customers[index]!;
+    } else {
+      const suffix = index - customers.length + 1;
+      owner = await prisma.user.create({
+        data: {
+          email: `seller${suffix}@lishop.vn`,
+          passwordHash: sellerHash,
+          firstName: 'Người',
+          lastName: `Bán ${suffix}`,
+          role: UserRole.CUSTOMER as any,
+          emailVerified: true,
+        },
+      });
+    }
+
+    const shop = await prisma.shop.create({
+      data: {
+        name: spec.name,
+        slug: spec.slug,
+        description: `Cửa hàng chính hãng ${spec.name} trên Lishop.`,
+        phone: String(phoneBase + index),
+        address: '72 Nguyễn Huệ, Quận 1, Thành phố Hồ Chí Minh',
+        status: ShopStatus.APPROVED,
+        userId: owner.id,
+        approvedAt: new Date(),
+      },
+    });
+    shops.push({ id: shop.id, name: shop.name, slug: shop.slug });
+  }
+
+  console.warn(`  Shops: ${shops.length} cửa hàng`);
+  return shops;
 }
 
 async function createAddresses(customers: CreatedUser[]) {
@@ -590,7 +659,7 @@ function buildVariants(seed: ProductSeed) {
   return [];
 }
 
-async function createProducts(categories: Map<string, string>, tags: Map<string, string>) {
+async function createProducts(categories: Map<string, string>, tags: Map<string, string>, shopMap?: Map<string, string>) {
   const products: CreatedProduct[] = [];
   const variants = new Map<string, CreatedVariant[]>();
 
@@ -618,6 +687,7 @@ async function createProducts(categories: Map<string, string>, tags: Map<string,
         stock: seed.stock,
         weightGrams: seed.categorySlug === 'furniture' ? 12000 : seed.categorySlug === 'laptops' ? 1600 : 500,
         categoryId,
+        shopId: shopMap?.get(shopifyName(brand)) ?? null,
         images: { create: images },
       },
     });
@@ -1223,10 +1293,12 @@ async function main() {
   await cleanup();
 
   const { admin, customers } = await createUsers();
+  const shops = await createShops(customers);
   const addresses = await createAddresses(customers);
   const categories = await createCategories();
   const tags = await createTags();
-  const { products, variants } = await createProducts(categories, tags);
+  const shopMap = new Map(shops.map((s) => [s.slug, s.id]));
+  const { products, variants } = await createProducts(categories, tags, shopMap);
   const coupons = await createPromotions(products);
 
   await createWallets(customers);
