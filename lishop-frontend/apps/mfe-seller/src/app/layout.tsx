@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, Store } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Store, MessageCircle } from 'lucide-react';
 import { Providers } from './providers';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Bảng điều khiển', icon: LayoutDashboard },
   { href: '/products', label: 'Sản phẩm', icon: Package },
   { href: '/orders', label: 'Đơn hàng', icon: ShoppingBag },
+  { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/shop', label: 'Cửa hàng của tôi', icon: Store },
 ];
 
