@@ -487,6 +487,12 @@ async function createShops(customers: CreatedUser[]) {
       },
     });
     shops.push({ id: shop.id, name: shop.name, slug: shop.slug });
+
+    // Update owner's role to SELLER so RolesGuard allows access
+    await prisma.user.update({
+      where: { id: owner.id },
+      data: { role: UserRole.SELLER },
+    });
   }
 
   console.warn(`  Shops: ${shops.length} cửa hàng`);
