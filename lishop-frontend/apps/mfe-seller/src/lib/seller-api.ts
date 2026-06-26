@@ -103,4 +103,20 @@ export const sellerApi = {
   // Orders
   getOrders: () => apiFetch<SellerOrder[]>('/seller/orders'),
   getOrderDetail: (id: string) => apiFetch<SellerOrderDetail>(`/seller/orders/${id}`),
+
+  // Shop Chat (seller)
+  getConversations: () =>
+    apiFetch<Array<{ userId: string; customerName: string; avatarUrl: string | null; lastMessage: string; lastMessageAt: string }>>('/seller/chat/conversations'),
+
+  getSellerChatShop: () =>
+    apiFetch<{ id: string; name: string; slug: string }>('/seller/chat/shop'),
+
+  getConversationMessages: (customerUserId: string) =>
+    apiFetch<Array<{ id: string; shopId: string; userId: string; content: string; isFromShop: boolean; createdAt: string }>>(`/seller/chat/conversations/${customerUserId}`),
+
+  sendConversationReply: (customerUserId: string, content: string) =>
+    apiFetch<{ id: string; shopId: string; userId: string; content: string; isFromShop: boolean; createdAt: string }>(`/seller/chat/conversations/${customerUserId}`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    }),
 };

@@ -1,5 +1,6 @@
 export * from './formatters/currency';
 export * from './formatters/date';
+export * from './hooks/use-shop-chat';
 export * from './hooks/use-debounce';
 export * from './hooks/use-auth-sync';
 export * from './hooks/use-notification-stream';

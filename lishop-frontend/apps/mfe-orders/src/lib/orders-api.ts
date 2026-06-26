@@ -156,6 +156,16 @@ export const ordersApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Shop Chat
+  getShopChat: (slug: string) =>
+    apiFetch<{ shopId: string; shopName: string; messages: Array<{ id: string; shopId: string; userId: string; content: string; isFromShop: boolean; createdAt: string }> }>(`/shops/${slug}/chat`),
+
+  sendShopChat: (slug: string, content: string) =>
+    apiFetch<{ id: string; shopId: string; userId: string; content: string; isFromShop: boolean; createdAt: string }>(`/shops/${slug}/chat`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    }),
 };
 
 export async function getTracking(orderId: string): Promise<TrackingResponse> {
