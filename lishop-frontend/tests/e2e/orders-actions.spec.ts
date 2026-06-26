@@ -72,6 +72,37 @@ test.describe('my orders actions', () => {
       });
     });
 
+    await page.route('**/shops/lishop-official-store/chat', async (route) => {
+      if (!route.request().url().includes(':4000/')) return route.fallback();
+
+      if (route.request().method() === 'POST') {
+        const body = JSON.parse(route.request().postData() || '{}');
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'msg-1',
+            shopId: 'shop-lishop',
+            userId: 'user-1',
+            content: body.content,
+            isFromShop: false,
+            createdAt: new Date().toISOString(),
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          shopId: 'shop-lishop',
+          shopName: 'Lishop Official Store',
+          messages: [],
+        }),
+      });
+    });
+
     await page.route(`${CATALOG_URL}/products/iphone-15-pro`, async (route) => {
       await route.fulfill({
         status: 200,
