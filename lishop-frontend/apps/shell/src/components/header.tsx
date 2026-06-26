@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { formatVND } from '@lishop/shared';
+import { formatVND, hasSessionCookie } from '@lishop/shared';
 import { eventBus, LishopEvent } from '@lishop/event-bus';
 import { useAuth } from '../hooks/use-auth';
 
@@ -44,9 +44,50 @@ function useCartCount() {
       }
     };
 
+    // One-time cleanup: remove old-format keys from previous versions
+    try {
+      const toRemove: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (key?.startsWith('lishop_saved_coupons_') || key?.startsWith('lishop_store_chat_')) {
+          toRemove.push(key);
+        }
+      }
+      toRemove.forEach((key) => window.localStorage.removeItem(key));
+    } catch { /* ignore */ }
+
+    // Verify real cart count from server on mount
+    if (hasSessionCookie()) {
+      fetch(`${API_URL}/cart`, { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json) => {
+          const cart = json?.data ?? json;
+          if (cart?.items) {
+            const totalQty = cart.items.reduce((s: number, i: { quantity: number }) => s + (i.quantity ?? 1), 0);
+            window.localStorage.setItem('lishop_cart_count', String(totalQty));
+            setCount(totalQty);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Clear stale cart count on login/logout via StorageEvent (cross-MFE compatible)
+    const clearStaleCount = () => {
+      window.localStorage.removeItem('lishop_cart_count');
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'lishop_cart_count',
+        newValue: null,
+      }));
+      setCount(0);
+    };
+    eventBus.on(LishopEvent.AUTH_LOGIN, clearStaleCount);
+    eventBus.on(LishopEvent.AUTH_LOGOUT, clearStaleCount);
+
     return () => {
       window.removeEventListener('storage', read);
       channel.close();
+      eventBus.off(LishopEvent.AUTH_LOGIN, clearStaleCount);
+      eventBus.off(LishopEvent.AUTH_LOGOUT, clearStaleCount);
     };
   }, []);
 
