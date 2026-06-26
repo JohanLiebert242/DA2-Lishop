@@ -6,12 +6,14 @@ import {
 } from './notifications.repository';
 import { Observable } from 'rxjs';
 import { NotificationsStream } from './notifications.stream';
+import { RealtimeService } from '../realtime/realtime.service';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     private readonly repo: NotificationsRepository,
     private readonly streamHub: NotificationsStream,
+    private readonly realtime: RealtimeService,
   ) {}
 
   getPreferences(userId: string): Promise<NotificationPreferenceItem[]> {
@@ -44,13 +46,17 @@ export class NotificationsService {
     return this.repo.markAllAsRead(userId);
   }
 
-  createNotification(
+  async createNotification(
     userId: string,
     title: string,
     body: string,
     type: string,
     relatedId?: string,
   ): Promise<NotificationItem> {
-    return this.repo.createNotification(userId, title, body, type, relatedId);
+    const notification = await this.repo.createNotification(userId, title, body, type, relatedId);
+    this.realtime.sendNotification(userId, notification);
+    return notification;
   }
 }
+
+export { NotificationItem };
