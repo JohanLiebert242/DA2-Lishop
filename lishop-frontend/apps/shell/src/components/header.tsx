@@ -17,6 +17,7 @@ const MFE = {
   promotions: process.env['NEXT_PUBLIC_MFE_PROMOTIONS_URL'] ?? 'http://localhost:3007',
   notifications: process.env['NEXT_PUBLIC_MFE_NOTIFICATIONS_URL'] ?? 'http://localhost:3008',
   admin: process.env['NEXT_PUBLIC_MFE_ADMIN_URL'] ?? 'http://localhost:3009',
+  seller: process.env['NEXT_PUBLIC_MFE_SELLER_URL'] ?? 'http://localhost:3011',
 } as const;
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
@@ -161,6 +162,7 @@ export function Header() {
       { label: 'Trang cá nhân', href: `${MFE.profile}/profile`, className: 'text-stone-700 hover:bg-stone-50 font-bold' },
       { label: 'Đơn hàng của tôi', href: `${MFE.orders}/orders`, className: 'text-stone-700 hover:bg-stone-50 font-bold' },
       { label: 'Yêu thích', href: `${MFE.profile}/wishlist`, className: 'text-stone-700 hover:bg-stone-50 font-bold' },
+      { label: 'Bán hàng', href: `${MFE.auth}/become-seller`, className: 'text-emerald-700 hover:bg-emerald-50 font-black' },
       { label: 'Thông báo', href: `${MFE.notifications}/notifications`, className: 'text-stone-700 hover:bg-stone-50 font-bold' },
       { label: 'Ưu đãi & coupon', href: `${MFE.promotions}/promotions`, className: 'text-stone-700 hover:bg-stone-50 font-bold' },
     ];

@@ -20,12 +20,27 @@ export default function ShopPage() {
     enabled: !!slug,
   });
 
-  const { data: productsData, isLoading: productsLoading } = useQuery({
+  // Try backend shop products first; fall back to brand-based search if backend shop doesn't exist
+  const { data: shopProducts, isLoading: shopProductsLoading, isError: shopProductsError } = useQuery({
     queryKey: ['shop-products', slug],
-    queryFn: () => catalogApi.getProducts({ brand: identity.brand, limit: 200 }),
+    queryFn: () => catalogApi.getShopProducts(slug, { limit: 100 }),
     enabled: !!slug,
   });
 
+  const { data: brandProducts, isLoading: brandLoading } = useQuery({
+    queryKey: ['shop-brand-products', slug, identity.brand],
+    queryFn: () => {
+      // When brand resolves to the default platform name, return all featured products
+      if (!identity.brand || identity.brand === 'Lishop') {
+        return catalogApi.getFeatured(100).then((items) => ({ items, nextCursor: null }));
+      }
+      return catalogApi.getProducts({ brand: identity.brand, limit: 100 });
+    },
+    enabled: !!slug && shopProductsError,
+  });
+
+  const productsData = shopProducts ?? brandProducts;
+  const productsLoading = shopProductsLoading || brandLoading;
   if (shopLoading || productsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
