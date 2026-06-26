@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { formatVND, hasSessionCookie } from '@lishop/shared';
 import { ordersApi, OrderStatus, type OrderSummary } from '../../lib/orders-api';
 import { AccountSidebar } from '../../components/account-sidebar';
+import { ShopChatPanel } from '../../components/shop-chat-panel';
 
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
 const CATALOG_BASE_URL = process.env['NEXT_PUBLIC_MFE_CATALOG_URL'] ?? 'http://localhost:3002';
 const CATALOG_PRODUCTS_URL = `${CATALOG_BASE_URL}/products`;
 const SHOP_NAME = 'Lishop Official Store';
+const SHOP_SLUG = 'lishop-official-store';
 
 const STATUS_META: Record<OrderStatus, { label: string; color: string; dot: string }> = {
   PENDING: { label: 'Chờ xác nhận', color: 'bg-amber-50 text-amber-700 border border-amber-200', dot: 'bg-amber-400' },
@@ -152,6 +154,7 @@ export default function OrdersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [supportOrder, setSupportOrder] = useState<OrderSummary | null>(null);
+  const [chatOrder, setChatOrder] = useState<OrderSummary | null>(null);
 
   useEffect(() => {
     if (!hasSessionCookie()) window.location.replace(`${AUTH_URL}/login`);
@@ -320,17 +323,18 @@ export default function OrdersPage() {
 
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap gap-2">
-                          <Link
-                            href={`/orders/${order.id}#review`}
-                            className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
-                              order.status === 'DELIVERED'
-                                ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                                : 'border-warm bg-stone-50 text-stone-400'
-                            }`}
-                            aria-disabled={order.status !== 'DELIVERED'}
-                          >
-                            Đánh giá
-                          </Link>
+                          {order.status === 'DELIVERED' && firstItem?.productSlug ? (
+                            <Link
+                              href={`${CATALOG_PRODUCTS_URL}/${firstItem.productSlug}#reviews`}
+                              className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100"
+                            >
+                              Đánh giá
+                            </Link>
+                          ) : (
+                            <span className="rounded-xl border border-warm bg-stone-50 px-3 py-2 text-xs font-bold text-stone-400">
+                              Đánh giá
+                            </span>
+                          )}
                           <Link
                             href={`/orders/${order.id}#return`}
                             className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
@@ -348,6 +352,13 @@ export default function OrdersPage() {
                             className="rounded-xl border border-warm bg-white px-3 py-2 text-xs font-bold text-stone-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                           >
                             Yêu cầu hỗ trợ
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setChatOrder(order)}
+                            className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100"
+                          >
+                            Liên hệ người bán
                           </button>
                           <a
                             href={buyAgainHref}
@@ -370,6 +381,15 @@ export default function OrdersPage() {
         </div>
       </div>
       {supportOrder && <SupportTicketModal order={supportOrder} onClose={() => setSupportOrder(null)} />}
+      {chatOrder && (
+        <ShopChatPanel
+          open={!!chatOrder}
+          onClose={() => setChatOrder(null)}
+          shopName={SHOP_NAME}
+          shopSlug={SHOP_SLUG}
+          orderNumber={chatOrder.orderNumber}
+        />
+      )}
     </div>
   );
 }

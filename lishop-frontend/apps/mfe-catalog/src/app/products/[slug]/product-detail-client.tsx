@@ -20,6 +20,7 @@ import { addToCart, flyToCart } from '../../../lib/cart-helper';
 import { getShopIdentityFromBrand, type ShopStats } from '../../../lib/shop-info';
 import { getWishlist, addToWishlist, removeFromWishlist, isLoggedIn } from '../../../lib/wishlist-api';
 import { ChatWidget } from '../../../components/chat-widget';
+import { useShopChat } from '@lishop/shared';
 
 const AUTH_URL = process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001';
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
@@ -203,44 +204,105 @@ function StoreChatPanel({
   open,
   onClose,
   shopName,
+  shopSlug,
   productName,
   variantLabel,
+  onStatusChange,
 }: {
   open: boolean;
   onClose: () => void;
   shopName: string;
+  shopSlug: string;
   productName: string;
   variantLabel: string;
+  onStatusChange?: (online: boolean) => void;
 }) {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Array<{ from: 'buyer' | 'shop'; text: string; time: string }>>([]);
+  const [messages, setMessages] = useState<Array<{ id: string; from: 'buyer' | 'shop'; text: string; time: string }>>([]);
+  const [initialLoading, setInitialLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [shopId, setShopId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Fetch chat history when panel opens
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    setMessages([]);
+    setInitialLoading(true);
+    catalogApi.getShopChat(shopSlug).then((data) => {
+      setShopId(data.shopId);
+      setMessages(
+        data.messages.map((msg) => ({
+          id: msg.id,
+          from: msg.isFromShop ? 'shop' : 'buyer' as const,
+          text: msg.content,
+          time: msg.createdAt,
+        })),
+      );
+      if (data.messages.length === 0) {
+        setMessages([
+          {
+            id: 'greeting',
+            from: 'shop',
+            text: `Chào bạn, ${shopName} có thể tư vấn thêm về ${productName}${variantLabel ? ` - ${variantLabel}` : ''}.`,
+            time: new Date().toISOString(),
+          },
+        ]);
+      }
+    }).catch(() => {
+      // Fallback: show greeting if API fails
       setMessages([
         {
+          id: 'greeting',
           from: 'shop',
           text: `Chào bạn, ${shopName} có thể tư vấn thêm về ${productName}${variantLabel ? ` - ${variantLabel}` : ''}.`,
           time: new Date().toISOString(),
         },
       ]);
-    }
-  }, [open, productName, shopName, variantLabel]);
+    }).finally(() => setInitialLoading(false));
+  }, [open, productName, shopName, shopSlug, variantLabel]);
 
-  function sendMessage() {
+  // WebSocket for real-time messages
+  const { isOnline } = useShopChat({
+    enabled: !!shopId,
+    shopId,
+    onMessage: (msg) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [
+          ...prev,
+          { id: msg.id, from: msg.isFromShop ? 'shop' : 'buyer', text: msg.content, time: msg.createdAt },
+        ];
+      });
+    },
+  });
+
+  // Propagate online status to parent
+  useEffect(() => {
+    onStatusChange?.(isOnline);
+  }, [isOnline, onStatusChange]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  async function sendMessage() {
     const text = input.trim();
-    if (!text) return;
-    const now = new Date().toISOString();
-    setMessages((current) => [
-      ...current,
-      { from: 'buyer', text, time: now },
-      {
-        from: 'shop',
-        text: 'Shop đã nhận tin nhắn. Tư vấn viên sẽ phản hồi sớm; bạn có thể gửi thêm màu sắc, kích cỡ hoặc ngân sách mong muốn.',
-        time: now,
-      },
-    ]);
+    if (!text || sending) return;
+    setSending(true);
     setInput('');
+    try {
+      await catalogApi.sendShopChat(shopSlug, text);
+      // WebSocket onMessage will add the message with real id — no optimistic add needed
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: `error-${Date.now()}`, from: 'shop' as const, text: 'Tin nhắn chưa được gửi. Vui lòng thử lại.', time: new Date().toISOString() },
+      ]);
+    } finally {
+      setSending(false);
+    }
   }
 
   if (!open) return null;
@@ -250,18 +312,28 @@ function StoreChatPanel({
       <div className="flex items-center justify-between bg-red-500 px-4 py-3 text-white">
         <div>
           <p className="font-bold">{shopName}</p>
-          <p className="text-xs text-red-50">Chat với cửa hàng</p>
+          <p className="flex items-center gap-1.5 text-xs text-red-50">
+            <span className={`inline-block h-2 w-2 rounded-full ${isOnline ? 'bg-green-300' : 'bg-stone-300'}`} />
+            {isOnline ? 'Đang hoạt động' : 'Không hoạt động'}
+          </p>
         </div>
         <button type="button" onClick={onClose} className="rounded-full px-2 py-1 text-sm font-bold hover:bg-red-600">x</button>
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto bg-stone-50 px-3 py-3">
-        {messages.map((message, index) => (
-          <div key={`${message.time}-${index}`} className={`flex ${message.from === 'buyer' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${message.from === 'buyer' ? 'bg-red-500 text-white' : 'bg-white text-stone-700 ring-1 ring-stone-200'}`}>
-              {message.text}
-            </div>
+        {initialLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <span className="text-sm text-stone-400">Đang tải tin nhắn...</span>
           </div>
-        ))}
+        ) : (
+          messages.map((message, index) => (
+            <div key={`${message.time}-${index}`} className={`flex ${message.from === 'buyer' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${message.from === 'buyer' ? 'bg-red-500 text-white' : 'bg-white text-stone-700 ring-1 ring-stone-200'}`}>
+                {message.text}
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
       </div>
       <div className="flex gap-2 border-t border-stone-200 px-3 py-2">
         <input
@@ -273,8 +345,13 @@ function StoreChatPanel({
           placeholder="Nhập tin nhắn..."
           className="min-w-0 flex-1 rounded-full border border-stone-200 px-3 py-2 text-sm outline-none focus:border-red-300"
         />
-        <button type="button" onClick={sendMessage} className="rounded-full bg-red-500 px-4 text-sm font-bold text-white hover:bg-red-600">
-          Gửi
+        <button
+          type="button"
+          onClick={sendMessage}
+          disabled={sending}
+          className="rounded-full bg-red-500 px-4 text-sm font-bold text-white hover:bg-red-600 disabled:opacity-50"
+        >
+          {sending ? '...' : 'Gửi'}
         </button>
       </div>
     </div>
@@ -730,6 +807,7 @@ export function ProductDetailClient({ slug, initialProduct, initialShopStats }: 
   const [advisorResult, setAdvisorResult] = useState<StyleFitAdvisorResponse | null>(null);
   const [advisorError, setAdvisorError] = useState('');
   const [showStoreChat, setShowStoreChat] = useState(false);
+  const [shopOnline, setShopOnline] = useState(false);
   const [savedLikeDelta, setSavedLikeDelta] = useState(0);
   const [savedCouponCodes, setSavedCouponCodes] = useState<string[]>([]);
   const addToCartBtnRef = useRef<HTMLButtonElement>(null);
@@ -876,6 +954,7 @@ export function ProductDetailClient({ slug, initialProduct, initialShopStats }: 
   const shop = getShopIdentityFromBrand(product?.brand);
   const shopName = shop.name;
   const shopSlug = shop.slug;
+
 
   function rankVariantForSelection(
     left: ProductVariant,
@@ -1513,7 +1592,13 @@ export function ProductDetailClient({ slug, initialProduct, initialShopStats }: 
               </span>
             </div>
             <div className="min-w-0">
-              <h2 className="truncate text-lg font-black text-stone-900">{shopName}</h2>
+              <h2 className="truncate text-lg font-black text-stone-900">
+                {shopName}
+                <span className="ml-2 inline-flex items-center gap-1 align-middle text-xs font-semibold">
+                  <span className={`inline-block h-2 w-2 rounded-full ${shopOnline ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+                  <span className={shopOnline ? 'text-emerald-600' : 'text-stone-400'}>{shopOnline ? 'Đang hoạt động' : 'Không hoạt động'}</span>
+                </span>
+              </h2>
               <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-stone-500">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 Đang bán {shopProductCount.toLocaleString('vi-VN')} sản phẩm
@@ -1689,8 +1774,10 @@ export function ProductDetailClient({ slug, initialProduct, initialShopStats }: 
         open={showStoreChat}
         onClose={() => setShowStoreChat(false)}
         shopName={shopName}
+        shopSlug={shopSlug}
         productName={product.name}
         variantLabel={selectedVariant ? getVariantLabel(selectedVariant) : ''}
+        onStatusChange={setShopOnline}
       />
       <ChatWidget />
     </div>
