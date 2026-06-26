@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import type { AiDiscoveryProduct, ProductSummary } from '../lib/catalog-api';
 import { catalogApi } from '../lib/catalog-api';
 import { ProductCard } from './product-card';
@@ -45,6 +46,7 @@ export function PersonalizedRecommendations({
   context,
   limit = 8,
 }: PersonalizedRecommendationsProps) {
+  const [open, setOpen] = useState(true);
   const { data, isLoading } = useQuery({
     queryKey: ['personalized-recommendations', context, limit],
     queryFn: () => catalogApi.getRecommendations(limit, context),
@@ -63,29 +65,46 @@ export function PersonalizedRecommendations({
       data-testid="personalized-recs"
       className="mb-6 rounded-lg border border-stone-200 bg-white px-4 py-4 shadow-sm"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-black uppercase tracking-wide text-stone-900">
-          Danh cho ban
-        </h2>
-        {data.fallback && (
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-            Dự phòng
-          </span>
-        )}
-      </div>
-      {data.reason && (
-        <p className="mt-2 text-sm leading-6 text-stone-600">{data.reason}</p>
-      )}
-      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {data.items.map((product) => (
-          <div
-            key={product.id}
-            data-testid={`personalized-rec-item-${product.slug}`}
-          >
-            <ProductCard product={toProductSummary(product)} />
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full cursor-pointer items-center justify-between gap-2 text-left"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-black uppercase tracking-wide text-stone-900">
+            Danh cho ban
+          </h2>
+          {data.fallback && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+              Dự phòng
+            </span>
+          )}
+        </div>
+        <svg
+          className={`h-5 w-5 shrink-0 text-stone-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <>
+          {data.reason && (
+            <p className="mt-2 text-sm leading-6 text-stone-600">{data.reason}</p>
+          )}
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {data.items.map((product) => (
+              <div
+                key={product.id}
+                data-testid={`personalized-rec-item-${product.slug}`}
+              >
+                <ProductCard product={toProductSummary(product)} />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </section>
   );
 }
