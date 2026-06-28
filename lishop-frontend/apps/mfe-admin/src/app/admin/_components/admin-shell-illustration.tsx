@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 
-type IllustrationTone = 'indigo' | 'emerald' | 'amber' | 'rose' | 'sky';
+type IllustrationTone = 'indigo' | 'emerald' | 'amber' | 'rose' | 'sky' | 'violet';
 
 const TONE_STYLES: Record<IllustrationTone, { shell: string; glow: string; accent: string; dot: string }> = {
   indigo: {
@@ -34,6 +34,12 @@ const TONE_STYLES: Record<IllustrationTone, { shell: string; glow: string; accen
     glow: 'bg-sky-500/15',
     accent: 'bg-sky-500/80',
     dot: 'bg-sky-400/70',
+  },
+  violet: {
+    shell: 'from-violet-500/18 via-purple-500/10 to-fuchsia-500/18',
+    glow: 'bg-violet-500/15',
+    accent: 'bg-violet-500/80',
+    dot: 'bg-violet-400/70',
   },
 };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { adminApi, AdminUserItem } from '../../../lib/admin-api';
 
 function UserRow({ user }: { user: AdminUserItem }) {
@@ -8,7 +9,11 @@ function UserRow({ user }: { user: AdminUserItem }) {
 
   const roleMutation = useMutation({
     mutationFn: (role: 'ADMIN' | 'CUSTOMER') => adminApi.updateUserRole(user.id, role),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success('Đã cập nhật vai trò người dùng');
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const isAdmin = user.role === 'ADMIN';

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Headset, MailPlus, Sparkles, Ticket } from 'lucide-react';
+import { toast } from 'sonner';
 import { adminApi, AdminTicket, TicketAiAssistResponse, TicketStatus } from '../../../lib/admin-api';
 import {
   TICKET_STATUS_COLORS,
@@ -23,7 +24,11 @@ function TicketRow({ ticket }: { ticket: AdminTicket }) {
 
   const statusMutation = useMutation({
     mutationFn: (nextStatus: TicketStatus) => adminApi.updateTicketStatus(ticket.id, nextStatus),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-tickets'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tickets'] });
+      toast.success('Đã cập nhật trạng thái phiếu hỗ trợ');
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const replyMutation = useMutation({
@@ -34,7 +39,9 @@ function TicketRow({ ticket }: { ticket: AdminTicket }) {
       setShowReply(false);
       setReplyText('');
       setAiAssist(null);
+      toast.success('Đã gửi phản hồi tới khách hàng');
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const assistMutation = useMutation({
@@ -42,7 +49,9 @@ function TicketRow({ ticket }: { ticket: AdminTicket }) {
     onSuccess: (result) => {
       setAiAssist(result);
       setReplyText(result.replyDraft);
+      toast.success('AI đã gợi ý phản hồi');
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const lastMessage = ticket.messages[ticket.messages.length - 1];

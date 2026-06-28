@@ -6,7 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 type HeaderStat = {
   label: string;
   value: string;
-  tone?: 'indigo' | 'emerald' | 'amber' | 'rose' | 'sky';
+  tone?: 'indigo' | 'emerald' | 'amber' | 'rose' | 'sky' | 'violet';
 };
 
 const TONE_STYLES = {
@@ -15,6 +15,7 @@ const TONE_STYLES = {
   amber: 'bg-amber-100 text-amber-700',
   rose: 'bg-rose-100 text-rose-700',
   sky: 'bg-sky-100 text-sky-700',
+  violet: 'bg-violet-100 text-violet-700',
 } as const;
 
 export function AdminPageHeader({
@@ -31,7 +32,7 @@ export function AdminPageHeader({
   description: string;
   badge?: string;
   stats?: HeaderStat[];
-  tone?: 'indigo' | 'emerald' | 'amber' | 'rose' | 'sky';
+  tone?: 'indigo' | 'emerald' | 'amber' | 'rose' | 'sky' | 'violet';
   action?: ReactNode;
 }) {
   return (

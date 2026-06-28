@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CircleDollarSign, RefreshCcw, Sparkles, Wallet } from 'lucide-react';
+import { toast } from 'sonner';
 import { formatVND } from '@lishop/shared';
 import { adminApi, AdminRefund } from '../../../lib/admin-api';
 import { REFUND_METHOD_LABELS, REFUND_STATUS_COLORS, REFUND_STATUS_LABELS } from '../_constants';
@@ -22,7 +23,11 @@ export default function RefundsPage() {
 
   const processRefundMutation = useMutation({
     mutationFn: ({ id, note }: { id: string; note?: string }) => adminApi.processRefund(id, note),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-refunds'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-refunds'] });
+      toast.success('Đã xử lý hoàn tiền');
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const aiAssistMutation = useMutation({
@@ -34,10 +39,12 @@ export default function RefundsPage() {
       setPendingAiId(null);
       const text = result.fallback ? `AI chế độ dự phòng: ${result.summary}` : result.summary;
       setAiNotes((prev) => ({ ...prev, [id]: result.adminNote ? `${text} - ${result.adminNote}` : text }));
+      toast.success('AI đã gợi ý hoàn tiền');
     },
     onError: (err: Error, id) => {
       setPendingAiId(null);
       setAiNotes((prev) => ({ ...prev, [id]: err.message }));
+      toast.error(err.message);
     },
     onSettled: () => setPendingAiId(null),
   });

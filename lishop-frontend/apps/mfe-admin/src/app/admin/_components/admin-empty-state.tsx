@@ -12,7 +12,7 @@ export function AdminEmptyState({
   icon: LucideIcon;
   title: string;
   description: string;
-  tone?: 'indigo' | 'emerald' | 'amber' | 'rose' | 'sky';
+  tone?: 'indigo' | 'emerald' | 'amber' | 'rose' | 'sky' | 'violet';
 }) {
   return (
     <div className="grid gap-5 rounded-3xl border border-dashed border-slate-300 bg-white/85 p-6 text-center shadow-sm md:grid-cols-[minmax(0,1fr)_220px] md:text-left">

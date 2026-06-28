@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ClipboardCheck, PackageCheck, TimerReset, Truck } from 'lucide-react';
+import { toast } from 'sonner';
 import { formatVND } from '@lishop/shared';
 import { adminApi, OrderStatus, AdminOrderItem } from '../../../lib/admin-api';
 import { ORDER_STATUSES, STATUS_LABELS, STATUS_COLORS } from '../_constants';
@@ -17,7 +18,11 @@ function OrderRow({ order }: { order: AdminOrderItem }) {
 
   const mutation = useMutation({
     mutationFn: (status: OrderStatus) => adminApi.updateOrderStatus(order.id, status),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      toast.success('Đã cập nhật trạng thái đơn hàng');
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
   const handoffMutation = useMutation({
     mutationFn: () =>
@@ -25,15 +30,20 @@ function OrderRow({ order }: { order: AdminOrderItem }) {
         status: 'PICKED_UP',
         description: 'Đơn hàng đã được bàn giao cho đơn vị vận chuyển.',
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      toast.success('Đã bàn giao đơn hàng cho đơn vị vận chuyển');
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const displayStatus: OrderStatus = mutation.isPending ? mutation.variables! : order.status;
 
-  const userName =
-    order.user.firstName && order.user.lastName
-      ? `${order.user.firstName} ${order.user.lastName}`
-      : order.user.email;
+  const userName = order.user
+    ? order.user?.firstName && order.user?.lastName
+      ? `${order.user?.firstName} ${order.user?.lastName}`
+      : order.user?.email
+    : 'Người dùng không xác định';
 
   return (
     <tr className="border-b last:border-0 hover:bg-gray-50">

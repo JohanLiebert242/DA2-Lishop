@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { BookOpenText, CircleHelp, Eye, EyeOff, Plus, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { adminApi, FAQ } from '../../../lib/admin-api';
 import { TICKET_CATEGORY_LABELS, FAQ_CATEGORIES } from '../_constants';
 import { AdminEmptyState } from '../_components/admin-empty-state';
@@ -28,14 +29,26 @@ function FaqModal({ existing, onClose, onSaved }: FaqModalProps) {
       existing
         ? adminApi.updateFaq(existing.id, { question, answer, category, sortOrder, isPublished })
         : adminApi.createFaq({ question, answer, category, sortOrder, isPublished }),
-    onSuccess: () => { onSaved(); onClose(); },
-    onError: (err: Error) => setError(err.message),
+    onSuccess: () => {
+      toast.success(existing ? 'Đã cập nhật mục hỏi đáp' : 'Đã tạo mục hỏi đáp mới');
+      onSaved(); onClose();
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+      toast.error(err.message);
+    },
   });
 
   const aiMutation = useMutation({
     mutationFn: () => adminApi.generateFaqAiAnswer({ question, category }),
-    onSuccess: (data) => { setAnswer(data.answer); },
-    onError: (err: Error) => setError(err.message),
+    onSuccess: (data) => {
+      setAnswer(data.answer);
+      toast.success('AI đã tạo câu trả lời');
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+      toast.error(err.message);
+    },
   });
 
   return (
@@ -145,12 +158,18 @@ export default function FaqPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-faq'] });
       setDeletingFaqId(null);
+      toast.success('Đã xóa mục hỏi đáp');
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const toggleFaqPublishedMutation = useMutation({
     mutationFn: ({ id, isPublished }: { id: string; isPublished: boolean }) => adminApi.updateFaq(id, { isPublished }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-faq'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-faq'] });
+      toast.success('Đã cập nhật trạng thái đăng bài');
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const publishedCount = faqs.filter((faq) => faq.isPublished).length;

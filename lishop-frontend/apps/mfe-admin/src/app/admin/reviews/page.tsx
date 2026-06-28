@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ShieldCheck, Sparkles, Star } from 'lucide-react';
+import { toast } from 'sonner';
 import { adminApi, AdminReview, ReviewAiModerationResponse, ReviewStatus } from '../../../lib/admin-api';
 import { REVIEW_STATUS_COLORS, REVIEW_STATUS_LABELS } from '../_constants';
 import { AdminEmptyState } from '../_components/admin-empty-state';
@@ -15,12 +16,20 @@ function ReviewRow({ review }: { review: AdminReview }) {
 
   const mutation = useMutation({
     mutationFn: (status: ReviewStatus) => adminApi.moderateReview(review.id, status),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-reviews'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-reviews'] });
+      toast.success('Đã cập nhật trạng thái đánh giá');
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const aiMutation = useMutation({
     mutationFn: () => adminApi.generateReviewModeration(review.id),
-    onSuccess: (result) => setAiModeration(result),
+    onSuccess: (result) => {
+      setAiModeration(result);
+      toast.success('AI đã kiểm duyệt đánh giá');
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const stars = '*'.repeat(review.rating) + '-'.repeat(5 - review.rating);

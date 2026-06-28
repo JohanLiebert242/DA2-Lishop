@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PackageSearch, RotateCcw, Sparkles, Truck } from 'lucide-react';
+import { toast } from 'sonner';
 import { adminApi, AdminReturn } from '../../../lib/admin-api';
 import {
   RETURN_NEXT_STATUSES,
@@ -31,7 +32,9 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
       setSelectedStatus('');
       setAdminNote('');
       setAiSummary('');
+      toast.success('Đã cập nhật trạng thái đổi trả');
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const aiMutation = useMutation({
@@ -40,8 +43,12 @@ function ReturnRow({ ret }: { ret: AdminReturn }) {
       if (result.adminNote) setAdminNote(result.adminNote);
       if (result.suggestedStatus) setSelectedStatus(result.suggestedStatus);
       setAiSummary(result.fallback ? `AI chế độ dự phòng: ${result.summary}` : result.summary);
+      toast.success('AI đã gợi ý cập nhật đổi trả');
     },
-    onError: (err: Error) => setAiSummary(err.message),
+    onError: (err: Error) => {
+      setAiSummary(err.message);
+      toast.error(err.message);
+    },
   });
 
   const userName =

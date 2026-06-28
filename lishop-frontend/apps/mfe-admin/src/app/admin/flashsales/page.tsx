@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { adminApi, AdminFlashSale, FlashSaleItem } from '../../../lib/admin-api';
 
 interface FlashSaleModalProps {
@@ -22,8 +23,14 @@ function FlashSaleModal({ existing, onClose, onSaved }: FlashSaleModalProps) {
       const data = { startAt: new Date(startAt).toISOString(), endAt: new Date(endAt).toISOString(), isActive };
       return existing ? adminApi.updateFlashSale(existing.id, data) : adminApi.createFlashSale(data);
     },
-    onSuccess: () => { onSaved(); onClose(); },
-    onError: (err: Error) => setError(err.message),
+    onSuccess: () => {
+      toast.success(existing ? 'Đã cập nhật đợt bán nhanh' : 'Đã tạo đợt bán nhanh mới');
+      onSaved(); onClose();
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+      toast.error(err.message);
+    },
   });
 
   return (
@@ -93,13 +100,21 @@ function FlashSaleItemsPanel({ sale }: { sale: AdminFlashSale }) {
       setProductId('');
       setDiscountPercent(10);
       setAddError('');
+      toast.success('Đã thêm sản phẩm vào đợt bán nhanh');
     },
-    onError: (err: Error) => setAddError(err.message),
+    onError: (err: Error) => {
+      setAddError(err.message);
+      toast.error(err.message);
+    },
   });
 
   const removeMutation = useMutation({
     mutationFn: (itemId: string) => adminApi.removeFlashSaleItem(sale.id, itemId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-flash-sales'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-flash-sales'] });
+      toast.success('Đã xóa sản phẩm khỏi đợt bán nhanh');
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   return (
@@ -197,7 +212,9 @@ export default function FlashSalesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-flash-sales'] });
       setExpandedFlashSaleId(null);
+      toast.success('Đã xóa đợt bán nhanh');
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   return (

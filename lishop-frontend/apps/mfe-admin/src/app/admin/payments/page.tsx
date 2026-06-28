@@ -45,10 +45,12 @@ export default function PaymentsPage() {
           </thead>
           <tbody>
             {payments.map((payment) => {
-              const userName =
-                payment.order.user.firstName && payment.order.user.lastName
-                  ? `${payment.order.user.firstName} ${payment.order.user.lastName}`
-                  : payment.order.user.email;
+              const user = payment.order?.user;
+              const userName = user
+                ? user.firstName && user.lastName
+                  ? `${user.firstName} ${user.lastName}`
+                  : user.email
+                : 'Người dùng không xác định';
               return (
                 <tr key={payment.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono text-sm text-gray-700">#{payment.order.orderNumber}</td>

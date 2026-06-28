@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { formatVND } from '@lishop/shared';
 import { adminApi, AdminWalletTopup, WalletTopupStatus } from '../../../lib/admin-api';
 
@@ -67,7 +68,9 @@ export default function WalletTopupsPage() {
       });
       queryClient.invalidateQueries({ queryKey: ['admin-wallet-topups'] });
       queryClient.invalidateQueries({ queryKey: ['admin-wallets'] });
+      toast.success(variables.action === 'approve' ? 'Đã duyệt yêu cầu nạp ví' : 'Đã từ chối yêu cầu nạp ví');
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   return (
