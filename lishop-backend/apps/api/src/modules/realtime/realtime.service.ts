@@ -119,6 +119,21 @@ export class RealtimeService {
     this.gateway.sendToRoom(`product:${productId}:stock`, 'inventory:update', data);
   }
 
+  // ─── Wallet / Top-up ───
+
+  emitWalletTopupStatus(
+    userId: string,
+    data: {
+      requestId: string;
+      status: 'APPROVED' | 'REJECTED';
+      amountVnd: number;
+      adminNote?: string;
+      timestamp: string;
+    },
+  ): void {
+    this.gateway.sendToUser(userId, 'wallet:topup-status', data);
+  }
+
   // ─── Admin Dashboard Feed ───
 
   emitAdminFeed(

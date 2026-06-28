@@ -218,9 +218,9 @@ describe('SupportTicketsService', () => {
 
       await service.addAdminMessage('admin1', 'ticket1', { content: 'follow up' });
 
-      // admin already replied → no IN_PROGRESS transition, but auto-resolve still applies
+      // admin already replied → no IN_PROGRESS transition, but auto-progress still applies
       expect(repo.updateStatus).toHaveBeenCalledTimes(1);
-      expect(repo.updateStatus).toHaveBeenCalledWith('ticket1', TicketStatus.RESOLVED);
+      expect(repo.updateStatus).toHaveBeenCalledWith('ticket1', TicketStatus.IN_PROGRESS);
     });
 
     it('notifies customer on admin reply', async () => {

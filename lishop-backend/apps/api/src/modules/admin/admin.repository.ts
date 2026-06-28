@@ -238,13 +238,23 @@ export class AdminRepository {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [orders, orderItems, newUsers, statusGroups, lowStockProducts] = await Promise.all([
+    const [
+      orders,
+      allOrdersCount,
+      orderItems,
+      newUsers,
+      statusGroups,
+      lowStockProducts,
+    ] = await Promise.all([
       prisma.order.findMany({
         where: {
           createdAt: { gte: thirtyDaysAgo },
           status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] },
         },
         select: { createdAt: true, totalVnd: true },
+      }),
+      prisma.order.count({
+        where: { createdAt: { gte: thirtyDaysAgo } },
       }),
       prisma.orderItem.findMany({
         where: {
@@ -258,6 +268,7 @@ export class AdminRepository {
       prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
       prisma.order.groupBy({
         by: ['status'],
+        where: { createdAt: { gte: thirtyDaysAgo } },
         _count: { _all: true },
       }),
       prisma.product.findMany({
@@ -296,7 +307,7 @@ export class AdminRepository {
     const revenueVnd = orders.reduce((sum, order) => sum + order.totalVnd, 0);
     const summary = {
       revenueVnd,
-      orderCount: orders.length,
+      orderCount: allOrdersCount,
       averageOrderValueVnd: orders.length > 0 ? Math.round(revenueVnd / orders.length) : 0,
       newUsers,
     };

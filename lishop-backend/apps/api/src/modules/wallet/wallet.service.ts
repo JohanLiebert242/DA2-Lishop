@@ -96,6 +96,13 @@ export class WalletService {
 
   async approveTopupRequest(id: string, adminId: string, adminNote?: string): Promise<WalletTopupRequestItem> {
     const request = await this.repo.approveTopupRequest(id, adminId, adminNote);
+    this.realtime.emitWalletTopupStatus(request.userId, {
+      requestId: request.id,
+      status: 'APPROVED',
+      amountVnd: request.amountVnd,
+      adminNote: adminNote ?? undefined,
+      timestamp: new Date().toISOString(),
+    });
     void this.notifRepo.createNotification(
       request.userId,
       'Yeu cau nap vi da duoc chap nhan',
@@ -108,6 +115,13 @@ export class WalletService {
 
   async rejectTopupRequest(id: string, adminId: string, adminNote?: string): Promise<WalletTopupRequestItem> {
     const request = await this.repo.rejectTopupRequest(id, adminId, adminNote);
+    this.realtime.emitWalletTopupStatus(request.userId, {
+      requestId: request.id,
+      status: 'REJECTED',
+      amountVnd: request.amountVnd,
+      adminNote: adminNote ?? undefined,
+      timestamp: new Date().toISOString(),
+    });
     void this.notifRepo.createNotification(
       request.userId,
       'Yeu cau nap vi bi tu choi',

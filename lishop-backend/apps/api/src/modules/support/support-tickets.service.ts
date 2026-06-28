@@ -143,9 +143,9 @@ export class SupportTicketsService {
 
     const message = await this.repo.addMessage(ticketId, adminId, dto.content, true);
 
-    // Admin reply → auto-resolve unless ticket is already closed
+    // Admin reply → chuyển sang đang xử lý, trừ khi ticket đã đóng
     if (ticket.status !== TicketStatus.CLOSED) {
-      await this.repo.updateStatus(ticketId, TicketStatus.RESOLVED);
+      await this.repo.updateStatus(ticketId, TicketStatus.IN_PROGRESS);
       statusChanged = true;
     }
 

@@ -1,6 +1,12 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { prisma, RefundMethod, RefundStatus } from '@lishop/database';
+import { OrderStatus, PaymentMethod, prisma, RefundMethod, RefundStatus } from '@lishop/database';
 import { NotificationsRepository } from '../notifications/notifications.repository';
 import { WalletService } from '../wallet/wallet.service';
 import { RefundData, RefundsRepository } from './refunds.repository';
@@ -122,6 +128,43 @@ export class RefundsService {
     }
 
     return updated;
+  }
+
+  async requestRefund(userId: string, dto: { orderId: string; reason?: string }): Promise<RefundData> {
+    const order = await prisma.order.findFirst({
+      where: { id: dto.orderId, userId },
+      include: { payment: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    if (order.status !== OrderStatus.DELIVERED) {
+      throw new BadRequestException('Chỉ có thể yêu cầu hoàn tiền cho đơn hàng đã giao thành công');
+    }
+
+    if (!order.payment) {
+      throw new BadRequestException('Đơn hàng không có thông tin thanh toán');
+    }
+
+    const existing = await this.repo.findByOrderId(dto.orderId);
+    if (existing) {
+      throw new ConflictException('Đơn hàng này đã có yêu cầu hoàn tiền');
+    }
+
+    const method =
+      order.payment.method === PaymentMethod.WALLET
+        ? RefundMethod.WALLET
+        : RefundMethod.ORIGINAL_PAYMENT;
+
+    return this.repo.create({
+      orderId: dto.orderId,
+      userId,
+      amountVnd: order.payment.amountVnd,
+      method,
+      reason: dto.reason ?? 'Yêu cầu hoàn tiền trực tiếp từ khách hàng',
+    });
   }
 
   async generateAdminAssist(id: string): Promise<{

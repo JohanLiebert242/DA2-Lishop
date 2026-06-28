@@ -607,7 +607,7 @@ export class AdminService {
       'Nhiem vu: tu du lieu CSV/JSON hoac doan van tu do, hay tao danh sach san pham de admin import.',
       'Tra ve DUY NHAT mot JSON object theo schema: {"products":[{...}]} .',
       'Moi san pham bat buoc co: name, description, priceVnd, priceUsd, stock.',
-      'Co the co them: sku, weightGrams, categorySlug, imageUrl, imageAlt, tags (mang string).',
+      'Co the co them: sku, weightGrams, categorySlug, images (mang object co url va alt), tags (mang string).',
       'Neu thieu gia, stock, weight thi suy doan hop ly (gia >= 0, stock >= 0, weightGrams >= 1).',
       'categorySlug CHI duoc dung mot trong cac gia tri sau: fashion, electronics, home-living, beauty, sports, books. KHONG duoc tu tao slug khac.',
       'Mo ta (description) viet tieng Viet co dau, 1-3 cau, khong markdown, khong emoji.',
@@ -878,6 +878,7 @@ export class AdminService {
       .slice(0, MAX_AI_IMPORT_PRODUCTS)
       .filter((p) => !!p && typeof p === 'object' && typeof (p as ImportProductDto).name === 'string')
       .map((p) => {
+        const raw = p as unknown as Record<string, unknown>;
         const name = p.name.trim();
         const priceVnd = Number.isFinite(Number(p.priceVnd)) ? Math.round(Number(p.priceVnd)) : 0;
         const priceUsd = Number.isFinite(Number(p.priceUsd)) ? Math.round(Number(p.priceUsd)) : 0;
@@ -889,14 +890,26 @@ export class AdminService {
           ? description
           : this.buildFallbackProductCopy({ name });
 
+        // Normalize flat imageUrl/imageAlt from AI output into the images array
+        const flatImageUrl = typeof raw['imageUrl'] === 'string' ? raw['imageUrl'] : undefined;
+        const flatImageAlt = typeof raw['imageAlt'] === 'string' ? raw['imageAlt'] : undefined;
+        const images = flatImageUrl
+          ? [{ url: flatImageUrl, alt: flatImageAlt ?? '', isPrimary: true }] as ImportProductDto['images']
+          : p.images;
+
         return {
-          ...p,
           name,
+          ...(p.sku ? { sku: p.sku } : {}),
+          description: enrichedDescription,
           priceVnd: Math.max(0, priceVnd),
           priceUsd: Math.max(0, priceUsd),
           stock: Math.max(0, stock),
           weightGrams: Math.max(1, weightGrams),
-          description: enrichedDescription,
+          ...(p.categoryId ? { categoryId: p.categoryId } : {}),
+          ...(p.categorySlug ? { categorySlug: p.categorySlug } : {}),
+          ...(images && images.length > 0 ? { images } : {}),
+          ...(Array.isArray(p.tags) && p.tags.length > 0 ? { tags: p.tags } : {}),
+          ...(Array.isArray(p.variants) && p.variants.length > 0 ? { variants: p.variants } : {}),
         };
       });
   }

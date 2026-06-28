@@ -4,6 +4,7 @@ import { ReviewsRepository, ReviewWithUser, AdminReview } from './reviews.reposi
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { Review, ReviewStatus } from '@lishop/database';
+import { NotificationsRepository } from '../notifications/notifications.repository';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
@@ -23,6 +24,7 @@ export class ReviewsService {
   constructor(
     private readonly repo: ReviewsRepository,
     private readonly config: ConfigService,
+    private readonly notifRepo: NotificationsRepository,
   ) {}
 
   getProductReviews(productId: string): Promise<ReviewWithUser[]> {
@@ -75,7 +77,20 @@ export class ReviewsService {
   async moderateReview(id: string, status: ReviewStatus): Promise<AdminReview> {
     const existing = await this.repo.findByIdAdmin(id);
     if (!existing) throw new NotFoundException(`Review ${id} not found`);
-    return this.repo.moderateReview(id, status);
+
+    const result = await this.repo.moderateReview(id, status);
+
+    void this.notifRepo.createNotification(
+      existing.userId,
+      status === ReviewStatus.APPROVED ? 'Danh gia da duoc phe duyet' : 'Danh gia bi tu choi',
+      status === ReviewStatus.APPROVED
+        ? `Danh gia cua ban cho san pham "${existing.product.name}" da duoc admin phe duyet va hien thi.`
+        : `Danh gia cua ban cho san pham "${existing.product.name}" da bi admin tu choi.`,
+      'REVIEW',
+      id,
+    );
+
+    return result;
   }
 
   async generateModerationAssist(id: string): Promise<ReviewModerationAssist> {

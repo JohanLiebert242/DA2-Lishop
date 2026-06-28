@@ -1,8 +1,9 @@
-import { Controller, Get, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards, ValidationPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RefundsService } from './refunds.service';
+import { RequestRefundDto } from './dto/request-refund.dto';
 
 @ApiTags('refunds')
 @Controller('refunds')
@@ -15,6 +16,15 @@ export class RefundsController {
   @ApiOperation({ summary: 'Get my refunds' })
   getUserRefunds(@CurrentUser('id') userId: string) {
     return this.refundsService.getUserRefunds(userId);
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Request a refund for a delivered order' })
+  createRefund(
+    @CurrentUser('id') userId: string,
+    @Body(new ValidationPipe()) dto: RequestRefundDto,
+  ) {
+    return this.refundsService.requestRefund(userId, dto);
   }
 
   @Get(':id')

@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { ShopStatus, UserRole } from '@lishop/database';
 import { prisma } from '@lishop/database';
 import { ShopsRepository } from './shops.repository';
+import { NotificationsRepository } from '../notifications/notifications.repository';
 import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { ShopListQueryDto } from './dto/shop-list-query.dto';
@@ -17,6 +18,7 @@ export class ShopsService {
   constructor(
     private readonly repo: ShopsRepository,
     private readonly config: ConfigService,
+    private readonly notifRepo: NotificationsRepository,
   ) {}
 
   async register(userId: string, dto: CreateShopDto) {
@@ -90,11 +92,21 @@ export class ShopsService {
     if (!shop) throw new NotFoundException('Cửa hàng không tồn tại');
     if (shop.status === ShopStatus.APPROVED) return shop; // idempotent
 
-    return this.repo.update(shopId, {
+    const result = await this.repo.update(shopId, {
       status: ShopStatus.APPROVED,
       approvedAt: new Date().toISOString(),
       approvedBy: { connect: { id: adminId } },
     });
+
+    void this.notifRepo.createNotification(
+      shop.userId,
+      'Cua hang da duoc phe duyet',
+      `Cua hang "${shop.name}" cua ban da duoc admin phe duyet.`,
+      'SYSTEM',
+      shopId,
+    );
+
+    return result;
   }
 
   async rejectShop(shopId: string, adminId: string, reason?: string) {
@@ -102,11 +114,23 @@ export class ShopsService {
     if (!shop) throw new NotFoundException('Cửa hàng không tồn tại');
     if (shop.status === ShopStatus.REJECTED) return shop; // idempotent
 
-    return this.repo.update(shopId, {
+    const result = await this.repo.update(shopId, {
       status: ShopStatus.REJECTED,
       rejectionReason: reason ?? null,
       approvedBy: { connect: { id: adminId } },
     });
+
+    void this.notifRepo.createNotification(
+      shop.userId,
+      'Cua hang bi tu choi',
+      reason?.trim()
+        ? `Cua hang "${shop.name}" cua ban da bi tu choi: ${reason.trim()}`
+        : `Cua hang "${shop.name}" cua ban da bi tu choi.`,
+      'SYSTEM',
+      shopId,
+    );
+
+    return result;
   }
 
   private generateSlug(name: string): string {
