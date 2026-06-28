@@ -573,7 +573,7 @@ function OrderRow({ order }: { order: AdminOrderItem }) {
 
   const userName =
     order.user.firstName && order.user.lastName
-      ? `${order.user.firstName} ${order.user.lastName}`
+      ? `${order.user?.firstName} ${order.user?.lastName}`
       : order.user.email;
 
   return (
