@@ -59,11 +59,13 @@ export default function DashboardPage() {
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ['seller-orders'],
     queryFn: () => sellerApi.getOrders(),
+    refetchInterval: 30_000,
   });
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ['seller-products'],
     queryFn: () => sellerApi.getMyProducts({ limit: 100 }),
+    refetchInterval: 30_000,
   });
 
   const isLoading = shopLoading || ordersLoading || productsLoading;

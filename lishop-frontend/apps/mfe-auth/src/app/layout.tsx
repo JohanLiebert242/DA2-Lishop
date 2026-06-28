@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Toaster } from '@lishop/ui';
+import { NotificationListener } from './notification-listener';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -12,6 +13,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <html lang="vi">
       <body>
         {children}
+        <NotificationListener />
         <Toaster position="top-right" richColors />
       </body>
     </html>

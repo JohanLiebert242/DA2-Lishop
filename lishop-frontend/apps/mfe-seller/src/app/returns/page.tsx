@@ -65,7 +65,7 @@ export default function ReturnsPage() {
                 <tr key={order.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <td className="px-5 py-4 text-sm font-mono text-slate-700">#{order.orderNumber}</td>
                   <td className="px-5 py-4 text-sm text-slate-700">
-                    {order.user.firstName} {order.user.lastName}
+                    {order.user?.firstName} {order.user?.lastName}
                   </td>
                   <td className="px-5 py-4 text-sm font-medium text-slate-900">{formatVND(order.totalVnd)}</td>
                   <td className="px-5 py-4">

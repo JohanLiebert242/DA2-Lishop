@@ -3,7 +3,6 @@
 import './globals.css';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Toaster } from 'sonner';
 import {
   ArrowLeft,
   BarChart3,
@@ -181,7 +180,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
             </main>
           </div>
-          <Toaster position="top-right" richColors closeButton />
         </Providers>
       </body>
     </html>

@@ -164,6 +164,7 @@ export default function OrdersPage() {
     queryKey: ['my-orders'],
     queryFn: () => ordersApi.getOrders(),
     retry: false,
+    refetchInterval: 15_000,
   });
 
   const filteredOrders = useMemo(() => {
@@ -336,13 +337,13 @@ export default function OrdersPage() {
                             </span>
                           )}
                           <Link
-                            href={`/orders/${order.id}#return`}
+                            href={`/orders/${order.id}`}
                             className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
-                              order.status === 'DELIVERED' || order.status === 'REFUNDED'
+                              order.status === 'DELIVERED'
                                 ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
                                 : 'border-warm bg-stone-50 text-stone-400'
                             }`}
-                            aria-disabled={order.status !== 'DELIVERED' && order.status !== 'REFUNDED'}
+                            aria-disabled={order.status !== 'DELIVERED'}
                           >
                             Yêu cầu hoàn tiền
                           </Link>

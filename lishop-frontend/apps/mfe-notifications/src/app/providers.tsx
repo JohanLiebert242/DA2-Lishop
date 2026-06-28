@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Toaster } from '@lishop/ui';
 import { useAuthSync } from '@lishop/shared';
 
 const LOGIN_URL = `${process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001'}/login`;
@@ -22,6 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={client}>
       <AuthSync />
       {children}
+      <Toaster position="top-right" richColors />
     </QueryClientProvider>
   );
 }

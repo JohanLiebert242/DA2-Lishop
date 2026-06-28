@@ -74,7 +74,7 @@ export default function PaymentsPage() {
                 <tr key={payment.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <td className="px-5 py-4 text-sm font-mono text-slate-700">#{payment.orderNumber}</td>
                   <td className="px-5 py-4 text-sm text-slate-700">
-                    {payment.user.firstName} {payment.user.lastName}
+                    {payment.user?.firstName} {payment.user?.lastName}
                   </td>
                   <td className="px-5 py-4 text-sm text-slate-500">
                     {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}

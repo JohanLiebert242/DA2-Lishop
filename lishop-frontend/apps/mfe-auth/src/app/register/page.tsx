@@ -164,7 +164,7 @@ export default function RegisterPage() {
             <Button type="submit" disabled={isSubmitting} className="w-full py-3 text-base mt-2 h-auto">
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  <div className="h-4 w-4 rounded-full border-2 text-white border-white border-t-transparent animate-spin" />
                   Đang tạo tài khoản...
                 </span>
               ) : 'Tạo tài khoản miễn phí'}

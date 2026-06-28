@@ -1,15 +1,17 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { formatVND } from '@lishop/shared';
+import { formatVND, useOrderRealtime } from '@lishop/shared';
+import { toast } from '@lishop/ui';
 import {
   ordersApi,
   OrderStatus,
   getTracking,
   getMyReturn,
   createReturn,
+  createRefund,
   ReturnReason,
   ReturnStatus,
   CreateReturnInput,
@@ -159,6 +161,10 @@ export default function OrderDetailPage({ params }: Props) {
   const [returnDescription, setReturnDescription] = useState('');
   const [returnItemQtys, setReturnItemQtys] = useState<Record<string, number>>({});
 
+  // Refund state
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+
   // Queries — all declared unconditionally at top
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['order', id],
@@ -192,6 +198,23 @@ export default function OrderDetailPage({ params }: Props) {
   });
   const refund = refunds.find((r) => r.orderId === id);
 
+  // Real-time cập nhật trạng thái đơn hàng
+  const handleOrderStatus = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['order', id] });
+    queryClient.invalidateQueries({ queryKey: ['tracking', id] });
+    queryClient.invalidateQueries({ queryKey: ['my-return', id] });
+    toast('Đơn hàng đã được cập nhật', {
+      description: 'Trạng thái đơn hàng vừa thay đổi',
+      duration: 4000,
+    });
+  }, [id, queryClient]);
+
+  useOrderRealtime({
+    enabled: !!id,
+    orderId: id,
+    onStatusChange: handleOrderStatus,
+  });
+
   // Mutations — all declared unconditionally at top
   const cancelMutation = useMutation({
     mutationFn: () => ordersApi.cancelOrder(id),
@@ -208,6 +231,25 @@ export default function OrderDetailPage({ params }: Props) {
       setShowReturnModal(false);
       setReturnDescription('');
       setReturnItemQtys({});
+    },
+  });
+
+  const refundMutation = useMutation({
+    mutationFn: (input: { orderId: string; reason?: string }) => createRefund(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-refunds'] });
+      setShowRefundModal(false);
+      setRefundReason('');
+      toast('Yêu cầu hoàn tiền đã được gửi', {
+        description: 'Admin sẽ xử lý trong thời gian sớm nhất.',
+        duration: 5000,
+      });
+    },
+    onError: (error: Error) => {
+      toast('Gửi yêu cầu thất bại', {
+        description: error.message,
+        duration: 5000,
+      });
     },
   });
 
@@ -616,6 +658,25 @@ export default function OrderDetailPage({ params }: Props) {
           </div>
         )}
 
+        {/* Request refund section */}
+        {order.status === 'DELIVERED' && order.payment && !refund && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-gray-900">Yêu cầu hoàn tiền</h2>
+            <p className="mb-3 text-sm text-gray-600">
+              Bạn có thể yêu cầu hoàn tiền trực tiếp. Số tiền hoàn sẽ dựa trên phương thức thanh toán
+              ban đầu của đơn hàng: <strong className="text-indigo-600">{formatVND(order.payment.amountVnd)}</strong>.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowRefundModal(true)}
+              disabled={refundMutation.isPending}
+              className="rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+            >
+              {refundMutation.isPending ? 'Đang gửi...' : 'Yêu cầu hoàn tiền'}
+            </button>
+          </div>
+        )}
+
         {/* Return request section */}
         {order.status === 'DELIVERED' && (
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -757,6 +818,64 @@ export default function OrderDetailPage({ params }: Props) {
                 className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
               >
                 {returnMutation.isPending ? 'Đang gửi...' : 'Gửi yêu cầu'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Refund modal */}
+      {showRefundModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-base font-semibold text-gray-900">Yêu cầu hoàn tiền</h3>
+
+            <div className="space-y-4">
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                <p className="font-medium">Số tiền hoàn: {order.payment && formatVND(order.payment.amountVnd)}</p>
+                <p className="mt-1 text-amber-700">
+                  Tiền sẽ được hoàn về {order.payment?.method === 'WALLET' ? 'ví Lishop' : 'phương thức thanh toán ban đầu'}.
+                </p>
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label htmlFor="refund-reason" className="block text-xs font-medium text-gray-700 mb-1">
+                  Lý do hoàn tiền (không bắt buộc)
+                </label>
+                <textarea
+                  id="refund-reason"
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  maxLength={500}
+                  rows={3}
+                  placeholder="Mô tả lý do bạn muốn hoàn tiền..."
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none resize-none"
+                />
+                <p className="mt-1 text-right text-xs text-gray-400">{refundReason.length}/500</p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowRefundModal(false)}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  refundMutation.mutate({
+                    orderId: id,
+                    reason: refundReason || undefined,
+                  })
+                }
+                disabled={refundMutation.isPending}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {refundMutation.isPending ? 'Đang gửi...' : 'Gửi yêu cầu'}
               </button>
             </div>
           </div>

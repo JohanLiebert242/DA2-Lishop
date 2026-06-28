@@ -14,6 +14,7 @@ export default function OrdersPage() {
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['seller-orders'],
     queryFn: () => sellerApi.getOrders(),
+    refetchInterval: 15_000,
   });
 
   const totalRevenue = orders.reduce((s, o) => s + o.totalVnd, 0);
@@ -76,7 +77,7 @@ export default function OrdersPage() {
                     #{order.orderNumber}
                   </td>
                   <td className="px-5 py-4 text-sm text-slate-700">
-                    {order.user.firstName} {order.user.lastName}
+                    {order.user ? `${order.user.firstName} ${order.user.lastName}` : 'Người dùng không xác định'}
                   </td>
                   <td className="px-5 py-4 text-sm text-slate-700">
                     {order.items.length} sản phẩm

@@ -1,9 +1,11 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Package, ShoppingBag, User, CreditCard } from 'lucide-react';
-import { formatVND } from '@lishop/shared';
+import { formatVND, useOrderRealtime } from '@lishop/shared';
+import { toast } from '@lishop/ui';
 import { sellerApi } from '@/lib/seller-api';
 import { STATUS_LABELS, STATUS_COLORS } from '../../_constants';
 
@@ -16,6 +18,20 @@ export default function OrderDetailPage() {
     queryKey: ['seller-order', orderId],
     queryFn: () => sellerApi.getOrderDetail(orderId),
     enabled: !!orderId,
+  });
+
+  // Real-time cập nhật trạng thái đơn hàng
+  const handleOrderStatus = useCallback(() => {
+    toast('Đơn hàng đã được cập nhật', {
+      description: 'Trạng thái đơn hàng vừa thay đổi',
+      duration: 4000,
+    });
+  }, []);
+
+  useOrderRealtime({
+    enabled: !!orderId,
+    orderId,
+    onStatusChange: handleOrderStatus,
   });
 
   if (isLoading) {
@@ -77,8 +93,8 @@ export default function OrderDetailPage() {
             <h2 className="text-base font-semibold text-slate-950">Thông tin khách hàng</h2>
           </div>
           <div className="mt-4 space-y-2 text-sm text-slate-700">
-            <p className="font-medium">{order.user.firstName} {order.user.lastName}</p>
-            <p>{order.user.email}</p>
+            <p className="font-medium">{order.user ? `${order.user?.firstName} ${order.user?.lastName}` : 'Người dùng không xác định'}</p>
+            {order.user && <p>{order.user.email}</p>}
             {order.address && (
               <>
                 <p>{order.address.fullName} - {order.address.phone}</p>

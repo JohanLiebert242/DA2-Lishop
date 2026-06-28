@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster, toast } from '@lishop/ui';
 import { eventBus, LishopEvent } from '@lishop/event-bus';
-import { useNotificationStream } from '@lishop/shared';
+import { useNotificationStream, useRealtime } from '@lishop/shared';
 import type { StreamNotification } from '@lishop/shared';
 import { queryClient } from '../lib/query-client';
 import { useAuthStore } from '../stores/auth.store';
@@ -94,11 +94,40 @@ function NotificationStream() {
   return null;
 }
 
+/** Lắng nghe sự kiện order:status real-time và invalidate query tương ứng */
+function OrderStatusListener() {
+  const isAuthenticated = useAuthStore((s) => s.user != null);
+
+  const handleOrderStatus = useCallback((data: unknown) => {
+    const payload = data as { orderId: string; orderNumber: string; status: string };
+    if (!payload?.orderId) return;
+    queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+    queryClient.invalidateQueries({ queryKey: ['order', payload.orderId] });
+    queryClient.invalidateQueries({ queryKey: ['tracking', payload.orderId] });
+    queryClient.invalidateQueries({ queryKey: ['my-return', payload.orderId] });
+    toast(`Đơn hàng #${payload.orderNumber} đã được cập nhật`, {
+      description: `Trạng thái: ${payload.status}`,
+      duration: 5000,
+    });
+  }, []);
+
+  useRealtime({
+    enabled: isAuthenticated,
+    rooms: [],
+    on: {
+      'order:status': handleOrderStatus,
+    },
+  });
+
+  return null;
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthInitializer />
       <NotificationStream />
+      <OrderStatusListener />
       {children}
       <Toaster position="top-right" richColors />
     </QueryClientProvider>

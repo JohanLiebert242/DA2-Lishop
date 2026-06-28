@@ -179,6 +179,13 @@ export async function createReturn(input: CreateReturnInput): Promise<ReturnRequ
   });
 }
 
+export async function createRefund(input: { orderId: string; reason?: string }): Promise<RefundData> {
+  return apiFetch<RefundData>('/refunds', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export async function getMyReturn(orderId: string): Promise<ReturnRequest | null> {
   const returns = await apiFetch<ReturnRequest[]>('/returns');
   return returns.find((r) => r.orderId === orderId) ?? null;

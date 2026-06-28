@@ -13,6 +13,7 @@
     "@lishop/contracts": "workspace:*",
     "@lishop/event-bus": "workspace:*",
     "@lishop/shared": "workspace:*",
+    "@lishop/ui": "workspace:*",
     "@tanstack/react-query": "^5.50.0",
     "lucide-react": "^0.400.0",
     "next": "^15.0.0",

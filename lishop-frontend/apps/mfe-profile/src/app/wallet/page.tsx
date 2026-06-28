@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { walletApi, BankTransferInfo, WalletTopupRequest, WalletTx } from '../../lib/wallet-api';
 import { AccountSidebar } from '../../components/account-sidebar';
-import { formatVND } from '@lishop/shared';
+import { formatVND, useRealtime } from '@lishop/shared';
 
 const TX_TYPE_LABELS: Record<WalletTx['type'], string> = {
   TOPUP: 'Nạp tiền',
@@ -81,6 +81,17 @@ export default function WalletPage() {
     queryKey: ['wallet'],
     queryFn: () => walletApi.getWallet(),
     retry: false,
+  });
+
+  useRealtime({
+    enabled: !!wallet,
+    on: {
+      'wallet:topup-status': () => {
+        queryClient.invalidateQueries({ queryKey: ['wallet'] });
+        queryClient.invalidateQueries({ queryKey: ['wallet-topup-requests'] });
+        queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
+      },
+    },
   });
 
   const { data: transactions = [], isLoading: txLoading } = useQuery({

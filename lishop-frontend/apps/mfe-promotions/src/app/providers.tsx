@@ -1,14 +1,32 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
-import { useAuthSync } from '@lishop/shared';
+import { useState, useCallback } from 'react';
+import { Toaster, toast } from '@lishop/ui';
+import { useAuthSync, NotificationStream, hasSessionCookie } from '@lishop/shared';
+import type { StreamNotification } from '@lishop/shared';
 
 const LOGIN_URL = `${process.env['NEXT_PUBLIC_MFE_AUTH_URL'] ?? 'http://localhost:3001'}/login`;
 
 function AuthSync() {
   useAuthSync(LOGIN_URL);
   return null;
+}
+
+function NotificationListener() {
+  const handleNotification = useCallback((notification: StreamNotification) => {
+    toast(notification.title, {
+      description: notification.body,
+      duration: 5000,
+    });
+  }, []);
+
+  return (
+    <NotificationStream
+      enabled={hasSessionCookie()}
+      onNotification={handleNotification}
+    />
+  );
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -18,7 +36,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <AuthSync />
+      <NotificationListener />
       {children}
+      <Toaster position="top-right" richColors />
     </QueryClientProvider>
   );
 }
